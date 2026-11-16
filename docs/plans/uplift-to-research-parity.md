@@ -143,3 +143,21 @@ the minimal set; map ours onto theirs (`memory_save`→record, `memory_revise`�
 
 Open items the plan does not decide: whether `memory_search` over raw traces should read the file tree
 directly (their raw-evidence read track) or the index; sleep-reasoner model choice; per-sleep caps.
+
+## Decisions closed 2026-11-16 (defaults — vetoable, otherwise final)
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Claim format | Their typed-file system; one new `claim` TOML schema, key = (`subject`), group = `subject`. Atomic claims stay single-subject. |
+| 2 | Standing storage | `standing` in file frontmatter (source of truth); `standing_history` in the SQLite index + a `state/standing-journal.jsonl` side file so history survives an index wipe (cache is deletable by design — history must not live only there). |
+| 3 | Who creates conflicts_with links | The agent in-turn (`memory_revise`/`memory_record` with an explicit `conflicts` argument) — never auto-detected in v1. NLI auto-detection is deferred; false conflicts are worse than missed ones at our scale. |
+| 4 | When proposed → accepted fires | On the next Manage/Dream sleep whose reasoner passes a menu item `accept(claim_id)`; plus immediate accept if a user message confirms it. No silent auto-accept. |
+| 5 | Sleep reasoner model + caps | Reasoner = Hermes host dialect (our own model routing), cap = 10 proposals per sleep per kind (matches upstream's cap style), auto_dream on. |
+| 6 | `memory_search` raw vs index | Raw file-tree grep (their raw-evidence read track) for L1; index for claims. Index is a cache — raw must never depend on it. |
+| 7 | Prefetch budget | 1,500 bytes injection floor (their injection_budget default style) + recall top-5 for provider prefetch; tune after MemUse probe. |
+| 8 | P2 audit labeler | Same host reasoner (one dependency), temperature 0, structured output; abstain when the labeler itself errors. |
+| 9 | Upstream merge cadence | Rebase monthly or on any upstream release tag; CI must stay green on our main before each rebase. |
+| 10 | Coverage gate | New modules ship with ≥90% line coverage (upstream gate is 85; our additions must not lower it). |
+
+With these, the plan has no undecided points: every phase has named files, transitions, caps, and
+acceptance tests. Remaining unknowns are empirical (P7 evals), not design questions.
