@@ -190,6 +190,15 @@ FACTORY: tuple[MemorySchema, ...] = (
         ("source", "subject"),
         group="source",
     ),
+    MemorySchema(
+        "claim",
+        "A durable, arguable statement the agent or the person asserted, with evidence in"
+        " its provenance. Write one when a belief worth standing is stated; correct it via"
+        " supersede, never by rewriting the file.",
+        ("subject",),
+        group=None,
+        mode=MODE_ADD_ONLY,
+    ),
 )
 
 

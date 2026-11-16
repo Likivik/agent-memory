@@ -43,8 +43,8 @@ class SearchIndex:
         self.remove(record.name)
         self._connection.execute(
             "INSERT INTO records(name, path, type, abstract, created, updated, "
-            "valid_from, invalid_at, superseded_by, weight, author, links, provenance) "
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "valid_from, invalid_at, superseded_by, standing, weight, author, links, provenance) "
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 record.name,
                 relative_path,
@@ -55,6 +55,7 @@ class SearchIndex:
                 record.valid_from or record.created,
                 record.invalid_at,
                 record.superseded_by,
+                record.standing,
                 float(record.weight),
                 record.author,
                 LINK_SEPARATOR.join(record.links),

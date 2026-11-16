@@ -114,6 +114,7 @@ class ManageConfig:
     max_supersedes_per_sleep: int = 5
     max_splits_per_sleep: int = 2
     max_deletes_per_sleep: int = 3
+    max_accepts_per_sleep: int = 10
     split_min_sections: int = 3
     review_max_steps: int = 8
     review_max_tool_calls: int = 24
@@ -198,6 +199,16 @@ class ExecutorConfig:
 
 
 @dataclasses.dataclass
+class StandingConfig:
+    """Standing-machine knobs (design doc v1.2, decisions 4–7). Excluded from the recall
+    fingerprint: retrieval shape is unchanged — standing only reweights final scores."""
+
+    penalty_contested: float = 0.5
+    penalty_proposed: float = 0.75
+    audit_max_per_session: int = 3
+
+
+@dataclasses.dataclass
 class Config:
     storage: StorageConfig = dataclasses.field(default_factory=StorageConfig)
     index: IndexConfig = dataclasses.field(default_factory=IndexConfig)
@@ -207,6 +218,7 @@ class Config:
     manage: ManageConfig = dataclasses.field(default_factory=ManageConfig)
     write: WriteConfig = dataclasses.field(default_factory=WriteConfig)
     executor: ExecutorConfig = dataclasses.field(default_factory=ExecutorConfig)
+    standing: StandingConfig = dataclasses.field(default_factory=StandingConfig)
 
     @classmethod
     def default(cls) -> Config:

@@ -25,7 +25,13 @@ from .errors import FieldError, NotFoundError, ValidationError
 from .indexer import Indexer, IndexReport
 from .locking import store_lock
 from .paths import StoreLayout
-from .record import MemoryRecord
+from .record import (
+    STANDING_DEFAULT,
+    STANDING_PROPOSED,
+    STANDING_STATES,
+    STANDING_SUPERSEDED,
+    MemoryRecord,
+)
 from .schema import MODE_ADD_ONLY, SOURCE_MENU, MemorySchema, SchemaRegistry, source_of
 from .search_index import SearchIndex
 from .sessions import Message, parse_pointer, resolve
@@ -49,6 +55,7 @@ RECORD_FIELDS = frozenset(
         "valid_from",
         "provenance",
         "weight",
+        "standing",
         "supersedes",
         "create_group",
     }
@@ -257,6 +264,7 @@ class Store:
             weight=parsed_weight,
             links=[str(link) for link in _as_sequence(spec.get("links"))],
             provenance=list(existing.provenance) if existing else [],
+            standing=_spec_standing(spec, existing),
             fields=dict(placed.fields),
             path=target,
         )
@@ -666,6 +674,13 @@ class Store:
             else set(record.links) - set(existing.links if existing else [])
         )
         for name in sorted(names):
+            if name.startswith(record_module.CONFLICT_PREFIX):
+                target = self.find(name[len(record_module.CONFLICT_PREFIX):])
+                if target is None or not target.is_active():
+                    raise ValidationError(
+                        [FieldError("links", f"{name} conflict peer must be an active memory")]
+                    )
+                continue
             target = self.find(name)
             if name == record.name or target is None or not target.is_active():
                 raise ValidationError(
@@ -758,6 +773,22 @@ def _known_fields(spec: object) -> dict[str, object]:
     if unknown:
         raise ValidationError([FieldError("spec", f"unknown field: {', '.join(unknown)}")])
     return spec
+
+
+def _spec_standing(spec: dict[str, object], existing: MemoryRecord | None) -> str:
+    """New claims enter the standing machine as `proposed` (design decision 4): acceptance
+    is a menu ruling or a user confirmation, never a write side-effect. Explicit writes
+    keep their value; legacy non-claim writes keep `accepted`."""
+    raw = str(spec.get("standing") or "").strip()
+    if raw in STANDING_STATES:
+        return raw
+    if spec.get("supersedes"):
+        return STANDING_SUPERSEDED
+    if existing is not None:
+        return existing.standing
+    if str(spec.get("type") or "") == "claim":
+        return STANDING_PROPOSED
+    return STANDING_DEFAULT
 
 
 def _as_sequence(value: object) -> list[object]:

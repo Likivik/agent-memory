@@ -23,6 +23,7 @@ FIELD_ORDER = (
     "valid_from",
     "invalid_at",
     "superseded_by",
+    "standing",
     "weight",
     "author",
     "links",
@@ -31,6 +32,27 @@ FIELD_ORDER = (
 CORE_FIELDS = frozenset(FIELD_ORDER) | {"status"}
 REQUIRED_FIELDS = ("name", "abstract", "type", "created", "updated", "author")
 DATE_FIELDS = ("created", "updated", "valid_from", "invalid_at")
+
+
+STANDING_PROPOSED = "proposed"
+STANDING_ACCEPTED = "accepted"
+STANDING_CONTESTED = "contested"
+STANDING_RETRACTED = "retracted"
+STANDING_SUPERSEDED = "superseded"
+STANDING_STATES = (
+    STANDING_PROPOSED,
+    STANDING_ACCEPTED,
+    STANDING_CONTESTED,
+    STANDING_RETRACTED,
+    STANDING_SUPERSEDED,
+)
+STANDING_DEFAULT = STANDING_ACCEPTED  # legacy files without the field keep their trust
+CONFLICT_PREFIX = "conflicts-with:"  # explicit agent-declared contradiction edge
+
+
+def _standing(raw: object) -> str:
+    value = str(raw or "").strip()
+    return value if value in STANDING_STATES else STANDING_DEFAULT
 
 
 @dataclasses.dataclass
@@ -45,6 +67,7 @@ class MemoryRecord:
     valid_from: str | None = None
     invalid_at: str | None = None
     superseded_by: str | None = None
+    standing: str = STANDING_DEFAULT
     weight: float = 1.0
     links: list[str] = dataclasses.field(default_factory=list)
     provenance: list[str] = dataclasses.field(default_factory=list)
@@ -62,6 +85,7 @@ class MemoryRecord:
             "valid_from": self.valid_from or self.created,
             "invalid_at": self.invalid_at,
             "superseded_by": self.superseded_by,
+            "standing": self.standing,
             "weight": float(self.weight),
             "author": self.author,
             "links": list(self.links),
@@ -107,6 +131,7 @@ class MemoryRecord:
                 else None
             ),
             superseded_by=_optional_str(raw.get("superseded_by")),
+            standing=_standing(raw.get("standing")),
             weight=_as_float(raw.get("weight")),
             links=_as_list(raw.get("links")),
             provenance=_as_list(raw.get("provenance")),
@@ -177,7 +202,10 @@ def validate(record: MemoryRecord, config: Config, schema: MemorySchema | None =
     if not config.weight.floor <= record.weight <= config.weight.ceiling:
         errors.append(FieldError("weight", "outside the configured weight range"))
     for link in record.links:
-        if not slug.is_valid_slug(str(link)):
+        target = str(link)
+        if target.startswith(CONFLICT_PREFIX):
+            target = target[len(CONFLICT_PREFIX):]
+        if not slug.is_valid_slug(target):
             errors.append(FieldError("links", f"not a slug: {link}"))
 
     if errors:
@@ -197,6 +225,7 @@ def invalidate(record: MemoryRecord, at: str, successor: str | None = None) -> N
     end = timestamp.parse(at)
     record.invalid_at = timestamp.canonical(max(start, end).isoformat())
     record.superseded_by = successor
+    record.standing = STANDING_SUPERSEDED
 
 
 def _optional_str(value: object) -> str | None:
