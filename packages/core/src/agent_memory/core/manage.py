@@ -31,12 +31,14 @@ from .ledger import VERDICT_ACCEPTED, VERDICT_REJECTED, Decision, DecisionLedger
 from .record import DATE_FIELDS, MemoryRecord
 from .schema import SOURCE_MENU, source_of
 from .sessions import parse_pointer
+from .standing import STANDING_ACCEPTED, STANDING_PROPOSED, set_standing
 from .store import Store
 
 PROPOSAL_MERGE = reasoning.PROPOSAL_MERGE
 PROPOSAL_SUPERSEDE = reasoning.PROPOSAL_SUPERSEDE
 PROPOSAL_SPLIT = reasoning.PROPOSAL_SPLIT
 PROPOSAL_DELETE = reasoning.PROPOSAL_DELETE
+PROPOSAL_ACCEPT_STANDING = reasoning.PROPOSAL_ACCEPT_STANDING
 PROPOSAL_ABSTRACT_REVIEW = reasoning.PROPOSAL_ABSTRACT_REVIEW
 
 ACTION_DATE_NORMALISED = "date-normalised"
@@ -252,6 +254,7 @@ class Manage:
             PROPOSAL_SUPERSEDE: manage.max_supersedes_per_sleep,
             PROPOSAL_SPLIT: manage.max_splits_per_sleep,
             PROPOSAL_DELETE: manage.max_deletes_per_sleep,
+            PROPOSAL_ACCEPT_STANDING: manage.max_accepts_per_sleep,
             PROPOSAL_ABSTRACT_REVIEW: len(self._store.records()),
         }
 
@@ -267,6 +270,7 @@ class Manage:
         drafted.extend(self._propose_splits(inspected))
         drafted.extend(self._propose_abstract_review(inspected))
         drafted.extend(self._propose_deletions(inspected, counts))
+        drafted.extend(self._propose_standing_accepts(inspected))
         return [proposal for proposal in drafted if proposal.id not in decided]
 
     def decide(
@@ -325,7 +329,16 @@ class Manage:
             return self._split(proposal, verdict, expected)
         if proposal.kind == PROPOSAL_DELETE:
             return self._delete(proposal, expected)
+        if proposal.kind == PROPOSAL_ACCEPT_STANDING:
+            return self._accept_standing(proposal)
         return self._rewrite_abstract(proposal, verdict.text, expected)
+
+    def _accept_standing(self, proposal: Proposal) -> str:
+        """Deterministic apply: the reasoner only chose the menu item."""
+        target = proposal.targets[0]
+        written = set_standing(self._store, target, STANDING_ACCEPTED, cause="sleep_menu")
+        return f"standing of {written.name} -> accepted"
+
 
     def _merge(
         self, proposal: Proposal, verdict: reasoning.Verdict, expected: dict[str, str]
@@ -709,6 +722,20 @@ class Manage:
             if record.is_active()
             and hits.get(record.name, 0) == 0
             and record.weight <= self._config.weight.floor
+        ]
+
+    def _propose_standing_accepts(self, records: list[MemoryRecord]) -> list[Proposal]:
+        """Menu-only accept path (design decision 4): a `proposed` claim becomes `accepted`
+        only when a sleep reasoner or the user rules on it — never automatically."""
+        return [
+            Proposal(
+                kind=PROPOSAL_ACCEPT_STANDING,
+                targets=(record.name,),
+                reason="new claim awaits confirmation",
+                evidence=record.abstract,
+            )
+            for record in records
+            if record.type == "claim" and record.standing == STANDING_PROPOSED
         ]
 
     def _idle_days(

@@ -15,6 +15,7 @@ from . import observation, timestamp
 from .access_log import KIND_RECALL, AccessEntry, AccessLog
 from .config import Config
 from .database import SURFACE_ACTIVE, SURFACE_HISTORY, Database
+from .record import STANDING_CONTESTED, STANDING_PROPOSED
 from .search_index import LINK_SEPARATOR, Candidate, SearchIndex
 from .store import Store
 from .vector_index import VectorIndex
@@ -59,6 +60,7 @@ class Hit:
     type: str
     updated: str
     status: str
+    standing: str
     weight: float
     relevance: float
     recency: float
@@ -185,6 +187,7 @@ class Recall:
             row = eligible[name]
             recency = self._recency(str(row["updated"]), reference)
             weight = float(row["weight"])
+            standing = str(row["standing"])
             hits.append(
                 Hit(
                     name=name,
@@ -195,10 +198,12 @@ class Recall:
                     type=str(row["type"]),
                     updated=str(row["updated"]),
                     status="invalid" if row["invalid_at"] else "active",
+                    standing=standing,
                     weight=weight,
                     relevance=relevance,
                     recency=recency,
-                    score=relevance * weight * recency,
+                    score=relevance * weight * recency
+                    * self._standing_multiplier(standing),
                     provenance=tuple(
                         item for item in str(row["provenance"]).split(LINK_SEPARATOR) if item
                     ),
@@ -206,6 +211,15 @@ class Recall:
             )
         hits.sort(key=lambda hit: (-hit.score, hit.name))
         return hits
+
+    def _standing_multiplier(self, standing: str) -> float:
+        """Contested/proposed claims stay visible but rank below accepted ones
+        (cortex §10.3: standing is a *weight*, not a filter)."""
+        penalties = {
+            STANDING_CONTESTED: self._config.standing.penalty_contested,
+            STANDING_PROPOSED: self._config.standing.penalty_proposed,
+        }
+        return penalties.get(standing, 1.0)
 
     def _kind_weight(self, kind: str) -> float:
         from .chunking import KIND_ABSTRACT

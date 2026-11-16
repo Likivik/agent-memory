@@ -16,6 +16,8 @@ TOOL_DELETE = "memory_delete"
 TOOL_TRACE = "memory_trace"
 TOOL_MERGE = "memory_merge"
 TOOL_FEEDBACK = "memory_feedback"
+TOOL_TIMELINE = "memory_timeline"
+TOOL_VERIFY = "memory_verify"
 
 
 SCHEMAS: dict[str, dict[str, object]] = {
@@ -47,6 +49,7 @@ SCHEMAS: dict[str, dict[str, object]] = {
             "name": {"type": "string"},
             "create_group": {"type": "boolean"},
             "links": {"type": "array", "items": {"type": "string"}},
+            "conflicts": {"type": "array", "items": {"type": "string"}},
             "provenance": {"type": "array", "items": {"type": "string"}},
             "supersedes": {"type": "string"},
         },
@@ -100,6 +103,16 @@ SCHEMAS: dict[str, dict[str, object]] = {
         },
         "required": ["name", "direction"],
     },
+    TOOL_TIMELINE: {
+        "type": "object",
+        "properties": {"name": {"type": "string"}},
+        "required": ["name"],
+    },
+    TOOL_VERIFY: {
+        "type": "object",
+        "properties": {"draft": {"type": "string"}, "query": {"type": "string"}},
+        "required": ["draft", "query"],
+    },
 }
 
 DESCRIPTIONS = {
@@ -112,6 +125,13 @@ DESCRIPTIONS = {
     TOOL_TRACE: "Read only the archived messages cited by a named memory.",
     TOOL_MERGE: "Combine named active memories atomically and retain their history.",
     TOOL_FEEDBACK: "Raise or lower a memory's weight explicitly.",
+    TOOL_TIMELINE: (
+        "Show a claim's proof tree: antecedents, conflicts, provenance, standing history."
+    ),
+    TOOL_VERIFY: (
+        "Audit a drafted answer against memory: supported, conflicting, unsupported,"
+        " or abstain."
+    ),
 }
 
 
@@ -237,6 +257,11 @@ def _record(store: Store, arguments: dict[str, object]) -> dict[str, object]:
         provenance=_string_list(arguments.get("provenance")),
         supersedes=_optional(arguments, "supersedes"),
     )
+    # Decision 3: conflicts are agent-declared, never auto-detected.
+    for peer in _string_list(arguments.get("conflicts")):
+        from agent_memory.core import standing
+
+        standing.add_conflict(store, written.name, peer)
     return {"name": written.name, "path": str(written.path), "updated": written.updated}
 
 
@@ -302,6 +327,22 @@ def _string_list(value: object) -> list[str]:
     return [str(item) for item in value] if isinstance(value, list) else []
 
 
+def _timeline(store: Store, arguments: dict[str, object]) -> dict[str, object]:
+    from agent_memory.core import standing
+
+    return standing.timeline(store, str(arguments["name"]))
+
+
+def _verify(store: Store, arguments: dict[str, object]) -> dict[str, object]:
+    from agent_memory.core import audit
+
+    # The MCP surface retrieves evidence deterministically; the label arrives via the
+    # host reasoner binding (P3/P6). Without one wired, the honest verdict is abstain.
+    return audit.verify(
+        store, str(arguments["draft"]), str(arguments["query"]), labeler=None
+    )
+
+
 _HANDLERS = {
     TOOL_RECALL: _recall,
     TOOL_READ: _read,
@@ -312,4 +353,6 @@ _HANDLERS = {
     TOOL_TRACE: _trace,
     TOOL_MERGE: _merge,
     TOOL_FEEDBACK: _feedback,
+    TOOL_TIMELINE: _timeline,
+    TOOL_VERIFY: _verify,
 }

@@ -45,6 +45,7 @@ PROPOSAL_SUPERSEDE = "supersede"
 PROPOSAL_SPLIT = "split"
 PROPOSAL_DELETE = "delete"
 PROPOSAL_ABSTRACT_REVIEW = "abstract-review"
+PROPOSAL_ACCEPT_STANDING = "accept-standing"
 
 
 class Reasoner(Protocol):

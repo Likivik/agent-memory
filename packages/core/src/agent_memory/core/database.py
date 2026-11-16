@@ -36,6 +36,7 @@ SCHEMA = (
         valid_from TEXT NOT NULL,
         invalid_at TEXT,
         superseded_by TEXT,
+        standing TEXT NOT NULL,
         weight REAL NOT NULL,
         author TEXT NOT NULL,
         links TEXT NOT NULL,
@@ -89,6 +90,15 @@ SCHEMA = (
     )
     """,
     """
+    CREATE TABLE IF NOT EXISTS standing_history (
+        claim TEXT NOT NULL,
+        from_standing TEXT,
+        to_standing TEXT NOT NULL,
+        cause TEXT NOT NULL,
+        at TEXT NOT NULL
+    )
+    """,
+    """
     CREATE TABLE IF NOT EXISTS index_meta (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
@@ -108,8 +118,13 @@ class Database:
         connection.row_factory = sqlite3.Row
         try:
             columns = connection.execute("PRAGMA table_info(records)").fetchall()
-            if any(column["name"] == "status" for column in columns):
+            if columns and any(column["name"] == "status" for column in columns):
                 connection.execute("ALTER TABLE records DROP COLUMN status")
+            if columns and not any(column["name"] == "standing" for column in columns):
+                connection.execute(
+                    "ALTER TABLE records ADD COLUMN standing TEXT NOT NULL"
+                    " DEFAULT 'accepted'"
+                )
             connection.execute("DROP TABLE IF EXISTS raw_chunks")
             for statement in SCHEMA:
                 connection.execute(statement)
