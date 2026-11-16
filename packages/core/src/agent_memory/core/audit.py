@@ -72,10 +72,15 @@ def verify(
             return _result(LABEL_ABSTAIN, names, evidence_blocks,
                            reason="session audit budget spent", at=moment, agent=agent)
         if not evidence_blocks:
-            log.append([AccessEntry(at=moment, name="", query=query, kind=KIND_VERIFY, agent=agent)])
-            return _result(LABEL_UNSUPPORTED, [], [], reason="no memory hits", at=moment, agent=agent)
+            entry = AccessEntry(at=moment, name="", query=query,
+                                kind=KIND_VERIFY, agent=agent)
+            log.append([entry])
+            return _result(LABEL_UNSUPPORTED, [], [],
+                           reason="no memory hits", at=moment, agent=agent)
         if labeler is None:
-            log.append([AccessEntry(at=moment, name="", query=query, kind=KIND_VERIFY, agent=agent)])
+            entry = AccessEntry(at=moment, name="", query=query,
+                                kind=KIND_VERIFY, agent=agent)
+            log.append([entry])
             return _result(LABEL_ABSTAIN, names, evidence_blocks,
                            reason="no labeler bound", at=moment, agent=agent)
         label = _label(labeler, PROMPT_TEMPLATE.format(

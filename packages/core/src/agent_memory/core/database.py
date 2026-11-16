@@ -121,7 +121,10 @@ class Database:
             if columns and any(column["name"] == "status" for column in columns):
                 connection.execute("ALTER TABLE records DROP COLUMN status")
             if columns and not any(column["name"] == "standing" for column in columns):
-                connection.execute("ALTER TABLE records ADD COLUMN standing TEXT NOT NULL DEFAULT 'accepted'")
+                connection.execute(
+                    "ALTER TABLE records ADD COLUMN standing TEXT NOT NULL"
+                    " DEFAULT 'accepted'"
+                )
             connection.execute("DROP TABLE IF EXISTS raw_chunks")
             for statement in SCHEMA:
                 connection.execute(statement)
