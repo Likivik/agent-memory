@@ -1,4 +1,14 @@
-"""The MCP tools. Each one collapses onto the same core call the CLI makes."""
+"""The MCP tools. Each one collapses onto the same core call the CLI makes.
+
+Tool-surface mapping onto the Hermes design-doc names (P4) — same call, no renames:
+    memory_save    -> memory_record    (claims enter `proposed`)
+    memory_revise  -> memory_supersede (or memory_correct for in-place edits)
+    memory_search  -> memory_recall    (raw session traces: memory_trace)
+    memory_forget  -> memory_delete    (retract: standing -> retracted via record)
+    memory_timeline: proof tree for a claim
+    memory_verify:  answer-audit (supported / conflicting / unsupported / abstain)
+    memory_stats:   store health (P4 addition — was missing upstream)
+"""
 
 from __future__ import annotations
 
@@ -18,6 +28,7 @@ TOOL_MERGE = "memory_merge"
 TOOL_FEEDBACK = "memory_feedback"
 TOOL_TIMELINE = "memory_timeline"
 TOOL_VERIFY = "memory_verify"
+TOOL_STATS = "memory_stats"
 
 
 SCHEMAS: dict[str, dict[str, object]] = {
@@ -113,6 +124,7 @@ SCHEMAS: dict[str, dict[str, object]] = {
         "properties": {"draft": {"type": "string"}, "query": {"type": "string"}},
         "required": ["draft", "query"],
     },
+    TOOL_STATS: {"type": "object", "properties": {}},
 }
 
 DESCRIPTIONS = {
@@ -132,6 +144,7 @@ DESCRIPTIONS = {
         "Audit a drafted answer against memory: supported, conflicting, unsupported,"
         " or abstain."
     ),
+    TOOL_STATS: "Store health: counts by type and standing, index size, last sync.",
 }
 
 
@@ -327,6 +340,29 @@ def _string_list(value: object) -> list[str]:
     return [str(item) for item in value] if isinstance(value, list) else []
 
 
+def _stats(store: Store, arguments: dict[str, object]) -> dict[str, object]:
+    import pathlib
+
+    from agent_memory.core.database import Database
+
+    by_type: dict[str, int] = {}
+    by_standing: dict[str, int] = {}
+    records = store.records(include_invalid=True)
+    for record in records:
+        by_type[record.type] = by_type.get(record.type, 0) + 1
+        by_standing[record.standing] = by_standing.get(record.standing, 0) + 1
+    index_db = pathlib.Path(store.layout.index_db)
+    with Database(store.layout).connect() as connection:
+        row = connection.execute("SELECT MAX(indexed_at) AS last FROM files").fetchone()
+    return {
+        "records": len(records),
+        "by_type": by_type,
+        "by_standing": by_standing,
+        "index_bytes": index_db.stat().st_size if index_db.exists() else 0,
+        "last_sync": row["last"] if row else None,
+    }
+
+
 def _timeline(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     from agent_memory.core import standing
 
@@ -355,4 +391,5 @@ _HANDLERS = {
     TOOL_FEEDBACK: _feedback,
     TOOL_TIMELINE: _timeline,
     TOOL_VERIFY: _verify,
+    TOOL_STATS: _stats,
 }

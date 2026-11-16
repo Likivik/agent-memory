@@ -9,6 +9,7 @@ MOMENT_EVICT = "evict"
 HOST_CLAUDE_CODE = "claude-code"
 HOST_CODEX = "codex"
 HOST_MUSE_CODE = "muse-code"
+HOST_HERMES = "hermes"
 HOST_GENERIC = "generic"
 
 DIALECTS: dict[str, dict[str, str]] = {
@@ -24,6 +25,12 @@ DIALECTS: dict[str, dict[str, str]] = {
         "PreCompact": MOMENT_EVICT,
     },
     HOST_MUSE_CODE: {
+        "SessionStart": MOMENT_INJECT,
+        "Stop": MOMENT_PAUSE,
+        "SessionEnd": MOMENT_PAUSE,
+        "PreCompact": MOMENT_EVICT,
+    },
+    HOST_HERMES: {
         "SessionStart": MOMENT_INJECT,
         "Stop": MOMENT_PAUSE,
         "SessionEnd": MOMENT_PAUSE,
