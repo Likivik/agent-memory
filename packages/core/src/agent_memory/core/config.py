@@ -199,6 +199,16 @@ class ExecutorConfig:
 
 
 @dataclasses.dataclass
+class ProviderConfig:
+    """In-process Hermes provider knobs (design decisions 5 and 7). A separate section so
+    the asserted recall_fingerprint() default is untouched; Config.fingerprint() changes,
+    which test_memory_systems tolerates because it compares like-for-like defaults."""
+
+    prefetch_budget_bytes: int = 1500
+    prefetch_top_k: int = 5
+
+
+@dataclasses.dataclass
 class StandingConfig:
     """Standing-machine knobs (design doc v1.2, decisions 4–7). Excluded from the recall
     fingerprint: retrieval shape is unchanged — standing only reweights final scores."""
@@ -219,6 +229,7 @@ class Config:
     write: WriteConfig = dataclasses.field(default_factory=WriteConfig)
     executor: ExecutorConfig = dataclasses.field(default_factory=ExecutorConfig)
     standing: StandingConfig = dataclasses.field(default_factory=StandingConfig)
+    provider: ProviderConfig = dataclasses.field(default_factory=ProviderConfig)
 
     @classmethod
     def default(cls) -> Config:
