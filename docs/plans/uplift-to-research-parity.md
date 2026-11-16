@@ -156,7 +156,7 @@ directly (their raw-evidence read track) or the index; sleep-reasoner model choi
 | 6 | `memory_search` raw vs index | Raw file-tree grep (their raw-evidence read track) for L1; index for claims. Index is a cache — raw must never depend on it. |
 | 7 | Prefetch budget | 1,500 bytes injection floor (their injection_budget default style) + recall top-5 for provider prefetch; tune after MemUse probe. |
 | 8 | P2 audit labeler | Same host reasoner (one dependency), temperature 0, structured output; abstain when the labeler itself errors. |
-| 9 | Upstream merge cadence | Rebase monthly or on any upstream release tag; CI must stay green on our main before each rebase. |
+| 9 | Upstream sync | **Notification-only.** Watch upstream; on a release tag or notable commit, notify with a one-line summary. Never auto-merge or auto-rebase — each sync is a human decision. |
 | 10 | Coverage gate | New modules ship with ≥90% line coverage (upstream gate is 85; our additions must not lower it). |
 
 With these, the plan has no undecided points: every phase has named files, transitions, caps, and
