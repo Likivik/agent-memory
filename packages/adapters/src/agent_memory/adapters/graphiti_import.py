@@ -49,7 +49,7 @@ def seed_from_export(store: Store, export_dir: pathlib.Path) -> dict[str, int]:
             index[row["uuid"]] = name
             content = row.get("content") or ""
             specs.append({
-                "abstract": (content[: store.config.storage.abstract_max_chars]
+                "abstract": (" ".join(content.split())[: store.config.storage.abstract_max_chars]
                              or f"episode {row['uuid'][:12]}"),
                 "type": "event",
                 "body": (
@@ -75,7 +75,7 @@ def seed_from_export(store: Store, export_dir: pathlib.Path) -> dict[str, int]:
             index[row["uuid"]] = name
             summary = (row.get("summary") or "").strip()
             specs.append({
-                "abstract": (summary[: store.config.storage.abstract_max_chars]
+                "abstract": (" ".join(summary.split())[: store.config.storage.abstract_max_chars]
                              or f"entity {row.get('name') or row['uuid'][:12]}"),
                 "type": "entity",
                 "body": (
@@ -102,7 +102,9 @@ def seed_from_export(store: Store, export_dir: pathlib.Path) -> dict[str, int]:
             fact = (row.get("fact") or "").strip()
             if fact and row["rel"] == "RELATES_TO":
                 claim_specs.append({
-                    "abstract": fact[: store.config.storage.abstract_max_chars] or fact,
+                    "abstract": " ".join(fact.split())[
+                        : store.config.storage.abstract_max_chars
+                    ] or "graphiti relation",
                     "type": "claim",
                     "standing": "accepted",  # live memory of record at cutover
                     "body": f"provenance: {SOURCE}\n\n{fact}",
