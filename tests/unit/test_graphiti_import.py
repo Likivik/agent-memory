@@ -11,7 +11,7 @@ from agent_memory.core.record import STANDING_ACCEPTED
 def test_seed_from_export_round_trips(store, tmp_path):
     export = tmp_path / "export"
     export.mkdir()
-    (export / "episodes.jsonl").write_text(
+    (export / "episode.jsonl").write_text(
         "\n".join([
             json.dumps({"uuid": "aaa-1", "content": "User said backups run weekly",
                         "source": "sync_turn", "created_at": "2026-11-01T10:00:00+00:00"}),
@@ -20,7 +20,7 @@ def test_seed_from_export_round_trips(store, tmp_path):
         ]),
         encoding="utf-8",
     )
-    (export / "entities.jsonl").write_text(
+    (export / "entity.jsonl").write_text(
         json.dumps({"uuid": "ccc-3", "name": "backups",
                     "summary": "Backups protect /var", "created_at": "2026-11-01T10:00:00+00:00"}),
         encoding="utf-8",
@@ -54,7 +54,7 @@ def test_seed_from_export_round_trips(store, tmp_path):
 def test_seed_is_idempotent_on_names(store, tmp_path, config, clock):
     export = tmp_path / "export"
     export.mkdir()
-    (export / "episodes.jsonl").write_text(
+    (export / "episode.jsonl").write_text(
         json.dumps({"uuid": "aaa-1", "content": "one", "source": "", "created_at": ""}),
         encoding="utf-8",
     )
