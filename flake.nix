@@ -78,8 +78,8 @@
     in
     {
       packages = forAllSystems (system: {
-        agent-memory = pythonSets.${system}.mkVirtualEnv "agent-memory-env" workspace.deps.all;
-        default = pythonSets.${system}.mkVirtualEnv "agent-memory-env" workspace.deps.all;
+        agent-memory = pythonSets.${system}.mkVirtualEnv "agent-memory-env" workspace.deps.default;
+        default = pythonSets.${system}.mkVirtualEnv "agent-memory-env" workspace.deps.default;
       });
 
       devShells = forAllSystems (
@@ -112,7 +112,7 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          virtualenv = pythonSets.${system}.mkVirtualEnv "agent-memory-check-env" workspace.deps.all;
+          virtualenv = pythonSets.${system}.mkVirtualEnv "agent-memory-check-env" workspace.deps.dev;
         in
         {
           agent-memory-tests = pkgs.runCommand "agent-memory-tests"
