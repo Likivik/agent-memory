@@ -42,14 +42,14 @@ def seed_from_export(store: Store, export_dir: pathlib.Path) -> dict[str, int]:
 
     episodes_path = export_dir / "episodes.jsonl"
     if episodes_path.exists():
-        specs = []
+        specs: list[dict[str, object]] = []
         for line in episodes_path.read_text(encoding="utf-8").splitlines():
             row = json.loads(line)
             name = _slug("epi", row["uuid"])
             index[row["uuid"]] = name
             content = row.get("content") or ""
             specs.append({
-                "abstract": (content[: store.config.storage.abstract_max_chars]
+                "abstract": (" ".join(content.split())[: store.config.storage.abstract_max_chars]
                              or f"episode {row['uuid'][:12]}"),
                 "type": "event",
                 "body": (
@@ -68,14 +68,14 @@ def seed_from_export(store: Store, export_dir: pathlib.Path) -> dict[str, int]:
 
     entities_path = export_dir / "entities.jsonl"
     if entities_path.exists():
-        specs = []
+        entity_specs: list[dict[str, object]] = []
         for line in entities_path.read_text(encoding="utf-8").splitlines():
             row = json.loads(line)
             name = _slug("ent", row["uuid"])
             index[row["uuid"]] = name
             summary = (row.get("summary") or "").strip()
-            specs.append({
-                "abstract": (summary[: store.config.storage.abstract_max_chars]
+            entity_specs.append({
+                "abstract": (" ".join(summary.split())[: store.config.storage.abstract_max_chars]
                              or f"entity {row.get('name') or row['uuid'][:12]}"),
                 "type": "entity",
                 "body": (
@@ -86,15 +86,15 @@ def seed_from_export(store: Store, export_dir: pathlib.Path) -> dict[str, int]:
                 "name": name,
                 "provenance": [SOURCE],
             })
-        for start in range(0, len(specs), BATCH):
-            result = store.record_many(specs[start:start + BATCH])
+        for start in range(0, len(entity_specs), BATCH):
+            result = store.record_many(entity_specs[start:start + BATCH])
             if result.rejected:
                 raise ValueError(f"entities rejected: {result.rejected[0].errors}")
-        counts["entities"] = len(specs)
+        counts["entities"] = len(entity_specs)
 
     edges_path = export_dir / "edges.jsonl"
     if edges_path.exists():
-        claim_specs = []
+        claim_specs: list[dict[str, object]] = []
         edge_links: dict[str, list[str]] = {}
         for line in edges_path.read_text(encoding="utf-8").splitlines():
             row = json.loads(line)
@@ -102,7 +102,9 @@ def seed_from_export(store: Store, export_dir: pathlib.Path) -> dict[str, int]:
             fact = (row.get("fact") or "").strip()
             if fact and row["rel"] == "RELATES_TO":
                 claim_specs.append({
-                    "abstract": fact[: store.config.storage.abstract_max_chars] or fact,
+                    "abstract": " ".join(fact.split())[
+                        : store.config.storage.abstract_max_chars
+                    ] or "graphiti relation",
                     "type": "claim",
                     "standing": "accepted",  # live memory of record at cutover
                     "body": f"provenance: {SOURCE}\n\n{fact}",
