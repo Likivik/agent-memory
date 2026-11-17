@@ -145,6 +145,27 @@ class HermesMemoryProvider:
             return result
         return audit_verify(self.store, draft, query, labeler=self.reasoner, agent=agent)
 
+    # -- sleep / dream wiring (P6) ------------------------------------------
+    def sleep_due(self, sessions_since: int) -> bool:
+        from agent_memory.core.manage import Manage
+
+        return Manage(self.store).due(sessions_since)
+
+    def run_sleep(self, sessions_since: int, *, dream_id: str = "") -> dict[str, Any]:
+        """Run a Manage sleep with the bound reasoner (decision 5: menu-capped).
+
+        The reasoner only rules on the drafted menu; deterministic code applies.
+        With no reasoner bound, the deterministic half still runs and proposals
+        stay open for the next ruling (never auto-accepted)."""
+        from agent_memory.core.manage import Manage
+
+        manage = Manage(self.store)
+        if not manage.due(sessions_since) and not dream_id:
+            return {"skipped": "not due"}
+        reasoner = self.reasoner
+        report = manage.sleep(reasoner, dream_id=dream_id)
+        return report.as_dict() if hasattr(report, "as_dict") else {"report": str(report)}
+
     # -- MCP passthrough (P4 mapping) --------------------------------------
     def get_tool_schemas(self) -> list[dict[str, Any]]:
         from agent_memory.mcp.tools import catalogue

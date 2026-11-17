@@ -83,6 +83,27 @@ def test_stats_tool_reports_counts_and_index(store):
     assert result["last_sync"]
 
 
+def test_run_sleep_not_due_skips(store):
+    provider = _provider(store)
+    provider.sync_turn("one", "one", session_id="s1")  # 1 session < trigger_min_sessions
+    result = provider.run_sleep(1)
+    assert result == {"skipped": "not due"}
+
+
+def test_run_sleep_accepts_only_via_menu_with_stub_reasoner(store, clock, tmp_path, config):
+    config.manage.trigger_min_sessions = 1
+    second = type(store)(tmp_path / "sleep", config=config, clock=clock, agent="t")
+    second.init()
+    second.record(abstract="A thing worth keeping", type="fact", body="x", name="keep-me")
+    second.record(abstract="A thing worth keeping", type="fact", body="x", name="keep-me-2")
+    provider = _provider(second)
+    provider.reasoner = lambda prompt: "no rulings"  # rambles: nothing is decided
+    result = provider.run_sleep(5)
+    assert "skipped" not in result
+    # The deterministic half ran; proposals that need a real ruling stay open.
+    assert second.find("keep-me") is not None
+
+
 def test_hermes_moments_mapping():
     assert moments.moment_for("hermes", "SessionStart") == moments.MOMENT_INJECT
     assert moments.moment_for("hermes", "PreCompact") == moments.MOMENT_EVICT
