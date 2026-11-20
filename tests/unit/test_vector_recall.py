@@ -85,11 +85,17 @@ def test_fastembedder_missing_dependency_error_names_the_extra(monkeypatch):
     assert "agent-memory-core[vector]" in message
 
 
-def test_vector_backfill_survives_missing_embedder_gracefully(tmp_path, config, clock):
-    """vector_enabled=True without an embedder must not crash the write path —
-    the dense leg is additive, never load-bearing."""
+def test_vector_enabled_without_dependency_fails_loud(tmp_path, config, clock, monkeypatch):
+    """vector_enabled=True + a broken embedder factory is a config error: Store must
+    fail LOUDLY, not silently drop the dense leg."""
+    import agent_memory.core.store as store_module
+
+    def broken(model):
+        raise RuntimeError("Vector capability is enabled but optional embedding dependency"
+                           " is unavailable; install it with: agent-memory-core[vector]")
+
+    monkeypatch.setattr(store_module, "create_embedder", broken)
     config.index.vector_enabled = True
-    store = Store(tmp_path / "noembed", config=config, clock=clock, agent="t")
-    store.init()  # init projects; must not raise without an embedder
-    record = store.record(abstract="still writable", type="fact", body="x", name="ok")
-    assert record.name == "ok"
+    with pytest.raises(RuntimeError) as excinfo:
+        Store(tmp_path / "loud", config=config, clock=clock, agent="t")
+    assert "agent-memory-core[vector]" in str(excinfo.value)
