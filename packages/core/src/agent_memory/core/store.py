@@ -141,7 +141,9 @@ class Store:
             raise ValidationError(result.rejected[0].errors)
         return result.written[0]
 
-    def record_many(self, specs: list[dict[str, object]]) -> BatchResult:
+    def record_many(
+        self, specs: list[dict[str, object]], *, assume_new: bool = False
+    ) -> BatchResult:
         """Many memories, one lock and one projection.
 
         A host pays a turn per tool call, so writing one memory per call taxes exactly the
@@ -160,7 +162,9 @@ class Store:
             try:
                 for index, spec in enumerate(specs):
                     try:
-                        record, changed = self._write_one(_known_fields(spec))
+                        record, changed = self._write_one(
+                            _known_fields(spec), assume_new=assume_new
+                        )
                         written.append(record)
                         for path, original in changed.items():
                             snapshots.setdefault(path, original)
@@ -187,14 +191,16 @@ class Store:
         return rejected
 
     def _write_one(
-        self, spec: dict[str, object]
+        self, spec: dict[str, object], *, assume_new: bool = False
     ) -> tuple[MemoryRecord, dict[pathlib.Path, bytes | None]]:
         """One malformed item is one rejection: a batch is many memories, and the rest of
         them reaching disk is what keeps a single stray key from costing a conversation."""
-        prepared = self._prepare(spec, archive_excerpts=True)
+        prepared = self._prepare(spec, archive_excerpts=True, assume_new=assume_new)
         return self._persist(prepared)
 
-    def _prepare(self, spec: dict[str, object], *, archive_excerpts: bool) -> _Prepared:
+    def _prepare(
+        self, spec: dict[str, object], *, archive_excerpts: bool, assume_new: bool = False
+    ) -> _Prepared:
         schema = self.schemas.require(str(spec.get("type") or ""))
         if not str(spec.get("abstract") or "").strip():
             raise ValidationError([FieldError("abstract", "required")])
@@ -222,13 +228,15 @@ class Store:
             and derived_name
             and (placed.name == supersedes or (self.root / placed.relative_path).exists())
         ):
-            placed = self._successor_placement(placed)
+            placed = self._successor_placement(placed, assume_new=assume_new)
         target = self.root / placed.relative_path
         if self.layout.type_of(target) != schema.type:
             raise ValidationError([FieldError("path", "memory must belong to this store")])
         existing = self._at(target)
         moved_from: pathlib.Path | None = None
-        if existing is None:
+        if existing is None and not assume_new:
+            # assume_new (bulk seeding with caller-guaranteed-unique names) skips the
+            # collision scan: find() walks the whole file tree, O(n) per record.
             elsewhere = self.find(placed.name)
             if elsewhere is not None and elsewhere.path is not None:
                 existing, moved_from = elsewhere, elsewhere.path
@@ -313,14 +321,21 @@ class Store:
         candidate.source_hash = hashlib.sha256(payload).hexdigest()
         return candidate, snapshots
 
-    def _successor_placement(self, placed: placement.Placement) -> placement.Placement:
+    def _successor_placement(
+        self, placed: placement.Placement, *, assume_new: bool = False
+    ) -> placement.Placement:
         """A successor with the same key as its predecessor keeps the key and takes the next
         free ordinal; the predecessor keeps its name, so nothing that cites it breaks."""
         ordinal = FIRST_SUCCESSOR_ORDINAL
         while True:
             name = f"{placed.name}-{ordinal}"
             path = placed.relative_path.with_name(f"{name}{placed.relative_path.suffix}")
-            if self.find(name) is None and not (self.root / path).exists():
+            # assume_new (bulk seeding) skips the cross-group find(): the caller guarantees
+            # unique names, and the same-directory existence check still guards collisions.
+            if (
+                (not assume_new and self.find(name) is None)
+                or assume_new
+            ) and not (self.root / path).exists():
                 return dataclasses.replace(placed, name=name, relative_path=path)
             ordinal += 1
 
@@ -573,6 +588,41 @@ class Store:
         with store_lock(self.layout):
             return self._write_locked(record)
 
+    def write_many(self, records: list[MemoryRecord]) -> list[MemoryRecord]:
+        """In-place rewrites of existing records with ONE projection at the end.
+
+        Bulk link backfill (seeding) and other mechanical rewrites need thousands of
+        `write()` calls, each of which reprojects the whole store — quadratic in files.
+        This validates and persists every record under one lock, then projects once.
+        Stale-source detection is identical to `write`: a record whose file changed since
+        it was read is rejected, and any failure restores every file in the batch.
+        """
+        with store_lock(self.layout):
+            snapshots: dict[pathlib.Path, bytes | None] = {}
+            try:
+                for record in records:
+                    self._validate_write(record)
+                    assert record.path is not None
+                    source = record.path
+                    previous = source.read_bytes() if source.exists() else None
+                    if previous is not None and (
+                        record.source_hash is None
+                        or hashlib.sha256(previous).hexdigest() != record.source_hash
+                    ):
+                        raise ValidationError(
+                            [FieldError("updated", "memory changed since it was read")]
+                        )
+                    written, changed = self._persist(
+                        _Prepared(record, record.path, None, None)
+                    )
+                    snapshots.update(changed)
+                self._project()
+            except Exception:
+                self._restore_files(snapshots)
+                self._project()
+                raise
+            return records
+
     def regroup(
         self, name: str, group: str, *, expected_source_hash: str | None = None
     ) -> MemoryRecord:
@@ -661,7 +711,10 @@ class Store:
             raise ValidationError([FieldError("path", "memory must belong to this store")])
         record_module.validate(record, self.config, self.schemas.get(record.type))
         record_module.canonicalise_dates(record)
-        self._validate_links(record, self.find(record.name), replace_links=replace_links)
+        if record.links:
+            # find() scans the whole file tree when uncached — skip it for link-less
+            # records (the overwhelmingly common bulk-seeding case).
+            self._validate_links(record, self.find(record.name), replace_links=replace_links)
 
     def _validate_links(
         self, record: MemoryRecord, existing: MemoryRecord | None, *, replace_links: bool = False

@@ -23,7 +23,10 @@ import pathlib
 from agent_memory.core.store import Store
 
 SOURCE = "graphiti-import"
-BATCH = 500
+# Every projection re-reads and re-hashes the whole file tree (records() +
+# indexer._present_hashes), so the batch size IS the projection count. One batch
+# per kind = 4 projections total for the full 37k-record cutover.
+BATCH = 100_000
 
 
 def _slug(prefix: str, uuid: str) -> str:
@@ -40,7 +43,7 @@ def seed_from_export(store: Store, export_dir: pathlib.Path) -> dict[str, int]:
     counts = {"episodes": 0, "entities": 0, "claims": 0, "links": 0}
     index: dict[str, str] = {}  # graphiti uuid -> record name
 
-    episodes_path = export_dir / "episodes.jsonl"
+    episodes_path = export_dir / "episode.jsonl"
     if episodes_path.exists():
         specs: list[dict[str, object]] = []
         for line in episodes_path.read_text(encoding="utf-8").splitlines():
@@ -61,12 +64,12 @@ def seed_from_export(store: Store, export_dir: pathlib.Path) -> dict[str, int]:
                 "provenance": [SOURCE],
             })
         for start in range(0, len(specs), BATCH):
-            result = store.record_many(specs[start:start + BATCH])
+            result = store.record_many(specs[start:start + BATCH], assume_new=True)
             if result.rejected:
                 raise ValueError(f"episodes rejected: {result.rejected[0].errors}")
         counts["episodes"] = len(specs)
 
-    entities_path = export_dir / "entities.jsonl"
+    entities_path = export_dir / "entity.jsonl"
     if entities_path.exists():
         entity_specs: list[dict[str, object]] = []
         for line in entities_path.read_text(encoding="utf-8").splitlines():
@@ -87,7 +90,7 @@ def seed_from_export(store: Store, export_dir: pathlib.Path) -> dict[str, int]:
                 "provenance": [SOURCE],
             })
         for start in range(0, len(entity_specs), BATCH):
-            result = store.record_many(entity_specs[start:start + BATCH])
+            result = store.record_many(entity_specs[start:start + BATCH], assume_new=True)
             if result.rejected:
                 raise ValueError(f"entities rejected: {result.rejected[0].errors}")
         counts["entities"] = len(entity_specs)
@@ -115,14 +118,21 @@ def seed_from_export(store: Store, export_dir: pathlib.Path) -> dict[str, int]:
             if src and dst and src != dst:
                 edge_links.setdefault(src, []).append(dst)
         for start in range(0, len(claim_specs), BATCH):
-            result = store.record_many(claim_specs[start:start + BATCH])
+            result = store.record_many(claim_specs[start:start + BATCH], assume_new=True)
             if result.rejected:
                 raise ValueError(f"claims rejected: {result.rejected[0].errors}")
         counts["claims"] = len(claim_specs)
+        link_updates: list = []
         for name, links in edge_links.items():
             record = store.find(name)
-            if record is not None:
-                record.links.extend(link for link in links if link not in record.links)
-                store.write(record)
-                counts["links"] += len(links)
+            if record is None:
+                continue
+            fresh = list(record.links)
+            fresh.extend(link for link in links if link not in fresh)
+            record.links = fresh
+            link_updates.append(record)
+        # ONE write_many: every projection re-reads the whole tree, so batching here
+        # is what keeps the links phase linear.
+        store.write_many(link_updates)
+        counts["links"] = sum(len(record.links) for record in link_updates)
     return counts
