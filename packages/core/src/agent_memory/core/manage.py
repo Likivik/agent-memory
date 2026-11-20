@@ -31,7 +31,12 @@ from .ledger import VERDICT_ACCEPTED, VERDICT_REJECTED, Decision, DecisionLedger
 from .record import DATE_FIELDS, MemoryRecord
 from .schema import SOURCE_MENU, source_of
 from .sessions import parse_pointer
-from .standing import STANDING_ACCEPTED, STANDING_PROPOSED, set_standing
+from .standing import (
+    STANDING_ACCEPTED,
+    STANDING_PROPOSED,
+    add_conflict,
+    set_standing,
+)
 from .store import Store
 
 PROPOSAL_MERGE = reasoning.PROPOSAL_MERGE
@@ -39,6 +44,12 @@ PROPOSAL_SUPERSEDE = reasoning.PROPOSAL_SUPERSEDE
 PROPOSAL_SPLIT = reasoning.PROPOSAL_SPLIT
 PROPOSAL_DELETE = reasoning.PROPOSAL_DELETE
 PROPOSAL_ACCEPT_STANDING = reasoning.PROPOSAL_ACCEPT_STANDING
+PROPOSAL_CONFLICT_REVIEW = reasoning.PROPOSAL_CONFLICT_REVIEW
+CONFLICT_OVERLAP_MIN = 0.5
+NEGATION_CUES = frozenset({
+    "not", "never", "no", "cannot", "cant", "dont", "doesnt", "isnt",
+    "arent", "wasnt", "wont", "didnt",
+})
 PROPOSAL_ABSTRACT_REVIEW = reasoning.PROPOSAL_ABSTRACT_REVIEW
 
 ACTION_DATE_NORMALISED = "date-normalised"
@@ -255,6 +266,7 @@ class Manage:
             PROPOSAL_SPLIT: manage.max_splits_per_sleep,
             PROPOSAL_DELETE: manage.max_deletes_per_sleep,
             PROPOSAL_ACCEPT_STANDING: manage.max_accepts_per_sleep,
+            PROPOSAL_CONFLICT_REVIEW: manage.max_conflicts_per_sleep,
             PROPOSAL_ABSTRACT_REVIEW: len(self._store.records()),
         }
 
@@ -271,6 +283,7 @@ class Manage:
         drafted.extend(self._propose_abstract_review(inspected))
         drafted.extend(self._propose_deletions(inspected, counts))
         drafted.extend(self._propose_standing_accepts(inspected))
+        drafted.extend(self._propose_conflict_reviews(inspected))
         return [proposal for proposal in drafted if proposal.id not in decided]
 
     def decide(
@@ -331,6 +344,8 @@ class Manage:
             return self._delete(proposal, expected)
         if proposal.kind == PROPOSAL_ACCEPT_STANDING:
             return self._accept_standing(proposal)
+        if proposal.kind == PROPOSAL_CONFLICT_REVIEW:
+            return self._apply_conflict_review(proposal)
         return self._rewrite_abstract(proposal, verdict.text, expected)
 
     def _accept_standing(self, proposal: Proposal) -> str:
@@ -738,6 +753,42 @@ class Manage:
             if record.type == "claim" and record.standing == STANDING_PROPOSED
         ]
 
+    def _propose_conflict_reviews(
+        self, records: list[MemoryRecord]
+    ) -> list[Proposal]:
+        """Draft likely contradictions for a ruling (v2 of decision 3): deterministic
+        pair-finding — same negation polarity flip with high token overlap — while the
+        sleep reasoner DECIDES and code applies the explicit conflict edge. No NLI
+        model in core; the judgement is the reasoner's, the record-keeping is ours."""
+        claims = [
+            record
+            for record in records
+            if record.type == "claim" and record.standing == STANDING_ACCEPTED
+        ]
+        proposals: list[Proposal] = []
+        seen: set[tuple[str, str]] = set()
+        for index, first in enumerate(claims):
+            for second in claims[index + 1:]:
+                if not _contradiction_shape(first, second):
+                    continue
+                names = sorted((first.name, second.name))
+                pair = (names[0], names[1])
+                if pair in seen:
+                    continue
+                seen.add(pair)
+                proposals.append(Proposal(
+                    kind=PROPOSAL_CONFLICT_REVIEW,
+                    targets=(first.name, second.name),
+                    reason="same subject, opposite negation polarity",
+                    evidence=f"{first.abstract} || {second.abstract}",
+                ))
+        return proposals
+
+    def _apply_conflict_review(self, proposal: Proposal) -> str:
+        target, peer = proposal.targets[0], proposal.targets[1]
+        written = add_conflict(self._store, target, peer)
+        return f"conflict edge {written.name} <-> {peer}"
+
     def _idle_days(
         self, record: MemoryRecord, last_access: dict[str, str], now: dt.datetime
     ) -> float:
@@ -929,6 +980,19 @@ def _report_values(label: str, values: Iterable[str]) -> str:
 
 def _tokens(text: str) -> set[str]:
     return {word for word in _WORDS.findall(text.lower()) if word not in _STOPWORDS}
+
+
+def _contradiction_shape(first: MemoryRecord, second: MemoryRecord) -> bool:
+    """Same subject, opposite negation polarity: the cheapest reliable contradiction
+    shape. Deterministic drafting only — the sleep reasoner still rules on the pair."""
+    tokens_first = _tokens(first.abstract)
+    tokens_second = _tokens(second.abstract)
+    if not tokens_first or not tokens_second:
+        return False
+    overlap = len(tokens_first & tokens_second) / max(len(tokens_first | tokens_second), 1)
+    if overlap < CONFLICT_OVERLAP_MIN:
+        return False
+    return (bool(tokens_first & NEGATION_CUES) != bool(tokens_second & NEGATION_CUES))
 
 
 def _similarity(left: MemoryRecord, right: MemoryRecord) -> float:
