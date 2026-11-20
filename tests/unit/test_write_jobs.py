@@ -320,7 +320,9 @@ def test_backoff_jitter_is_bounded_and_deterministic_per_attempt(store, clock):
 
     first = queue.fail(queue.claim("worker").job, "host down")
     delay = (timestamp.parse(first.not_before) - store.clock.now()).total_seconds()
-    assert store.config.write.jobs.backoff_base_seconds * 0.75 <= delay
+    # not_before is second-truncated (timestamp.render drops microseconds), so a
+    # jittered 22.5s floor can land on 22.0 — tolerate one second of quantization.
+    assert store.config.write.jobs.backoff_base_seconds * 0.75 - 1.0 <= delay
     assert delay <= store.config.write.jobs.backoff_base_seconds * 1.25
 
     queue.retry(first.id)
