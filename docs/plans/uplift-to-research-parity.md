@@ -161,3 +161,20 @@ directly (their raw-evidence read track) or the index; sleep-reasoner model choi
 
 With these, the plan has no undecided points: every phase has named files, transitions, caps, and
 acceptance tests. Remaining unknowns are empirical (P7 evals), not design questions.
+
+## Status 2026-11-20 (post-implementation)
+
+| Phase | State |
+|---|---|
+| P0 baseline | ✅ CI green at adoption (1290 tests, 90.08% cov) |
+| P1 standing machine | ✅ merged (PR #2) |
+| P2 answer-audit | ✅ merged (PR #2) |
+| P3 Hermes provider | ✅ merged (PR #3) |
+| P4 tool surface + stats | ✅ merged (PR #3) — 12 tools |
+| P5 graphiti seeding | ✅ merged (PRs #4/#6/#7); real run: 37,258 records, 32,739 links, 0 dangling |
+| P6 dream wiring | ✅ merged (PR #5) |
+| P7 evals | ⛔ HELD — needs a model endpoint, Likivik's explicit go-ahead |
+| P8 Nix packaging | ✅ merged (PR #5); nix build verified x86_64-linux |
+| P9 import/replay path | 📋 planned — see docs/plans/import-replay-path.md (7/6/5 capability gaps landed in PR #8) |
+| Graphiti cutover | DECIDED 2026-11-20: graphiti is dead (broken asyncio bug), no comparison window; straight cutover, plugin next, MEMORY/USER backfill last |
+
