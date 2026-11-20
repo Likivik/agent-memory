@@ -45,6 +45,7 @@ CAUSE_USER_CONFIRM = "user_confirm"
 CAUSE_CONFLICT_ADDED = "conflict_added"
 CAUSE_CONFLICT_CLEARED = "conflict_cleared"
 CAUSE_SUPERSEDED = "superseded"
+CAUSE_SESSION_FORGET = "session_forget"
 JOURNAL_FILENAME = "standing-journal.jsonl"
 LIVE_STATES = (STANDING_PROPOSED, STANDING_ACCEPTED, STANDING_CONTESTED)
 
@@ -188,10 +189,10 @@ def propagate(store: Store, at: str | None = None) -> list[dict[str, str]]:
     Returns the transitions applied.
     """
     moment = at or store.clock.now().isoformat()
-    claims = [
-        record for record in store.records(include_invalid=True) if record.type == "claim"
-    ]
-    by_name = {record.name: record for record in claims}
+    every_record = store.records(include_invalid=True)
+    claims = [record for record in every_record if record.type == "claim"]
+    # Support looks up ANY record type — an event or entity can be an antecedent too.
+    by_name = {record.name: record for record in every_record}
     ever_rejected = _ever_rejected(store)
 
     def supported(record: MemoryRecord) -> bool:
@@ -242,7 +243,7 @@ def _ever_rejected(store: Store) -> set[str]:
             entry = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if entry.get("cause") == CAUSE_USER_REJECT:
+        if entry.get("cause") in (CAUSE_USER_REJECT, CAUSE_SESSION_FORGET):
             rejected.add(str(entry.get("claim")))
     return rejected
 
@@ -260,6 +261,44 @@ def _last_cause(store: Store, name: str) -> str | None:
         if entry.get("claim") == name:
             last = str(entry.get("cause"))
     return last
+
+
+def forget_session(store: Store, session_id: str, at: str | None = None) -> dict[str, object]:
+    """Forget everything a session produced (design doc: forget-by-session).
+
+    A record belongs to the session when its name matches the turn-event pattern
+    (`turn-<session>-...`) or its provenance carries a `session:<id>` marker. Forgetting
+    ends the validity interval (leaves the active recall surface immediately) AND retracts
+    standing with cause `session_forget` — permanent, like a user reject: propagation will
+    never resurrect it. Dependents lose support through the normal DRed pass.
+    """
+    moment = at or store.clock.now().isoformat()
+    turn_prefix = f"turn-{session_id}-"
+    session_marker = f"session:{session_id}"
+
+    forgotten: list[str] = []
+    skipped = 0
+    with Database(store.layout).connect() as connection:
+        for record in store.records(include_invalid=True):
+            if record.invalid_at:
+                skipped += 1
+                continue
+            belongs = record.name.startswith(turn_prefix) or any(
+                entry.strip() == session_marker for entry in record.provenance
+            )
+            if not belongs:
+                continue
+            from_standing = record.standing
+            record.invalid_at = moment
+            record.updated = moment
+            record.standing = STANDING_RETRACTED
+            store.write(record)
+            record_history(store, connection, record.name, from_standing,
+                           STANDING_RETRACTED, CAUSE_SESSION_FORGET, moment)
+            forgotten.append(record.name)
+    applied = propagate(store, at=moment)
+    return {"session": session_id, "forgotten": forgotten, "skipped_already_invalid": skipped,
+            "propagated": applied, "at": moment}
 
 
 def timeline(store: Store, name: str) -> dict[str, object]:

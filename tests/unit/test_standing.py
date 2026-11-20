@@ -125,6 +125,61 @@ def test_contested_ranks_below_accepted_in_recall(store):
     assert by_name[second.name].standing == STANDING_CONTESTED
 
 
+def test_forget_session_retracts_events_claims_and_dependents(store):
+    from agent_memory.core.record import STANDING_RETRACTED
+
+    # session s1: two turns + a claim derived from them + an unrelated claim
+    event = store.record(
+        abstract="s1 said backups are weekly", type="event",
+        body="turn body", name="turn-s1-20260115t090000000000",
+        provenance=["session:s1"],
+    )
+    derived = store.record(
+        abstract="Backups are weekly", type="claim", body="x",
+        name="backups-weekly", links=[event.name],
+    )
+    standing.set_standing(store, derived.name, STANDING_ACCEPTED, cause="user_confirm")
+    bystander = store.record(
+        abstract="Unrelated session fact", type="claim", body="x", name="bystander"
+    )
+    standing.set_standing(store, bystander.name, STANDING_ACCEPTED, cause="user_confirm")
+
+    result = standing.forget_session(store, "s1")
+    assert event.name in result["forgotten"]
+    assert store.find(event.name).standing == STANDING_RETRACTED
+    assert store.find(event.name).invalid_at is not None
+    # the derived claim loses its support through propagation
+    assert store.find(derived.name).standing == STANDING_RETRACTED
+    # the bystander is untouched
+    assert store.find(bystander.name).standing == STANDING_ACCEPTED
+
+
+def test_forget_session_is_permanent_across_restores(store):
+    from agent_memory.core.record import STANDING_RETRACTED
+
+    event = store.record(
+        abstract="s2 turned the flag on", type="event", body="x",
+        name="turn-s2-20260115t090100000000", provenance=["session:s2"],
+    )
+    claim = store.record(
+        abstract="The flag is on", type="claim", body="x",
+        name="flag-on", links=[event.name],
+    )
+    standing.set_standing(store, claim.name, STANDING_ACCEPTED, cause="user_confirm")
+
+    standing.forget_session(store, "s2")
+    assert store.find(claim.name).standing == STANDING_RETRACTED
+
+    # Even a manual un-invalidate + support restore must not resurrect it.
+    revived = store.find(claim.name)
+    revived.invalid_at = None
+    store.write(revived)
+    applied = standing.propagate(store)
+    restores = [a for a in applied if a["claim"] == claim.name]
+    assert restores == []
+    assert store.find(claim.name).standing == STANDING_RETRACTED
+
+
 def test_timeline_shows_proof_tree(store):
     base = _claim(store, "origin-is-nixos", "This host runs NixOS")
     standing.set_standing(store, base.name, STANDING_ACCEPTED, cause="user_confirm")

@@ -115,6 +115,7 @@ class ManageConfig:
     max_splits_per_sleep: int = 2
     max_deletes_per_sleep: int = 3
     max_accepts_per_sleep: int = 10
+    max_conflicts_per_sleep: int = 5
     split_min_sections: int = 3
     review_max_steps: int = 8
     review_max_tool_calls: int = 24

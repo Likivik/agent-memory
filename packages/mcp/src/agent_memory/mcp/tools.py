@@ -8,6 +8,7 @@ Tool-surface mapping onto the Hermes design-doc names (P4) — same call, no ren
     memory_timeline: proof tree for a claim
     memory_verify:  answer-audit (supported / conflicting / unsupported / abstain)
     memory_stats:   store health (P4 addition — was missing upstream)
+    memory_forget_session: forget-by-session (design doc: provenance-scoped removal)
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ TOOL_FEEDBACK = "memory_feedback"
 TOOL_TIMELINE = "memory_timeline"
 TOOL_VERIFY = "memory_verify"
 TOOL_STATS = "memory_stats"
+TOOL_FORGET_SESSION = "memory_forget_session"
 
 
 SCHEMAS: dict[str, dict[str, object]] = {
@@ -125,6 +127,11 @@ SCHEMAS: dict[str, dict[str, object]] = {
         "required": ["draft", "query"],
     },
     TOOL_STATS: {"type": "object", "properties": {}},
+    TOOL_FORGET_SESSION: {
+        "type": "object",
+        "properties": {"session": {"type": "string"}},
+        "required": ["session"],
+    },
 }
 
 DESCRIPTIONS = {
@@ -145,6 +152,10 @@ DESCRIPTIONS = {
         " or abstain."
     ),
     TOOL_STATS: "Store health: counts by type and standing, index size, last sync.",
+    TOOL_FORGET_SESSION: (
+        "Forget everything a session produced: ends validity, retracts standing"
+        " permanently, propagates to dependents."
+    ),
 }
 
 
@@ -363,6 +374,12 @@ def _stats(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     }
 
 
+def _forget_session(store: Store, arguments: dict[str, object]) -> dict[str, object]:
+    from agent_memory.core import standing
+
+    return standing.forget_session(store, str(arguments["session"]))
+
+
 def _timeline(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     from agent_memory.core import standing
 
@@ -392,4 +409,5 @@ _HANDLERS = {
     TOOL_TIMELINE: _timeline,
     TOOL_VERIFY: _verify,
     TOOL_STATS: _stats,
+    TOOL_FORGET_SESSION: _forget_session,
 }
