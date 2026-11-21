@@ -234,10 +234,8 @@ def register(ctx) -> None:
     """Loader hook: the released loader calls ``register(ctx)`` before the
     subclass scan and passes a real PluginContext — this is the only way a
     memory plugin reaches host surfaces like ``register_idle_task`` (HP4/D4)."""
-    try:
-        ctx.register_memory_provider(provider)
-    except Exception:  # noqa: SIM105 - loader falls through to the subclass scan
-        pass
+    with contextlib.suppress(Exception):
+        ctx.register_memory_provider(provider)  # else loader falls through to the subclass scan
     try:
         ctx.register_idle_task(
             "dream",
