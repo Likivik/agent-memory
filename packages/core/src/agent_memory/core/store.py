@@ -61,6 +61,8 @@ RECORD_FIELDS = frozenset(
     }
 )
 UPDATABLE_IN_PLACE = ("abstract", "links", "weight", "provenance")
+# Import-only spec fields (P9 D1): historical stamps accepted solely on the import path.
+IMPORT_FIELDS = frozenset({"created", "updated"})
 
 
 @dataclasses.dataclass(frozen=True)
@@ -142,7 +144,11 @@ class Store:
         return result.written[0]
 
     def record_many(
-        self, specs: list[dict[str, object]], *, assume_new: bool = False
+        self,
+        specs: list[dict[str, object]],
+        *,
+        assume_new: bool = False,
+        import_stamps: bool = False,
     ) -> BatchResult:
         """Many memories, one lock and one projection.
 
@@ -163,7 +169,9 @@ class Store:
                 for index, spec in enumerate(specs):
                     try:
                         record, changed = self._write_one(
-                            _known_fields(spec), assume_new=assume_new
+                            _known_fields(spec, IMPORT_FIELDS if import_stamps else frozenset()),
+                            assume_new=assume_new,
+                            import_stamps=import_stamps,
                         )
                         written.append(record)
                         for path, original in changed.items():
@@ -191,20 +199,51 @@ class Store:
         return rejected
 
     def _write_one(
-        self, spec: dict[str, object], *, assume_new: bool = False
+        self,
+        spec: dict[str, object],
+        *,
+        assume_new: bool = False,
+        import_stamps: bool = False,
     ) -> tuple[MemoryRecord, dict[pathlib.Path, bytes | None]]:
         """One malformed item is one rejection: a batch is many memories, and the rest of
         them reaching disk is what keeps a single stray key from costing a conversation."""
-        prepared = self._prepare(spec, archive_excerpts=True, assume_new=assume_new)
+        prepared = self._prepare(
+            spec, archive_excerpts=True, assume_new=assume_new, import_stamps=import_stamps
+        )
         return self._persist(prepared)
 
     def _prepare(
-        self, spec: dict[str, object], *, archive_excerpts: bool, assume_new: bool = False
+        self,
+        spec: dict[str, object],
+        *,
+        archive_excerpts: bool,
+        assume_new: bool = False,
+        import_stamps: bool = False,
     ) -> _Prepared:
         schema = self.schemas.require(str(spec.get("type") or ""))
         if not str(spec.get("abstract") or "").strip():
             raise ValidationError([FieldError("abstract", "required")])
         now = self.clock.timestamp()
+        import_created = now
+        import_updated = now
+        if import_stamps:
+            for field in ("created", "updated"):
+                raw = str(spec.get(field) or "").strip()
+                if not raw:
+                    continue
+                if not timestamp.is_valid(raw):
+                    raise ValidationError(
+                        [FieldError(field, "must be an ISO 8601 day or zone-aware instant")]
+                    )
+                stamp = timestamp.parse(raw)
+                if stamp > self.clock.now():
+                    raise ValidationError(
+                        [FieldError(field, "import stamps cannot be in the future")]
+                    )
+                if field == "created":
+                    import_created = raw
+                else:
+                    import_updated = raw
         valid_from = str(spec.get("valid_from") or "") or None
         if valid_from and not timestamp.is_valid(valid_from):
             raise ValidationError(
@@ -265,10 +304,10 @@ class Store:
             abstract=str(spec.get("abstract") or "").strip(),
             type=schema.type,
             author=str(spec.get("author") or self.agent),
-            created=existing.created if existing else now,
-            updated=now,
+            created=existing.created if existing else import_created,
+            updated=import_updated,
             body=str(spec.get("body") or ""),
-            valid_from=valid_from or (existing.valid_from if existing else now),
+            valid_from=valid_from or (existing.valid_from if existing else import_updated),
             weight=parsed_weight,
             links=[str(link) for link in _as_sequence(spec.get("links"))],
             provenance=list(existing.provenance) if existing else [],
@@ -806,6 +845,10 @@ class Store:
         with self._database.connect() as connection:
             AccessLog(connection).append(entries)
 
+    def log_access(self, entries: list[AccessEntry]) -> None:
+        """Public write for synthetic usage entries (e.g. the import path, P9 D6)."""
+        self._log_access(entries)
+
     def _at(self, path: pathlib.Path | None) -> MemoryRecord | None:
         if path is None or not path.exists() or self.layout.type_of(path) is None:
             return None
@@ -819,10 +862,10 @@ class Store:
         return None
 
 
-def _known_fields(spec: object) -> dict[str, object]:
+def _known_fields(spec: object, extra: frozenset[str] = frozenset()) -> dict[str, object]:
     if not isinstance(spec, dict):
         raise ValidationError([FieldError("spec", "must be an object")])
-    unknown = sorted(set(spec) - RECORD_FIELDS)
+    unknown = sorted(set(spec) - RECORD_FIELDS - extra)
     if unknown:
         raise ValidationError([FieldError("spec", f"unknown field: {', '.join(unknown)}")])
     return spec
