@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import json
-import urllib.error
 
 import pytest
-
 from agent_memory.core.config import Config
 from agent_memory.core.embeddings import HttpEmbedder, create_embedder
 
