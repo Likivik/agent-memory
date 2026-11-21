@@ -30,7 +30,12 @@ def test_http_embedder_batches_and_orders(monkeypatch):
         captured.append(batch)
         return _FakeResponse(
             json.dumps(
-                {"data": [{"index": i, "embedding": [float(len(batch)), float(i)]} for i in range(len(batch))]}
+                {
+                    "data": [
+                        {"index": i, "embedding": [float(len(batch)), float(i)]}
+                        for i in range(len(batch))
+                    ]
+                }
             ).encode("utf-8")
         )
 
