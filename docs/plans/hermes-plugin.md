@@ -30,7 +30,7 @@ Status: DECIDED 2026-11-21. Target: latest **released** Hermes (API read from th
 | D1 | How does the plugin import our engine on a read-only Nix Hermes? | Vendor: the plugin dir carries `lib/` with the built `agent_memory` packages (core + adapters + executor + mcp wheels' payloads); `__init__.py` prepends `lib` to `sys.path` before importing. No Hermes source patches, no Nix env changes. Upgrade = re-copy `lib/`. |
 | D2 | Where is the store? | Plugin config field `store_path` (via `get_config_schema`/`read_config_fields`), default `~/.hermes/agent-memory-store`; the seeded store is copied/moved there at activation. `AGENT_MEMORY_STORE` env still honoured (config wins). |
 | D3 | Verify labeler | v1: `labeler=None` → `memory_verify` returns evidence + `abstain` (honest, zero deps). Upgrade path (P7): executor endpoint reasoner configured in plugin config; NO host-subprocess reasoner in v1 (fresh-AIAgent-per-message makes nested `hermes chat` calls fragile). |
-| D4 | Dream trigger | `on_session_end`: if `Manage(store).due(sessions_since)` → run sleep with `reasoner=None` (deterministic half) in a `spawn_context_thread`; proposals queue for the nightly menu. Reasoner-ruling dreams: later, via executor host config. |
+| D4 | Dream trigger | `ctx.register_idle_task("dream", fn, interval_hours=24, min_idle_hours=1, first_run="defer")` (verified in this build: `hermes_cli/plugins_idle_tasks.py`) — runs when the host has been idle ≥1h AND 24h passed AND the cross-process claim is free; `fn` checks `Manage.due(sessions_since)` then runs sleep with `reasoner=None` (deterministic half). Polled by gateway housekeeping + CLI/TUI + serve — no cron plumbing. Exceptions logged, never raised. Session-end and cron NOT used. Reasoner rulings: upgrade path via `ctx.llm` (same idle task), deferred to P7. |
 | D5 | sync_turn policy | Raw event per turn (as built), `session:<id>` provenance marker, salience filter skipped (v1 keeps everything — the store's dedup handles noise; salience was a graphiti-specific graph-size concern). |
 | D6 | Tool surface | All 13 MCP tools via `get_tool_schemas()`/`handle_tool_call` (catalogue/dispatch passthrough). No renames. |
 | D7 | Vector leg | Inherited from store config (`vector_enabled=true` already set on the seeded store); plugin does nothing special. |
@@ -67,10 +67,12 @@ stringified JSON (Hermes contract) with `tool_error`-shaped failures.
 **Accept:** a test calls all 13 tools through the provider surface on a fixture store; unknown tool
 returns the tool_error shape, not an exception.
 
-### HP4 — dream on session end (D4)
-`on_session_end` → due check → deterministic sleep in a context thread; errors logged, never raised
-into the turn path. Session counter persisted in `state/`.
-**Accept:** unit test: due → sleep runs once (idempotent under repeated session_end); not-due → skip.
+### HP4 — dream as an idle task (D4)
+`ctx.register_idle_task("dream", fn, interval_hours=24, min_idle_hours=1, first_run="defer")`;
+`fn(IdleTaskRun)` → due check (`Manage.due`) → deterministic sleep; errors logged, never raised.
+Idle gating means dreams only run on a quiet host.
+**Accept:** unit test: due → sleep runs once (idempotent under repeated polls); not-due → skip;
+second poller while first holds the claim → no double-run.
 
 ### HP5 — live activation + soak
 Activate on this host (`memory.provider: agent-memory`), one real session: injection indicator
