@@ -228,3 +228,27 @@ def _default_home() -> Path:
 
 
 provider = AgentMemoryHermesProvider()
+
+
+def register(ctx) -> None:
+    """Loader hook: the released loader calls ``register(ctx)`` before the
+    subclass scan and passes a real PluginContext — this is the only way a
+    memory plugin reaches host surfaces like ``register_idle_task`` (HP4/D4)."""
+    try:
+        ctx.register_memory_provider(provider)
+    except Exception:  # noqa: SIM105 - loader falls through to the subclass scan
+        pass
+    try:
+        ctx.register_idle_task(
+            "dream",
+            provider.dream_tick,
+            interval_hours=24,
+            min_idle_hours=1,
+            first_run="defer",
+        )
+    except Exception as error:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "agent-memory: idle-task dream registration unavailable: %s", error
+        )

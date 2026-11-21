@@ -63,6 +63,10 @@ class IndexConfig:
     tokenizer: str = "ascii"
     vector_enabled: bool = False
     vector_model: str = "BAAI/bge-small-en-v1.5"
+    embedder_backend: str = "fastembed"  # "fastembed" (local ONNX) or "http" (OpenAI-compatible)
+    embedder_url: str = ""  # e.g. http://127.0.0.1:8081 for a local llama-server
+    embedder_timeout_seconds: float = 60.0
+    embedder_batch_size: int = 32
 
 
 @dataclasses.dataclass
@@ -320,7 +324,9 @@ class Config:
     def _index_knobs_shaping_recall(self) -> dict[str, object]:
         knobs = dataclasses.asdict(self.index)
         if not self.index.vector_enabled:
-            del knobs["vector_enabled"], knobs["vector_model"]
+            for key in list(knobs):
+                if key == "vector_enabled" or key.startswith(("vector_", "embedder_")):
+                    del knobs[key]
         return knobs
 
 

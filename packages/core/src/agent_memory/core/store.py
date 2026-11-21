@@ -121,7 +121,7 @@ class Store:
         self.archive = Archive(self.layout, self.clock)
         self.schemas = SchemaRegistry(self.layout)
         if self.config.index.vector_enabled and embedder is None:
-            embedder = create_embedder(self.config.index.vector_model)
+            embedder = create_embedder(self.config)
         self.embedder = embedder
         self._indexer = Indexer(self.layout, self.clock, embedder)
         self._database = Database(self.layout)
