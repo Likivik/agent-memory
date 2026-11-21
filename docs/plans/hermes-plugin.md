@@ -44,7 +44,13 @@ Status: DECIDED 2026-11-21. Target: latest **released** Hermes (API read from th
 
 ## Phases (each with acceptance)
 
-### HP1 — plugin skeleton + vendoring
+### HP1 — plugin skeleton + vendoring — **DONE 2026-11-21**
+`hermes-plugin/` + `scripts/build_plugin.py`; installed to `~/.hermes/plugins/agent-memory`;
+`memory.provider = agent-memory` set. Live: `hermes memory status` → **available ✓**.
+Known v1 limitation: the Hermes env has no fastembed, so the live store runs with
+`vector_enabled = false` (loud-fail contract proved itself at activation); dense leg stays on for
+CLI-side probes via the uv venv until the embedder is vendored (onnxruntime) or an embeddings
+endpoint is configured.
 `plugins/memory/agent-memory/{plugin.yaml,__init__.py,lib/}`; `__init__.py` sys.path bootstrap +
 `HermesMemoryProvider` subclass; a `scripts/build_plugin.py` in the fork that builds the plugin dir
 from the repo (wheels → lib). Install into `~/.hermes/plugins/memory/`, `hermes config set
