@@ -293,7 +293,9 @@ def _parser() -> argparse.ArgumentParser:
     importer.add_argument("source")
     importer.set_defaults(handler=_import)
 
-    replayer = subcommand("replay", help="replay historical Hermes session logs into the store (P9)")
+    replayer = subcommand(
+        "replay", help="replay historical Hermes session logs into the store (P9)"
+    )
     replayer.add_argument("--state-db", required=True, help="path to a Hermes state.db")
     replayer.add_argument(
         "--standing-policy",
@@ -301,9 +303,13 @@ def _parser() -> argparse.ArgumentParser:
         default="accepted",
         help="standing for imported records (D3: accepted is the default)",
     )
-    replayer.add_argument("--batch-id", default="", help="provenance marker suffix (default: clock stamp)")
+    replayer.add_argument(
+        "--batch-id", default="", help="provenance marker suffix (default: clock stamp)"
+    )
     replayer.add_argument("--batch-records", type=int, default=2000)
-    replayer.add_argument("--no-dream", action="store_true", help="skip the deterministic dream pass")
+    replayer.add_argument(
+        "--no-dream", action="store_true", help="skip the deterministic dream pass"
+    )
     replayer.set_defaults(handler=_replay)
 
     sleeper = subcommand("sleep", help="run the sleep-time Manage pass")
