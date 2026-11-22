@@ -15,7 +15,7 @@ from mnemobun.core.errors import ReasonerUnavailableError, ValidationError
 from mnemobun.core.ledger import LEDGER_FILENAME
 from mnemobun.core.manage_toolkit import TOOL_LIST, TOOL_READ, TOOL_SUBMIT
 from mnemobun.core.store import Store
-from mnemobun.executor import hosts
+from mnemobun.executor import agents
 from mnemobun.executor.reasoners import ToolHostReasoner
 
 FAKE_CODEX = """#!{python}
@@ -431,9 +431,9 @@ def test_native_muse_failure_modes_leave_store_unchanged(
     monkeypatch.setenv("FAKE_MANAGE_LOG", str(tmp_path / "failure.json"))
     monkeypatch.setenv("FAKE_MANAGE_MODE", mode)
     reasoner = ToolHostReasoner(
-        host=hosts.Host(
-            hosts.HostSpec(
-                name=hosts.HOST_MUSE_CODE,
+        host=agents.Host(
+            agents.HostSpec(
+                name=agents.HOST_MUSE_CODE,
                 binary=str(binary),
                 model="test-model",
                 timeout_seconds=0.05 if mode == "timeout" else 5.0,
@@ -540,9 +540,9 @@ def test_native_claude_failure_modes_leave_store_unchanged(
     monkeypatch.setenv("FAKE_MANAGE_LOG", str(tmp_path / "failure.json"))
     monkeypatch.setenv("FAKE_MANAGE_MODE", mode)
     reasoner = ToolHostReasoner(
-        host=hosts.Host(
-            hosts.HostSpec(
-                name=hosts.HOST_CLAUDE_CODE,
+        host=agents.Host(
+            agents.HostSpec(
+                name=agents.HOST_CLAUDE_CODE,
                 binary=str(binary),
                 model="test-model",
                 timeout_seconds=0.5 if mode == "timeout" else 10.0,

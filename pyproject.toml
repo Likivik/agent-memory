@@ -39,7 +39,7 @@ mnemobun-harness = { workspace = true }
 
 [tool.ruff.lint.per-file-ignores]
 # Host dialect modules re-export the shared driver surface via star imports.
-"packages/executor/src/mnemobun/executor/hosts/*" = ["F403", "F405"]
+"packages/executor/src/mnemobun/executor/agents/*" = ["F403", "F405"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

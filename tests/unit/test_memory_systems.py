@@ -7,7 +7,7 @@ import shutil
 import pytest
 from mnemobun.core import prompts
 from mnemobun.core.config import Config
-from mnemobun.executor import hosts
+from mnemobun.executor import agents
 from mnemobun.harness import arms, framing, systems
 
 
@@ -192,8 +192,8 @@ def test_each_system_has_its_own_fingerprint_so_attribution_is_refused_across_th
 
 
 def test_the_claude_dialect_allows_only_the_systems_own_command(tmp_path, memcore):
-    command = hosts.DIALECTS[hosts.HOST_CLAUDE_CODE].command(
-        hosts.HostSpec(name=hosts.HOST_CLAUDE_CODE, binary="claude", model="m"),
+    command = agents.DIALECTS[agents.HOST_CLAUDE_CODE].command(
+        agents.HostSpec(name=agents.HOST_CLAUDE_CODE, binary="claude", model="m"),
         tools_enabled=True,
         system_prompt="s",
         max_turns=5,

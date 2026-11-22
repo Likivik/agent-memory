@@ -10,7 +10,7 @@ import pytest
 from mnemobun.adapters import hook_entry, moments, muse_session, setup, transcript
 from mnemobun.core import injection, prompts, sessions
 from mnemobun.core.errors import ValidationError
-from mnemobun.executor import hosts
+from mnemobun.executor import agents
 from mnemobun.harness import main as harness
 from mnemobun.mcp import server as mcp_server
 
@@ -253,8 +253,8 @@ def test_muse_boundaries_use_existing_capture_path(store, event):
 
 
 def test_muse_executor_uses_prompt_file_default_model_and_sandbox(tmp_path):
-    dialect = hosts.DIALECTS[hosts.HOST_MUSE_CODE]
-    spec = hosts.HostSpec(name="muse-code", binary="muse", model="")
+    dialect = agents.DIALECTS[agents.HOST_MUSE_CODE]
+    spec = agents.HostSpec(name="muse-code", binary="muse", model="")
     command = dialect.command(
         spec,
         tools_enabled=True,
@@ -276,10 +276,10 @@ def test_muse_executor_uses_prompt_file_default_model_and_sandbox(tmp_path):
 
 
 def test_muse_executor_passes_explicit_model_and_effort(tmp_path):
-    spec = hosts.HostSpec(
+    spec = agents.HostSpec(
         name="muse-code", binary="muse", model="explicit-model", reasoning_effort="high"
     )
-    command = hosts.DIALECTS[hosts.HOST_MUSE_CODE].command(
+    command = agents.DIALECTS[agents.HOST_MUSE_CODE].command(
         spec,
         tools_enabled=False,
         system_prompt="",
@@ -301,8 +301,8 @@ def test_muse_executor_refuses_workspace_with_native_memory(tmp_path):
     native = tmp_path / ".agents" / "memory"
     native.mkdir(parents=True)
     with pytest.raises(ValueError, match="native .agents/memory"):
-        hosts.DIALECTS[hosts.HOST_MUSE_CODE].command(
-            hosts.HostSpec(name="muse-code", binary="muse", model=""),
+        agents.DIALECTS[agents.HOST_MUSE_CODE].command(
+            agents.HostSpec(name="muse-code", binary="muse", model=""),
             tools_enabled=False,
             system_prompt="",
             max_turns=1,
@@ -327,9 +327,9 @@ def test_muse_executor_materializes_prompt_and_reads_final_jsonl(tmp_path, monke
         )
         return subprocess.CompletedProcess(command, 0, stdout, "")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(
-        hosts.HostSpec(name="muse-code", binary="muse", model="", attempts=1)
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(
+        agents.HostSpec(name="muse-code", binary="muse", model="", attempts=1)
     )
     result = host.run("question", system_prompt="system", workdir=tmp_path)
     assert result.ok and result.text == "final"
@@ -343,7 +343,7 @@ def test_muse_executor_reads_enveloped_final_answer(tmp_path):
             "payload": {"event": {"kind": "final_answer", "text": "nested final"}},
         }
     )
-    assert hosts.DIALECTS[hosts.HOST_MUSE_CODE].answer(
+    assert agents.DIALECTS[agents.HOST_MUSE_CODE].answer(
         stdout, tmp_path / "unused"
     ) == "nested final"
 
@@ -364,8 +364,8 @@ def test_muse_executor_isolates_personal_context_but_reuses_explicit_auth(tmp_pa
         stdout = json.dumps({"kind": "run_terminal", "terminal": "completed", "text": "ok"})
         return subprocess.CompletedProcess(command, 0, stdout, "")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(hosts.HostSpec(name="muse-code", binary="muse", model="", attempts=1))
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(agents.HostSpec(name="muse-code", binary="muse", model="", attempts=1))
     result = host.run("question", workdir=tmp_path, environment={"MUSE_AUTH_PATH": str(auth)})
 
     assert result.ok
@@ -408,8 +408,8 @@ def test_muse_executor_carries_only_provider_routing_into_isolation(tmp_path, mo
         stdout = json.dumps({"kind": "run_terminal", "terminal": "completed", "text": "ok"})
         return subprocess.CompletedProcess(command, 0, stdout, "")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(hosts.HostSpec(name="muse-code", binary="muse", model="", attempts=1))
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(agents.HostSpec(name="muse-code", binary="muse", model="", attempts=1))
     result = host.run(
         "question",
         workdir=tmp_path,
@@ -458,8 +458,8 @@ def test_muse_executor_uses_hook_pinned_settings_and_sibling_auth(tmp_path, monk
         stdout = json.dumps({"kind": "run_terminal", "terminal": "completed", "text": "ok"})
         return subprocess.CompletedProcess(command, 0, stdout, "")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(hosts.HostSpec(name="muse-code", binary="muse", model="", attempts=1))
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(agents.HostSpec(name="muse-code", binary="muse", model="", attempts=1))
     result = host.run(
         "question",
         workdir=tmp_path,
@@ -487,7 +487,7 @@ def test_muse_native_write_stages_only_the_batch_toolkit(tmp_path, monkeypatch):
         ),
         encoding="utf-8",
     )
-    server = hosts.ToolServer(
+    server = agents.ToolServer(
         name="memory",
         command="/venv/bin/python",
         args=("-m", "mnemobun.mcp.write_session", "/tmp/batch"),
@@ -507,8 +507,8 @@ def test_muse_native_write_stages_only_the_batch_toolkit(tmp_path, monkeypatch):
         stdout = json.dumps({"kind": "run_terminal", "terminal": "completed", "text": "done"})
         return subprocess.CompletedProcess(command, 0, stdout, "")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(hosts.HostSpec(name="muse-code", binary="muse", model="", attempts=1))
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(agents.HostSpec(name="muse-code", binary="muse", model="", attempts=1))
     result = host.converse(
         "batch material",
         system_prompt="distillation instructions",
@@ -533,7 +533,7 @@ def test_muse_native_write_stages_only_the_batch_toolkit(tmp_path, monkeypatch):
         },
     }
     assert observed["environment"]["AGENT_MEMORY_EXECUTOR"] == "1"
-    assert observed["environment"]["TMPDIR"] == hosts.MUSE_RUNTIME_TMPDIR
+    assert observed["environment"]["TMPDIR"] == agents.MUSE_RUNTIME_TMPDIR
     override = observed["command"][observed["command"].index("-c") + 1]
     assert json.loads(override.removeprefix("run.toolset=")) == [
         "mcp__memory__recall",
@@ -553,16 +553,16 @@ def test_muse_native_write_rejects_a_version_without_exact_mcp_tool_selection(mo
         calls.append(command)
         return subprocess.CompletedProcess(command, 2, "", "unexpected argument '-c'")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(
-        hosts.HostSpec(
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(
+        agents.HostSpec(
             name="muse-code", binary="muse", attempts=3, retry_backoff_seconds=0
         )
     )
     result = host.converse(
         "batch",
         system_prompt="instructions",
-        server=hosts.ToolServer("memory", "python", (), ("recall",)),
+        server=agents.ToolServer("memory", "python", (), ("recall",)),
     )
 
     assert not result.ok
@@ -574,12 +574,12 @@ def test_muse_native_write_timeout_is_a_terminal_host_failure(monkeypatch):
     def run(command, **kwargs):
         raise subprocess.TimeoutExpired(command, 1)
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(hosts.HostSpec(name="muse-code", binary="muse", attempts=1))
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(agents.HostSpec(name="muse-code", binary="muse", attempts=1))
     result = host.converse(
         "batch",
         system_prompt="instructions",
-        server=hosts.ToolServer("memory", "python", (), ("recall",)),
+        server=agents.ToolServer("memory", "python", (), ("recall",)),
     )
 
     assert not result.ok
@@ -593,8 +593,8 @@ def test_muse_executor_reports_transport_failures(tmp_path, monkeypatch, failure
             raise subprocess.TimeoutExpired(command, 1)
         return subprocess.CompletedProcess(command, 2, "", "muse transport failed")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(hosts.HostSpec(name="muse-code", binary="muse", model="", attempts=1))
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(agents.HostSpec(name="muse-code", binary="muse", model="", attempts=1))
     result = host.run("question", workdir=tmp_path)
     assert not result.ok
     assert result.error == ("timeout" if failure == "timeout" else "muse transport failed")

@@ -3,7 +3,7 @@
 import sys
 
 import pytest
-from mnemobun.executor import hosts
+from mnemobun.executor import agents
 
 PROMPT = "记住：跨代理代号是 BLUE-HERON-42 — 不要遗忘"
 ANSWER = "已记录 — BLUE-HERON-42"
@@ -26,14 +26,14 @@ else:
 """
 
 
-@pytest.mark.parametrize("name", [hosts.HOST_CLAUDE_CODE, hosts.HOST_CODEX])
+@pytest.mark.parametrize("name", [agents.HOST_CLAUDE_CODE, agents.HOST_CODEX])
 def test_non_ascii_prompts_and_answers_cross_the_host_boundary(name, tmp_path, python_executable):
     binary = python_executable(
         tmp_path / "bin" / name, FAKE_HOST.format(python=sys.executable, answer=ANSWER)
     )
     log = tmp_path / "stdin.bin"
-    host = hosts.Host(
-        hosts.HostSpec(name=name, binary=str(binary), model="m", attempts=1, timeout_seconds=15)
+    host = agents.Host(
+        agents.HostSpec(name=name, binary=str(binary), model="m", attempts=1, timeout_seconds=15)
     )
 
     result = host.run(PROMPT, workdir=tmp_path, environment={"FAKE_STDIN_LOG": str(log)})

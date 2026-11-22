@@ -12,7 +12,7 @@ import pathlib
 
 from mnemobun.core import prompts
 from mnemobun.core.store import Store
-from mnemobun.executor.hosts import Host
+from mnemobun.executor.agents import Host
 
 WRITE_TASK = """Record this exactly, as one memory of type fact:
 

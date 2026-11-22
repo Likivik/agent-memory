@@ -8,7 +8,7 @@ import pathlib
 import re
 import tempfile
 
-from mnemobun.executor.hosts import Host
+from mnemobun.executor.agents import Host
 
 from .metrics import STATUS_FAILED, STATUS_OK
 

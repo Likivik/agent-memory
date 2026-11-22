@@ -71,7 +71,7 @@ Verified source facts: `recall.py` supports `as_of` and returns provenance/cited
 ## P3 — In-process Hermes integration (prefetch + sync_turn)
 
 Verified gap: `adapters/moments.py` dialects cover claude-code / codex / muse-code / generic only —
-**no Hermes entry**; the upstream Hermes support lives on the reasoner side (`executor/hosts.py:
+**no Hermes entry**; the upstream Hermes support lives on the reasoner side (`executor/agents.py:
 HOST_HERMES`, `HERMES_TOOLSETS = "terminal"`, native MCP write/manage servers). Injection today is a
 byte-prefix of MEMORY.md (`core/injection.py`) — deterministic floor, never a summary.
 
@@ -136,7 +136,7 @@ the minimal set; map ours onto theirs (`memory_save`→record, `memory_revise`�
 | Supersede path exists to hang standing on | `manage.py: _supersede` | ✅ |
 | No standing machine today | `record.py`: "the interval is the sole stored state" | ✅ (confirmed gap) |
 | No Hermes hook dialect today | `adapters/moments.py` DIALECTS: claude-code/codex/muse-code/generic only | ✅ (confirmed gap) |
-| Hermes exists on the reasoner side | `executor/hosts.py: HOST_HERMES`, `HERMES_TOOLSETS="terminal"` | ✅ |
+| Hermes exists on the reasoner side | `executor/agents.py: HOST_HERMES`, `HERMES_TOOLSETS="terminal"` | ✅ |
 | MCP tool list is the `memory_*` family — 9 tools: `recall, read, record, correct, supersede, delete, trace, merge, feedback` (`tools.py: TOOL_* constants`); `memory_trace` exists → proof-tree timeline extends it; no `stats` tool → add in P4 | `tools.py:234-244` | ✅ (closed) |
 | Injection is a MEMORY.md byte-prefix | `core/injection.py` (full read) | ✅ |
 | Write jobs are durable/settle-tracked | `core/write_jobs.py`, `adapters/write_drain.py` exist | ✅ (behavior re-verify in P0) |

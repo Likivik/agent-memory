@@ -450,7 +450,7 @@ def test_doctor_attributes_independent_reasoner_availability_to_each_channel(
         reasoner="endpoint", endpoint="https://manage.example/v1"
     )
     monkeypatch.setattr(
-        "mnemobun.executor.hosts.shutil.which",
+        "mnemobun.executor.agents.shutil.which",
         lambda binary: f"/usr/bin/{binary}" if binary == "muse" else None,
     )
 

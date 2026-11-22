@@ -6,20 +6,20 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from mnemobun.executor import hosts
+from mnemobun.executor import agents
 from mnemobun.harness import main as cli
 from mnemobun.harness.judge import RUBRIC, Judge
 from mnemobun.harness.metrics import RunMetadata, RunMetadataSink
 
 
-class FakeHost(hosts.Host):
+class FakeHost(agents.Host):
     def __init__(self, spec, calls):
         super().__init__(spec)
         self.calls = calls
 
     def run(self, prompt, **kwargs):
         self.calls.append((self.name, prompt, kwargs))
-        return hosts.HostResult("yes" if prompt.startswith("Decide whether") else "42", True, 0.01)
+        return agents.HostResult("yes" if prompt.startswith("Decide whether") else "42", True, 0.01)
 
 
 def suite_file(tmp_path):
@@ -54,7 +54,7 @@ def test_independent_roles_end_to_end(tmp_path, monkeypatch, tested, judge):
         checked.append(spec.name)
         return spec.name in {tested, judge}
 
-    monkeypatch.setattr(hosts.HostSpec, "available", available)
+    monkeypatch.setattr(agents.HostSpec, "available", available)
     workspace = tmp_path / "run"
     assert (
         cli.main(
@@ -122,12 +122,12 @@ def test_default_judge_is_historical_claude_independent_of_tested_host():
     assert judge.spec.binary == "claude"
     assert judge.spec.model == cli.JUDGE_MODEL
     assert judge.spec.attempts == 3
-    assert cli._judge_host("codex").spec.model == hosts.BINARIES["codex"][1]
+    assert cli._judge_host("codex").spec.model == agents.BINARIES["codex"][1]
 
 
 @pytest.mark.parametrize("missing,role", [("codex", "tested host"), ("claude-code", "judge host")])
 def test_missing_selected_role_is_explicit(tmp_path, monkeypatch, capsys, missing, role):
-    monkeypatch.setattr(hosts.HostSpec, "available", lambda spec: spec.name != missing)
+    monkeypatch.setattr(agents.HostSpec, "available", lambda spec: spec.name != missing)
     assert (
         cli.main(
             [
@@ -199,8 +199,8 @@ def test_regrading_updates_instrument_and_prevents_mixed_resume(tmp_path):
     [("yes", True), ("no", False), ("Yes.", True), ("unparseable", False), ("", False)],
 )
 def test_same_vote_parser_for_both_transports(name, text, correct, monkeypatch):
-    host = hosts.Host(hosts.HostSpec(name=name, binary=name))
-    monkeypatch.setattr(host, "run", lambda *a, **kw: hosts.HostResult(text, True, 0.1))
+    host = agents.Host(agents.HostSpec(name=name, binary=name))
+    monkeypatch.setattr(host, "run", lambda *a, **kw: agents.HostResult(text, True, 0.1))
     verdict = Judge(host).grade("q", "reference", "candidate")
     assert verdict.correct is correct
     # Preserve historical handling of successful but non-yes responses.
@@ -209,8 +209,8 @@ def test_same_vote_parser_for_both_transports(name, text, correct, monkeypatch):
 
 @pytest.mark.parametrize("name", ["claude-code", "codex"])
 def test_failed_votes_remain_unusable(name, monkeypatch):
-    host = hosts.Host(hosts.HostSpec(name=name, binary=name))
-    monkeypatch.setattr(host, "run", lambda *a, **kw: hosts.HostResult("", False, 0.1, "timeout"))
+    host = agents.Host(agents.HostSpec(name=name, binary=name))
+    monkeypatch.setattr(host, "run", lambda *a, **kw: agents.HostResult("", False, 0.1, "timeout"))
     verdict = Judge(host).grade("q", "r", "a")
     assert not verdict.ok and not verdict.correct and "timeout" in verdict.error
 
@@ -225,16 +225,16 @@ def test_codex_uses_only_final_message(tmp_path, monkeypatch, output):
             Path(command[command.index("--output-last-message") + 1]).write_text(output)
         return subprocess.CompletedProcess(command, 0, "yes from noisy transcript", "")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(hosts.HostSpec(name="codex", binary="codex", attempts=1))
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(agents.HostSpec(name="codex", binary="codex", attempts=1))
     result = host.run("prompt", workdir=tmp_path)
     assert result.ok is bool(output)
     assert result.text == (output or "")
 
 
 def test_claude_judge_has_no_tools(tmp_path):
-    command = hosts.ClaudeCodeDialect().command(
-        hosts.HostSpec(name="claude-code", binary="claude"),
+    command = agents.ClaudeCodeDialect().command(
+        agents.HostSpec(name="claude-code", binary="claude"),
         tools_enabled=False,
         system_prompt="",
         max_turns=8,
@@ -242,7 +242,7 @@ def test_claude_judge_has_no_tools(tmp_path):
         answer_file=tmp_path / "answer",
     )
     assert command[command.index("--tools") + 1] == ""
-    assert command[command.index("--system-prompt") + 1] == hosts.BARE_SYSTEM_PROMPT
+    assert command[command.index("--system-prompt") + 1] == agents.BARE_SYSTEM_PROMPT
 
 
 @pytest.mark.parametrize("failure", ["timeout", "exit"])
@@ -252,8 +252,8 @@ def test_codex_transport_failures_are_not_scores(monkeypatch, failure):
             raise subprocess.TimeoutExpired(command, kwargs["timeout"])
         return subprocess.CompletedProcess(command, 7, "yes", "authentication failed")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(hosts.HostSpec(name="codex", binary="codex", attempts=1, timeout_seconds=1))
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(agents.HostSpec(name="codex", binary="codex", attempts=1, timeout_seconds=1))
     result = host.run("judge prompt")
     assert not result.ok and not result.text
     assert result.error == ("timeout" if failure == "timeout" else "authentication failed")
@@ -263,7 +263,7 @@ def test_codex_transport_failures_are_not_scores(monkeypatch, failure):
 def test_other_judge_commands_select_codex_only(tmp_path, monkeypatch, command):
     calls = []
     monkeypatch.setattr(cli, "Host", lambda spec: FakeHost(spec, calls))
-    monkeypatch.setattr(hosts.HostSpec, "available", lambda spec: spec.name == "codex")
+    monkeypatch.setattr(agents.HostSpec, "available", lambda spec: spec.name == "codex")
     if command == "calibrate":
         cases = tmp_path / "cases.json"
         cases.write_text(
@@ -297,11 +297,11 @@ def test_missing_metadata_cannot_be_bypassed_by_omitting_resume(tmp_path, resume
 
 
 def test_calibration_transport_failure_never_counts_as_agreement(tmp_path, monkeypatch, capsys):
-    monkeypatch.setattr(hosts.HostSpec, "available", lambda spec: True)
+    monkeypatch.setattr(agents.HostSpec, "available", lambda spec: True)
     monkeypatch.setattr(
-        hosts.Host,
+        agents.Host,
         "run",
-        lambda *a, **kw: hosts.HostResult("", False, 0.1, "authentication failed"),
+        lambda *a, **kw: agents.HostResult("", False, 0.1, "authentication failed"),
     )
     cases = tmp_path / "cases.json"
     cases.write_text(
@@ -322,8 +322,8 @@ def test_calibration_transport_failure_never_counts_as_agreement(tmp_path, monke
 
 
 def test_calibration_preserves_vote_evidence(tmp_path, monkeypatch):
-    monkeypatch.setattr(hosts.HostSpec, "available", lambda spec: True)
-    monkeypatch.setattr(hosts.Host, "run", lambda *a, **kw: hosts.HostResult("yes", True, 0.1))
+    monkeypatch.setattr(agents.HostSpec, "available", lambda spec: True)
+    monkeypatch.setattr(agents.Host, "run", lambda *a, **kw: agents.HostResult("yes", True, 0.1))
     cases = tmp_path / "cases.json"
     cases.write_text(
         json.dumps(

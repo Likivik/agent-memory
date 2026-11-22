@@ -30,8 +30,8 @@ from mnemobun.core.manage_toolkit import ManageReviewToolkit
 from mnemobun.core.reasoning import ReviewRuntime
 from mnemobun.core.toolkit import WriteToolkit
 
+from .agents import BINARIES, HOST_CLAUDE_CODE, Host, HostResult, HostSpec, ToolServer
 from .credentials import API_KEY_ENV, BASE_URL_ENV, VertexCredentials
-from .hosts import BINARIES, HOST_CLAUDE_CODE, Host, HostResult, HostSpec, ToolServer
 
 CHAT_COMPLETIONS = "/chat/completions"
 DEFAULT_ENDPOINT_MODEL = "google/gemini-2.5-flash"

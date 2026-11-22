@@ -18,8 +18,8 @@ from mnemobun.core.config import (
 )
 from mnemobun.core.errors import ReasonerUnavailableError
 
+from .agents import DIALECTS, HERMES_DATA_TRAINING_REQUIREMENT, HOST_HERMES
 from .credentials import VertexCredentials
-from .hosts import DIALECTS, HERMES_DATA_TRAINING_REQUIREMENT, HOST_HERMES
 from .reasoners import EndpointReasoner, EndpointTextReasoner, HostReasoner, ToolHostReasoner
 
 

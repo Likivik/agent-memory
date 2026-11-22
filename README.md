@@ -628,6 +628,49 @@ paths; report the exposure rate alongside scores when it does. Codex can also
 read store files directly through its shell, so check the host command transcript
 for bypasses before attributing an answer to a `mem` retrieval path.
 
+## mnemobun in plain words
+
+This section uses plain words. No jargon.
+
+**The notebook.** mnemobun keeps one notebook of notes about you and your work.
+Notes are plain markdown files. A search index sits beside them. You can delete
+the index; the notes stay.
+
+**The borrowed agent.** mnemobun has no brain inside. When it must think, it
+borrows one. It launches an agent you already have — Claude Code, Codex, Hermes —
+gives it a task, reads the answer. `mnemobun setup` picks which agent to borrow.
+`mnemobun doctor` checks that it works.
+
+**Feeding** (`distill`) — "what is worth remembering here?"
+When a batch of chat is done, mnemobun sends it to the borrowed agent. The agent
+answers with a few facts worth keeping. mnemobun writes them as notes. Feeding
+only adds notes. It never changes old ones.
+
+**Review** (`dream run`) — "tidy the notebook at night."
+Once a day, mnemobun looks at all notes. It merges notes that repeat, fades notes
+nobody used in months, and when it is unsure, it files a **case**. Review can
+change and delete notes, so it always asks first when unsure.
+
+**The court.**
+- **docket** — the list of open cases. `mnemobun docket` shows it.
+- **case** — one suggested change, waiting for your ruling.
+  `mnemobun case decide X --accept` or `--reject`.
+- **execution** — the work of carrying out an accepted case. One order, one
+  attempt, an outcome: done, failed, or errored. `mnemobun executions retry X`
+  re-attempts a failed one.
+- **dream worker** — the one who carries the order out, in the background, so a
+  slow or broken job never blocks the rest.
+
+**Data in, data out.**
+`mnemobun import <format> <path>` brings notes in: its own backups, a Hermes
+`state.db`, and more sources later. `mnemobun export` writes its own backup.
+Imports are safe to repeat: a rerun continues where the last one stopped and
+never writes the same note twice.
+
+**The search index.**
+`mnemobun index sync` catches up the index bit by bit. `mnemobun index rebuild`
+builds it again from scratch. The notes are the truth. The index is a cache.
+
 ## License
 
 [MIT](LICENSE).

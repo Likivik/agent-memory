@@ -76,7 +76,7 @@ def test_a_failed_mint_is_an_explicit_authentication_error(monkeypatch):
 
 
 def test_only_hermes_carries_credentials(monkeypatch):
-    from mnemobun.executor.hosts import (
+    from mnemobun.executor.agents import (
         HOST_CLAUDE_CODE,
         HOST_CODEX,
         HOST_HERMES,

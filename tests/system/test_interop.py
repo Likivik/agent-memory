@@ -1,7 +1,7 @@
 """P1 — the interop matrix itself, exercised against stub hosts."""
 
 from mnemobun.core.store import Store
-from mnemobun.executor.hosts import Host, HostResult, HostSpec
+from mnemobun.executor.agents import Host, HostResult, HostSpec
 from mnemobun.harness import interop
 
 FACT = interop.Fact(

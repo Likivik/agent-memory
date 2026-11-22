@@ -1,4 +1,4 @@
-from mnemobun.executor.hosts import HostResult
+from mnemobun.executor.agents import HostResult
 from mnemobun.harness import arms
 from mnemobun.harness.dataset import Episode
 from mnemobun.harness.driver import Driver, ExperiencePhase
