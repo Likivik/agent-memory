@@ -193,8 +193,11 @@ def test_replay_writes_history_with_provenance_and_dreams_deterministically(stor
     assert drafted == ["import"]  # exactly one deterministic pass, reasoner never runs
     records = {r.name: r for r in store.records()}
     assert any(name.startswith("turn-s-1-") for name in records)
-    record = next(r for name, r in records.items() if name.startswith("turn-s-1-"))
-    assert record.updated == "2026-01-01T00:00:00Z"
+    assert {r.updated for r in records.values()} == {
+        "2026-01-01T00:00:00Z",
+        "2026-01-02T00:00:00Z",
+    }
+    record = next(r for r in records.values() if r.updated == "2026-01-01T00:00:00Z")
     provenance_files = list((store.root / "archive" / "provenance").rglob("*.md"))
     assert provenance_files
     assert any("import-batch:test" in f.read_text(encoding="utf-8") for f in provenance_files)
@@ -210,3 +213,90 @@ def test_replay_writes_history_with_provenance_and_dreams_deterministically(stor
 def test_replay_rejects_bad_policy(store):
     with pytest.raises(ValueError, match="standing_policy"):
         replay(store, _StaticSource([]), standing_policy="auto")
+
+
+# -- idempotency + resume (hard requirements) ---------------------------------
+
+
+class _AbortingSource:
+    """Yields `fail_after` turns, then raises — simulates an interrupted import."""
+
+    def __init__(self, turns, fail_after):
+        self._turns = turns
+        self._fail_after = fail_after
+
+    def turns(self):
+        for index, turn in enumerate(self._turns):
+            if index >= self._fail_after:
+                raise RuntimeError("source interrupted")
+            yield turn
+
+
+def _turns(count):
+    return [
+        Turn(
+            session_id=f"s-{index}",
+            user=f"question {index}",
+            assistant=f"answer {index}",
+            at=f"2026-01-{index + 1:02d}T00:00:00Z",
+        )
+        for index in range(count)
+    ]
+
+
+def test_replay_is_idempotent(store):
+    turns = _turns(4)
+    first = replay(store, _StaticSource(turns), batch_id="idem", run_dream=False)
+    second = replay(store, _StaticSource(turns), batch_id="idem", run_dream=False)
+    assert first.written == 4
+    assert second.written == 0
+    assert second.skipped == 4
+    assert len(store.records()) == 4  # a rerun duplicates nothing
+
+
+def test_replay_names_are_deterministic_per_turn(store):
+    turns = _turns(2)
+    replay(store, _StaticSource(turns), batch_id="names", run_dream=False)
+    first = sorted(r.name for r in store.records())
+    replay(store, _StaticSource(turns), batch_id="names", run_dream=False, force=True)
+    assert sorted(r.name for r in store.records()) == first  # same turn, same name
+
+
+def test_replay_resumes_after_abort_without_duplicates(store):
+    turns = _turns(5)
+    with pytest.raises(RuntimeError, match="interrupted"):
+        replay(
+            store,
+            _AbortingSource(turns, fail_after=3),
+            batch_id="res",
+            batch_records=2,
+            run_dream=False,
+        )
+    report = replay(
+        store, _StaticSource(turns), batch_id="res", batch_records=2, run_dream=False
+    )
+    assert report.written == 3  # the 2 committed before the crash are not redone
+    assert len(store.records()) == 5
+
+
+def test_replay_force_restarts_but_stays_clean(store):
+    turns = _turns(4)
+    with pytest.raises(RuntimeError, match="interrupted"):
+        replay(
+            store,
+            _AbortingSource(turns, fail_after=2),
+            batch_id="f",
+            batch_records=2,
+            run_dream=False,
+        )
+    report = replay(
+        store,
+        _StaticSource(turns),
+        batch_id="f",
+        batch_records=2,
+        run_dream=False,
+        force=True,
+    )
+    assert report.skipped == 2  # reprocessed from turn 0, already-written skipped
+    assert report.written == 2
+    assert len(store.records()) == 4

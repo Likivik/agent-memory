@@ -305,11 +305,16 @@ def _parser() -> argparse.ArgumentParser:
         help="standing for imported records (D3: accepted is the default)",
     )
     replayer.add_argument(
-        "--batch-id", default="", help="provenance marker suffix (default: clock stamp)"
+        "--batch-id", default="", help="provenance marker suffix (default: source identity)"
     )
     replayer.add_argument("--batch-records", type=int, default=2000)
     replayer.add_argument(
         "--no-dream", action="store_true", help="skip the deterministic dream pass"
+    )
+    replayer.add_argument(
+        "--force",
+        action="store_true",
+        help="ignore the resume watermark and reprocess from the first turn",
     )
     replayer.set_defaults(handler=_replay)
 
@@ -770,11 +775,13 @@ def _replay(store: Store, args: argparse.Namespace) -> dict[str, object]:
         batch_id=args.batch_id,
         batch_records=args.batch_records,
         run_dream=not args.no_dream,
+        force=args.force,
     )
     return {
         "written": report.written,
         "batches": report.batches,
         "rejected": len(report.rejected),
+        "skipped": report.skipped,
         "dream_actions": report.dream_actions,
     }
 
