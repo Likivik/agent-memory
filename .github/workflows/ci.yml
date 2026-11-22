@@ -24,4 +24,4 @@ jobs:
       - name: Types
         run: uv run mypy
       - name: Tests
-        run: uv run pytest -q --cov=agent_memory --cov-report=term-missing --cov-fail-under=85
+        run: uv run pytest -q --cov=mnemobun --cov-report=term-missing --cov-fail-under=85

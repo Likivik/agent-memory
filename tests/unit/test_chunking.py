@@ -5,9 +5,9 @@ what a recall citation points at, so a shell comment promoted to a heading both 
 section and cuts the real one in two.
 """
 
-from agent_memory.core.chunking import chunks, outline
-from agent_memory.core.config import Config
-from agent_memory.core.record import MemoryRecord
+from mnemobun.core.chunking import chunks, outline
+from mnemobun.core.config import Config
+from mnemobun.core.record import MemoryRecord
 
 FENCED = """## 部署步骤
 

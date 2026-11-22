@@ -1,4 +1,4 @@
-from agent_memory.harness.judge import Verdict, regrade
+from mnemobun.harness.judge import Verdict, regrade
 
 
 def test_regrade_failure_does_not_become_valid_incorrect_score():

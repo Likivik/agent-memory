@@ -2,7 +2,7 @@
 
 import json
 
-from agent_memory.core import agentic, distill, prompts, reconcile, sessions, toolkit
+from mnemobun.core import agentic, distill, prompts, reconcile, sessions, toolkit
 
 BRIEF = prompts.Brief(instructions="instructions", material="material")
 LINES = [

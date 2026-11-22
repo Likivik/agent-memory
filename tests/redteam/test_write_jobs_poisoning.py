@@ -4,11 +4,11 @@ import json
 import pathlib
 
 import pytest
-from agent_memory.adapters import capture
-from agent_memory.cli.main import EXIT_OK, main
-from agent_memory.core import toolkit, write_run
-from agent_memory.core.errors import ReasonerUnavailableError, ValidationError
-from agent_memory.core.write_jobs import STATE_DEAD, WriteJobs
+from mnemobun.adapters import capture
+from mnemobun.cli.main import EXIT_OK, main
+from mnemobun.core import toolkit, write_run
+from mnemobun.core.errors import ReasonerUnavailableError, ValidationError
+from mnemobun.core.write_jobs import STATE_DEAD, WriteJobs
 
 pytestmark = pytest.mark.redteam
 

@@ -1,16 +1,16 @@
 import dataclasses
 
 import pytest
-from agent_memory.core.config import (
+from mnemobun.core.config import (
     TOOL_MODE_NATIVE,
     TOOL_MODE_TEXT,
     Config,
     OperationExecutorConfig,
 )
-from agent_memory.core.errors import ReasonerUnavailableError
-from agent_memory.core.reasoning import ManageToolReasoner, ToolReasoner
-from agent_memory.executor import distiller, selection
-from agent_memory.executor.reasoners import EndpointTextReasoner
+from mnemobun.core.errors import ReasonerUnavailableError
+from mnemobun.core.reasoning import ManageToolReasoner, ToolReasoner
+from mnemobun.executor import distiller, selection
+from mnemobun.executor.reasoners import EndpointTextReasoner
 
 
 def test_default_write_uses_the_source_host_while_manage_uses_the_legacy_executor():

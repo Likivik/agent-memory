@@ -4,10 +4,10 @@ import io
 import json
 
 import pytest
-from agent_memory.cli.main import EXIT_OK, main
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.store import Store
-from agent_memory.mcp import server, tools
+from mnemobun.cli.main import EXIT_OK, main
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.store import Store
+from mnemobun.mcp import server, tools
 
 VOLATILE = ("path", "recall_fingerprint")
 PER_CALL = ("score", "relevance", "recency")

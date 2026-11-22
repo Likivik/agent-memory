@@ -1,9 +1,9 @@
 import json
 
 import pytest
-from agent_memory.core import distill, pending, sessions
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.watermark import Watermark
+from mnemobun.core import distill, pending, sessions
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.watermark import Watermark
 
 
 @pytest.mark.parametrize(

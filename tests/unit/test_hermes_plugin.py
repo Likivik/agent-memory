@@ -14,7 +14,7 @@ PLUGIN_INIT = REPO / "hermes-plugin" / "__init__.py"
 
 
 def _load_plugin_module():
-    spec = importlib.util.spec_from_file_location("agent_memory_hermes_plugin", PLUGIN_INIT)
+    spec = importlib.util.spec_from_file_location("mnemobun_hermes_plugin", PLUGIN_INIT)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -31,7 +31,7 @@ def plugin_module():
             sys.path.insert(0, str(src))
     mod = _load_plugin_module()
     yield mod
-    sys.modules.pop("agent_memory_hermes_plugin", None)
+    sys.modules.pop("mnemobun_hermes_plugin", None)
 
 
 @pytest.fixture()
@@ -59,8 +59,8 @@ def test_initialize_is_idempotent_and_lazy(provider, tmp_path):
     for _ in range(100):
         assert provider.initialize("sess-1", hermes_home=str(tmp_path)) is True
     assert provider.is_available() is True
-    assert provider.name == "agent-memory"
-    assert provider.identity_signature()["provider"] == "agent-memory"
+    assert provider.name == "mnemobun"
+    assert provider.identity_signature()["provider"] == "mnemobun"
 
 
 def test_is_available_false_when_store_missing(provider, tmp_path):
@@ -93,7 +93,7 @@ def test_recall_status_counts_lines(provider, tmp_path):
     provider.initialize("sess-1", hermes_home=str(tmp_path))
     provider.prefetch("something real")
     status = provider.recall_status()
-    assert status.provider_label == "agent-memory"
+    assert status.provider_label == "mnemobun"
     assert status.count >= 1
 
 
@@ -129,7 +129,7 @@ def test_dream_tick_skips_when_not_due(provider, tmp_path):
 def test_dream_tick_runs_deterministic_sleep_when_due(provider, tmp_path, monkeypatch):
     _store_ready(provider, tmp_path)
     provider.initialize("sess-1", hermes_home=str(tmp_path))
-    import agent_memory.core.manage as manage_mod
+    import mnemobun.core.manage as manage_mod
 
     monkeypatch.setattr(manage_mod.Manage, "due", lambda self, sessions_since: sessions_since >= 3)
     ran = []
@@ -153,5 +153,5 @@ def test_dream_tick_runs_deterministic_sleep_when_due(provider, tmp_path, monkey
 
 def test_vendored_lib_exists():
     lib = REPO / "hermes-plugin" / "lib"
-    assert (lib / "agent_memory" / "core" / "store.py").exists()
-    assert (lib / "agent_memory" / "mcp" / "tools.py").exists()
+    assert (lib / "mnemobun" / "core" / "store.py").exists()
+    assert (lib / "mnemobun" / "mcp" / "tools.py").exists()

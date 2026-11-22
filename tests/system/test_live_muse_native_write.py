@@ -7,13 +7,13 @@ import shutil
 import time
 
 import pytest
-from agent_memory.core import distill, reconcile, sessions, toolkit
-from agent_memory.core.config import Config, ExecutorConfig
-from agent_memory.core.store import Store
-from agent_memory.core.watermark import Watermark
-from agent_memory.executor import distiller as executor_distiller
-from agent_memory.executor.hosts import HOST_MUSE_CODE
-from agent_memory.executor.reasoners import ToolHostReasoner
+from mnemobun.core import distill, reconcile, sessions, toolkit
+from mnemobun.core.config import Config, ExecutorConfig
+from mnemobun.core.store import Store
+from mnemobun.core.watermark import Watermark
+from mnemobun.executor import distiller as executor_distiller
+from mnemobun.executor.hosts import HOST_MUSE_CODE
+from mnemobun.executor.reasoners import ToolHostReasoner
 
 
 class RecordingMuse:

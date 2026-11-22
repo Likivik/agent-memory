@@ -2,11 +2,11 @@
 
 import hashlib
 
-from agent_memory.core.access_log import AccessLog
-from agent_memory.core.database import Database
-from agent_memory.core.recall import Recall
-from agent_memory.core.schema import MemorySchema, render
-from agent_memory.core.store import LEVEL_ABSTRACT, LEVEL_OUTLINE, Store
+from mnemobun.core.access_log import AccessLog
+from mnemobun.core.database import Database
+from mnemobun.core.recall import Recall
+from mnemobun.core.schema import MemorySchema, render
+from mnemobun.core.store import LEVEL_ABSTRACT, LEVEL_OUTLINE, Store
 
 
 def _names(hits):

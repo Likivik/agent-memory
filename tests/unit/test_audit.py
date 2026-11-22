@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from agent_memory.core import audit
-from agent_memory.core.access_log import AccessLog
-from agent_memory.core.audit import KIND_VERIFY
-from agent_memory.core.store import Store
+from mnemobun.core import audit
+from mnemobun.core.access_log import AccessLog
+from mnemobun.core.audit import KIND_VERIFY
+from mnemobun.core.store import Store
 
 
 def _seed(store):

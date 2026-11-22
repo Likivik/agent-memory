@@ -1,6 +1,6 @@
 import json
 
-from agent_memory.executor import muse_namespaces
+from mnemobun.executor import muse_namespaces
 
 
 def test_namespaced_mcp_tools_are_flattened_to_muse_canonical_ids():

@@ -12,13 +12,13 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
-from agent_memory.adapters import capture, cron_schedule
-from agent_memory.cli.main import EXIT_OK, main
-from agent_memory.core import dreaming
-from agent_memory.core.config import OperationExecutorConfig
-from agent_memory.core.ledger import LEDGER_FILENAME
-from agent_memory.core.store import Store
-from agent_memory.core.watermark import Watermark
+from mnemobun.adapters import capture, cron_schedule
+from mnemobun.cli.main import EXIT_OK, main
+from mnemobun.core import dreaming
+from mnemobun.core.config import OperationExecutorConfig
+from mnemobun.core.ledger import LEDGER_FILENAME
+from mnemobun.core.store import Store
+from mnemobun.core.watermark import Watermark
 
 POSIX_CRON = pytest.mark.skipif(os.name == "nt", reason="cron scheduling is POSIX-only")
 
@@ -50,7 +50,7 @@ def test_cli_manages_one_store_block_and_preserves_unrelated_jobs(tmp_path, monk
     crontab = bin_dir / "crontab"
     crontab.write_text(FAKE_CRONTAB, encoding="utf-8")
     crontab.chmod(0o755)
-    mem = bin_dir / "mem"
+    mem = bin_dir / "mnemobun"
     mem.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     mem.chmod(0o755)
     environment = tmp_path / "reasoner.env"
@@ -59,9 +59,9 @@ def test_cli_manages_one_store_block_and_preserves_unrelated_jobs(tmp_path, monk
     monkeypatch.setenv("FAKE_CRONTAB_FILE", str(crontab_file))
     monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ.get('PATH', '')}")
     monkeypatch.setattr(
-        "agent_memory.adapters.cron_schedule._scheduler_running", lambda: True
+        "mnemobun.adapters.cron_schedule._scheduler_running", lambda: True
     )
-    monkeypatch.setattr("agent_memory.adapters.cron_schedule._is_wsl", lambda: False)
+    monkeypatch.setattr("mnemobun.adapters.cron_schedule._is_wsl", lambda: False)
 
     def run(*args):
         assert main(["--store", str(store), "--json", "cron", *args]) == EXIT_OK
@@ -191,7 +191,7 @@ def test_generated_cron_command_completes_endpoint_dream_in_an_independent_proce
         monkeypatch.delenv("GEMINI_BASE_URL", raising=False)
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
 
-        mem = pathlib.Path(sys.executable).parent / "mem"
+        mem = pathlib.Path(sys.executable).parent / "mnemobun"
         installed = cron_schedule.install(
             store,
             mem_path=str(mem),

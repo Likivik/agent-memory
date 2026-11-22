@@ -6,7 +6,7 @@ import json
 import pathlib
 import subprocess
 
-from agent_memory.executor import hosts
+from mnemobun.executor import hosts
 
 
 def _host(*, timeout_seconds=5.0):
@@ -27,7 +27,7 @@ def _server(tmp_path):
     return hosts.ToolServer(
         name="memory",
         command="/venv/bin/python",
-        args=("-m", "agent_memory.mcp.write_session", str(tmp_path / "batch")),
+        args=("-m", "mnemobun.mcp.write_session", str(tmp_path / "batch")),
         tools=("recall", "read", "submit_operations"),
     )
 
@@ -36,7 +36,7 @@ def _manage_server(tmp_path):
     return hosts.ToolServer(
         name="memory_review",
         command="/venv/bin/python",
-        args=("-m", "agent_memory.mcp.manage_session", str(tmp_path / "review")),
+        args=("-m", "mnemobun.mcp.manage_session", str(tmp_path / "review")),
         tools=("list_proposals", "read_evidence", "submit_verdicts"),
         host_analytics_enabled=False,
     )
@@ -112,7 +112,7 @@ def test_hermes_native_manage_stages_only_the_review_server(monkeypatch, tmp_pat
     assert "terminal" not in observed["command"]
     assert set(observed["config"]["mcp_servers"]) == {hosts.HERMES_MANAGE_SERVER_NAME}
     configured = observed["config"]["mcp_servers"][hosts.HERMES_MANAGE_SERVER_NAME]
-    assert configured["args"][:2] == ["-m", "agent_memory.mcp.manage_session"]
+    assert configured["args"][:2] == ["-m", "mnemobun.mcp.manage_session"]
     assert configured["tools"] == {
         "include": ["list_proposals", "read_evidence", "submit_verdicts"],
         "prompts": False,

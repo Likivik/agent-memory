@@ -3,10 +3,10 @@
 import datetime as dt
 
 import pytest
-from agent_memory.core import portability
-from agent_memory.core.clock import FrozenClock
-from agent_memory.core.config import Config
-from agent_memory.core.store import Store
+from mnemobun.core import portability
+from mnemobun.core.clock import FrozenClock
+from mnemobun.core.config import Config
+from mnemobun.core.store import Store
 
 
 @pytest.fixture

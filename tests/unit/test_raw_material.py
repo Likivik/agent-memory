@@ -1,7 +1,7 @@
 """Archived sessions remain intact while recall searches Memory only."""
 
 import pytest
-from agent_memory.core.recall import Recall
+from mnemobun.core.recall import Recall
 
 
 @pytest.fixture

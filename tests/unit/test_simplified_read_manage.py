@@ -1,11 +1,11 @@
 import pytest
-from agent_memory.cli.main import main
-from agent_memory.core.context import build
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.recall import Recall
-from agent_memory.core.record import MemoryRecord
-from agent_memory.core.store import Store
-from agent_memory.mcp.tools import dispatch
+from mnemobun.cli.main import main
+from mnemobun.core.context import build
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.recall import Recall
+from mnemobun.core.record import MemoryRecord
+from mnemobun.core.store import Store
+from mnemobun.mcp.tools import dispatch
 
 
 def test_memory_only_recall_and_explicit_limit(store):

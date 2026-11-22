@@ -13,7 +13,7 @@ def test_muse_preflight_uses_canonical_mcp_tool_name():
     probe = pathlib.Path(__file__).parents[2] / "tools" / "muse_sandbox_probe.py"
     namespace = runpy.run_path(str(probe))
 
-    assert "Call the mcp__agent_memory__memory_record MCP tool" in namespace["_mcp_prompt"]()
+    assert "Call the mcp__mnemobun__memory_record MCP tool" in namespace["_mcp_prompt"]()
 
 
 def test_muse_preflight_stages_only_auth_in_isolated_config(tmp_path):

@@ -1,4 +1,4 @@
-from agent_memory.core import schema
+from mnemobun.core import schema
 
 
 def test_existing_store_observes_schema_edit_addition_and_removal(store):

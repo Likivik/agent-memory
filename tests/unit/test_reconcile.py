@@ -2,9 +2,9 @@
 
 import json
 
-from agent_memory.core import batching, distill, pending, reconcile, render, sessions
-from agent_memory.core.recall import Recall
-from agent_memory.core.watermark import Watermark
+from mnemobun.core import batching, distill, pending, reconcile, render, sessions
+from mnemobun.core.recall import Recall
+from mnemobun.core.watermark import Watermark
 
 LINES = [
     "user: Our queue timeout is 30 seconds, we set it last Tuesday.",
@@ -88,8 +88,8 @@ def test_the_sheet_names_related_memories_by_handle_and_lists_group_menus(store)
 
 
 def test_building_the_sheet_leaves_no_trace_in_the_access_log(store):
-    from agent_memory.core.access_log import AccessLog
-    from agent_memory.core.database import Database
+    from mnemobun.core.access_log import AccessLog
+    from mnemobun.core.database import Database
 
     store.record(type="fact", fields={"subject": "queue timeout"}, abstract="Queue timeout 20s")
     reconcile.build(store, "boundary", _messages(store))
@@ -188,7 +188,7 @@ def test_supersede_through_the_form_invalidates_the_handle(store):
 
 
 def test_the_slot_table_lists_every_type_the_store_knows(store):
-    from agent_memory.core import prompts
+    from mnemobun.core import prompts
 
     table = prompts.slot_table(store.schemas.all())
     for schema in store.schemas.all():
@@ -197,7 +197,7 @@ def test_the_slot_table_lists_every_type_the_store_knows(store):
 
 
 def test_the_slot_table_and_the_event_lane_are_write_options(store):
-    from agent_memory.core import prompts
+    from mnemobun.core import prompts
 
     messages = _messages(store)
     store.config.write.slot_table = False

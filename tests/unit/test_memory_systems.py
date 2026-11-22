@@ -5,10 +5,10 @@ import pathlib
 import shutil
 
 import pytest
-from agent_memory.core import prompts
-from agent_memory.core.config import Config
-from agent_memory.executor import hosts
-from agent_memory.harness import arms, framing, systems
+from mnemobun.core import prompts
+from mnemobun.core.config import Config
+from mnemobun.executor import hosts
+from mnemobun.harness import arms, framing, systems
 
 
 @pytest.fixture
@@ -73,7 +73,7 @@ def test_the_experience_prompt_shares_the_task_and_swaps_only_the_systems_part(n
 
 
 def test_the_exam_prompt_takes_the_systems_preamble(native, memcore):
-    from agent_memory.harness import dataset
+    from mnemobun.harness import dataset
 
     episode = dataset.Episode(
         id="q1",
@@ -147,7 +147,7 @@ def test_memcore_keeps_no_transcript(tmp_path, memcore):
 
 
 def test_the_native_system_archives_the_transcript(tmp_path, native):
-    from agent_memory.core.store import Store
+    from mnemobun.core.store import Store
 
     root = tmp_path / "q1"
     native.prepare(root, fresh=True)
@@ -157,8 +157,8 @@ def test_the_native_system_archives_the_transcript(tmp_path, native):
 
 
 def test_native_replay_projects_missing_index_before_retrieval(tmp_path, native):
-    from agent_memory.core.recall import Recall
-    from agent_memory.core.store import Store
+    from mnemobun.core.recall import Recall
+    from mnemobun.core.store import Store
 
     root = tmp_path / "copied-store"
     store = Store(root)

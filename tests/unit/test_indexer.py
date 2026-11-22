@@ -1,8 +1,8 @@
 """M2 — the projection: incremental, rebuildable, and never authoritative."""
 
-from agent_memory.core.database import Database
-from agent_memory.core.recall import Recall
-from agent_memory.core.search_index import SearchIndex
+from mnemobun.core.database import Database
+from mnemobun.core.recall import Recall
+from mnemobun.core.search_index import SearchIndex
 
 
 def _names(hits):

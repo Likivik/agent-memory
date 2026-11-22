@@ -7,12 +7,12 @@ import shlex
 import subprocess
 
 import pytest
-from agent_memory.adapters import hook_entry, moments, muse_session, setup, transcript
-from agent_memory.core import injection, prompts, sessions
-from agent_memory.core.errors import ValidationError
-from agent_memory.executor import hosts
-from agent_memory.harness import main as harness
-from agent_memory.mcp import server as mcp_server
+from mnemobun.adapters import hook_entry, moments, muse_session, setup, transcript
+from mnemobun.core import injection, prompts, sessions
+from mnemobun.core.errors import ValidationError
+from mnemobun.executor import hosts
+from mnemobun.harness import main as harness
+from mnemobun.mcp import server as mcp_server
 
 
 def test_muse_host_id_and_alias_are_canonical():
@@ -490,7 +490,7 @@ def test_muse_native_write_stages_only_the_batch_toolkit(tmp_path, monkeypatch):
     server = hosts.ToolServer(
         name="memory",
         command="/venv/bin/python",
-        args=("-m", "agent_memory.mcp.write_session", "/tmp/batch"),
+        args=("-m", "mnemobun.mcp.write_session", "/tmp/batch"),
         tools=("recall", "read", "submit_operations"),
     )
     observed = {}

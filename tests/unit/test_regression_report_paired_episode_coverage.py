@@ -1,5 +1,5 @@
 import pytest
-from agent_memory.harness.report import summarise
+from mnemobun.harness.report import summarise
 
 
 def row(arm, episode):

@@ -7,13 +7,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-from agent_memory.core import observation
-from agent_memory.core.store import Store
-from agent_memory.executor.hosts import Host, HostResult, HostSpec
-from agent_memory.harness.arms import BY_NAME
-from agent_memory.harness.dataset import Episode
-from agent_memory.harness.driver import Driver
-from agent_memory.harness.judge import Verdict
+from mnemobun.core import observation
+from mnemobun.core.store import Store
+from mnemobun.executor.hosts import Host, HostResult, HostSpec
+from mnemobun.harness.arms import BY_NAME
+from mnemobun.harness.dataset import Episode
+from mnemobun.harness.driver import Driver
+from mnemobun.harness.judge import Verdict
 
 
 class FakeHost(Host):
@@ -29,7 +29,7 @@ class FakeHost(Host):
             command = [
                 sys.executable,
                 "-c",
-                "from agent_memory.cli.main import main; raise SystemExit(main())",
+                "from mnemobun.cli.main import main; raise SystemExit(main())",
                 "--store",
                 str(store_root),
                 "--json",
@@ -120,7 +120,7 @@ def test_zero_hit_recall_and_read_levels(tmp_path):
 
 
 def test_host_transcript_limits_and_failure(tmp_path, monkeypatch):
-    from agent_memory.executor.hosts import Host
+    from mnemobun.executor.hosts import Host
 
     host = Host(HostSpec(name="codex", binary="unused", attempts=2, retry_backoff_seconds=0))
 
@@ -154,7 +154,7 @@ def test_observation_on_off_preserves_cli_bytes_and_core_returns(
     monkeypatch,
     capsys,
 ):
-    from agent_memory.cli import main as cli
+    from mnemobun.cli import main as cli
 
     store.record(
         name="known",

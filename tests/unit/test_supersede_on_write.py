@@ -7,8 +7,8 @@ reachable in principle and unused in practice.
 """
 
 import pytest
-from agent_memory.core.errors import NotFoundError, ValidationError
-from agent_memory.core.recall import Recall
+from mnemobun.core.errors import NotFoundError, ValidationError
+from mnemobun.core.recall import Recall
 
 
 def test_a_new_record_can_supersede_an_existing_one_in_a_single_write(store):
@@ -84,7 +84,7 @@ def test_supersede_on_write_goes_through_the_same_pipeline_as_any_other_write(st
 def test_a_successor_with_the_same_key_takes_the_next_ordinal_and_the_predecessor_keeps_its_name(
     store,
 ):
-    from agent_memory.core.recall import Recall
+    from mnemobun.core.recall import Recall
 
     first = store.record(
         type="fact",

@@ -1,13 +1,13 @@
-# agent-memory — Nix packaging (P8)
+# mnemobun — Nix packaging (P8)
 #
 # Follows the official uv2nix hello-world template (pyproject-nix/build-system-pkgs era):
 # the uv.lock is the single source of dependency truth; Nix builds a venv from it.
-#   packages.<system>.agent-memory  — venv with all workspace entry points
-#   checks.<system>.agent-memory-tests — unit tests without network (uv --offline)
-# Fleet use: import the overlay or add packages.agent-memory to environment.systemPackages.
+#   packages.<system>.mnemobun  — venv with all workspace entry points
+#   checks.<system>.mnemobun-tests — unit tests without network (uv --offline)
+# Fleet use: import the overlay or add packages.mnemobun to environment.systemPackages.
 
 {
-  description = "agent-memory: deterministic claim/standing memory engine for agents";
+  description = "mnemobun: deterministic claim/standing memory engine for agents";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -78,15 +78,15 @@
     in
     {
       packages = forAllSystems (system: {
-        agent-memory = pythonSets.${system}.mkVirtualEnv "agent-memory-env" workspace.deps.default;
-        default = pythonSets.${system}.mkVirtualEnv "agent-memory-env" workspace.deps.default;
+        mnemobun = pythonSets.${system}.mkVirtualEnv "mnemobun-env" workspace.deps.default;
+        default = pythonSets.${system}.mkVirtualEnv "mnemobun-env" workspace.deps.default;
       });
 
       devShells = forAllSystems (
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          virtualenv = pythonSets.${system}.mkVirtualEnv "agent-memory-dev-env" workspace.deps.all;
+          virtualenv = pythonSets.${system}.mkVirtualEnv "mnemobun-dev-env" workspace.deps.all;
         in
         {
           default = pkgs.mkShell {
@@ -112,10 +112,10 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          virtualenv = pythonSets.${system}.mkVirtualEnv "agent-memory-check-env" workspace.deps.dev;
+          virtualenv = pythonSets.${system}.mkVirtualEnv "mnemobun-check-env" workspace.deps.dev;
         in
         {
-          agent-memory-tests = pkgs.runCommand "agent-memory-tests"
+          mnemobun-tests = pkgs.runCommand "mnemobun-tests"
             {
               nativeBuildInputs = [ virtualenv ];
               src = self;

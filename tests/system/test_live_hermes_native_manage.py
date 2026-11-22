@@ -8,13 +8,13 @@ import pathlib
 import shutil
 
 import pytest
-from agent_memory.adapters import openrouter
-from agent_memory.cli.main import main
-from agent_memory.core import sessions
-from agent_memory.core.config import OperationExecutorConfig
-from agent_memory.core.ledger import LEDGER_FILENAME
-from agent_memory.core.manage_toolkit import TOOL_LIST, TOOL_READ, TOOL_SUBMIT
-from agent_memory.core.store import Store
+from mnemobun.adapters import openrouter
+from mnemobun.cli.main import main
+from mnemobun.core import sessions
+from mnemobun.core.config import OperationExecutorConfig
+from mnemobun.core.ledger import LEDGER_FILENAME
+from mnemobun.core.manage_toolkit import TOOL_LIST, TOOL_READ, TOOL_SUBMIT
+from mnemobun.core.store import Store
 
 LIVE = os.environ.get("AGENT_MEMORY_LIVE_HERMES_MANAGE") == "1"
 MODEL = "meta/muse-spark-1.3-contributor"

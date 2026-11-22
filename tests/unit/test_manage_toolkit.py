@@ -2,9 +2,9 @@
 
 import json
 
-from agent_memory.core import reasoning, sessions
-from agent_memory.core.manage import Manage, Proposal
-from agent_memory.core.manage_toolkit import (
+from mnemobun.core import reasoning, sessions
+from mnemobun.core.manage import Manage, Proposal
+from mnemobun.core.manage_toolkit import (
     ARG_NAME,
     ARG_OFFSET,
     ARG_POINTER,

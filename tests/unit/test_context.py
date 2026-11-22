@@ -1,7 +1,7 @@
 """The read surface that decides disclosure itself, instead of delegating it to the host."""
 
-from agent_memory.core.context import build
-from agent_memory.core.recall import Recall
+from mnemobun.core.context import build
+from mnemobun.core.recall import Recall
 
 
 def test_context_is_deterministic_for_the_same_store_and_question(seeded):

@@ -1,6 +1,6 @@
 import pytest
-from agent_memory.core.timestamp import parse
-from agent_memory.harness.dataset import session_stamp
+from mnemobun.core.timestamp import parse
+from mnemobun.harness.dataset import session_stamp
 
 
 @pytest.mark.parametrize(

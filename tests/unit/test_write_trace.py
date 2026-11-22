@@ -7,8 +7,8 @@ import hashlib
 import json
 import pathlib
 
-from agent_memory.core import write_trace
-from agent_memory.core.redaction import REDACTED
+from mnemobun.core import write_trace
+from mnemobun.core.redaction import REDACTED
 
 SECRET = "sk-ABCDEFGHIJKLMNOPQRSTUVWX"
 

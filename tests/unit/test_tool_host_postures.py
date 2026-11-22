@@ -5,14 +5,14 @@ import json
 import tomllib
 
 import pytest
-from agent_memory.core import manage_toolkit, toolkit
-from agent_memory.executor import hosts
+from mnemobun.core import manage_toolkit, toolkit
+from mnemobun.executor import hosts
 
 TOOLS = (toolkit.TOOL_RECALL, toolkit.TOOL_READ, toolkit.TOOL_SUBMIT)
 SERVER = hosts.ToolServer(
     name="memory",
     command="/venv/bin/python",
-    args=("-m", "agent_memory.mcp.write_session", "/tmp/batch"),
+    args=("-m", "mnemobun.mcp.write_session", "/tmp/batch"),
     tools=TOOLS,
 )
 SYSTEM = "You are filling in a long-term memory store."
@@ -173,7 +173,7 @@ def test_hermes_selects_a_distinct_manage_server(tmp_path):
     server = dataclasses.replace(
         SERVER,
         name="memory_review",
-        args=("-m", "agent_memory.mcp.manage_session", "/tmp/review"),
+        args=("-m", "mnemobun.mcp.manage_session", "/tmp/review"),
         tools=("list_proposals", "read_evidence", "submit_verdicts"),
     )
     command = hosts.DIALECTS[hosts.HOST_HERMES].tool_command(

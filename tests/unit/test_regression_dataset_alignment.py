@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from agent_memory.harness import dataset
+from mnemobun.harness import dataset
 
 
 def test_dataset_session_arrays_must_align(tmp_path):

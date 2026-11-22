@@ -2,12 +2,12 @@
 
 import json
 
-from agent_memory.adapters import capture as capture_module
-from agent_memory.cli.main import main
-from agent_memory.core import triggers
-from agent_memory.core.config import OperationExecutorConfig
-from agent_memory.core.errors import ReasonerUnavailableError
-from agent_memory.core.watermark import Mark, Watermark
+from mnemobun.adapters import capture as capture_module
+from mnemobun.cli.main import main
+from mnemobun.core import triggers
+from mnemobun.core.config import OperationExecutorConfig
+from mnemobun.core.errors import ReasonerUnavailableError
+from mnemobun.core.watermark import Mark, Watermark
 
 LINES = [
     "user: we moved the deploy to Fridays",
@@ -71,7 +71,7 @@ def test_an_idle_session_becomes_due_after_the_configured_silence(store):
 
 def _stub_executor(monkeypatch, reply):
     monkeypatch.setattr(
-        "agent_memory.executor.distiller.distiller", lambda config: lambda prompt: reply
+        "mnemobun.executor.distiller.distiller", lambda config: lambda prompt: reply
     )
 
 
@@ -107,7 +107,7 @@ def test_cross_host_write_keeps_source_session_provenance(store, monkeypatch, ca
         selected.append(config)
         return lambda _prompt: _spec("deploy day", "Deploys happen on Fridays", "0")
 
-    monkeypatch.setattr("agent_memory.executor.distiller.distiller", chosen)
+    monkeypatch.setattr("mnemobun.executor.distiller.distiller", chosen)
 
     code = main(
         [
@@ -138,7 +138,7 @@ def test_a_reasoner_failure_is_reported_and_leaves_the_backlog_unsettled(
         raise ReasonerUnavailableError("host reasoner failed")
 
     monkeypatch.setattr(
-        "agent_memory.executor.distiller.distiller", lambda _config: unavailable
+        "mnemobun.executor.distiller.distiller", lambda _config: unavailable
     )
 
     code = main(

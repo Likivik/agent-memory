@@ -6,9 +6,9 @@ import pathlib
 import subprocess
 import sys
 
-from agent_memory.core.store import Store
+from mnemobun.core.store import Store
 
-ABSTRACT = "共享记忆用 agent-memory 存储"
+ABSTRACT = "共享记忆用 mnemobun 存储"
 BODY = "跨代理的中文正文"
 
 
@@ -25,7 +25,7 @@ def _run(command, store_root, stdin=b""):
 def test_text_recall_prints_non_ascii_memories(store):
     store.record(type="decision", name="zh-probe", abstract=ABSTRACT, body=BODY)
 
-    completed = _run([_entry("mem"), "recall", "agent-memory"], store.root)
+    completed = _run([_entry("mnemobun"), "recall", "mnemobun-store-name"], store.root)
 
     assert completed.returncode == 0, completed.stderr.decode("utf-8", "replace")
     assert ABSTRACT in completed.stdout.decode("utf-8")

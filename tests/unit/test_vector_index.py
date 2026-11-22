@@ -5,16 +5,16 @@ import sys
 import types
 
 import pytest
-from agent_memory.adapters import capture as capture_module
-from agent_memory.cli.main import main
-from agent_memory.core import sessions
-from agent_memory.core.config import Config
-from agent_memory.core.database import Database
-from agent_memory.core.embeddings import FastEmbedder
-from agent_memory.core.recall import Recall, fuse_candidates
-from agent_memory.core.search_index import Candidate
-from agent_memory.core.store import Store
-from agent_memory.core.vector_index import VectorIndex
+from mnemobun.adapters import capture as capture_module
+from mnemobun.cli.main import main
+from mnemobun.core import sessions
+from mnemobun.core.config import Config
+from mnemobun.core.database import Database
+from mnemobun.core.embeddings import FastEmbedder
+from mnemobun.core.recall import Recall, fuse_candidates
+from mnemobun.core.search_index import Candidate
+from mnemobun.core.store import Store
+from mnemobun.core.vector_index import VectorIndex
 
 
 class FakeEmbedder:
@@ -82,7 +82,7 @@ def test_disabled_store_never_constructs_or_calls_an_embedder(monkeypatch, tmp_p
     def forbidden(_model):
         raise AssertionError("embedding backend was instantiated")
 
-    monkeypatch.setattr("agent_memory.core.store.create_embedder", forbidden)
+    monkeypatch.setattr("mnemobun.core.store.create_embedder", forbidden)
     store = Store(tmp_path / "store", clock=clock)
     store.init()
     store.record(abstract="plain lexical memory", type="decision")
@@ -98,7 +98,7 @@ def test_enabled_store_explains_how_to_install_a_missing_backend(monkeypatch):
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", missing)
-    with pytest.raises(RuntimeError, match=r"enabled.*unavailable.*agent-memory-core\[vector\]"):
+    with pytest.raises(RuntimeError, match=r"enabled.*unavailable.*mnemobun-core\[vector\]"):
         FastEmbedder("fake/model")
 
 
@@ -312,7 +312,7 @@ def test_distilled_raw_bindings_survive_read_and_rebuild_with_either_index(
         assert enabled, "disabled index constructed an embedding backend"
         return embedder
 
-    monkeypatch.setattr("agent_memory.core.store.create_embedder", backend)
+    monkeypatch.setattr("mnemobun.core.store.create_embedder", backend)
     config = Config.default()
     config.index.vector_enabled = enabled
     config.index.vector_model = "fake/v1"
@@ -331,7 +331,7 @@ def test_distilled_raw_bindings_survive_read_and_rebuild_with_either_index(
         "provenance": ["1"],
     })
     monkeypatch.setattr(
-        "agent_memory.executor.distiller.distiller", lambda config: lambda prompt: reply
+        "mnemobun.executor.distiller.distiller", lambda config: lambda prompt: reply
     )
     assert main(["--store", str(store.root), "--json", "distill", "--session", "service"]) == 0
     report = json.loads(capsys.readouterr().out)

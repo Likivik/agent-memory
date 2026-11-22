@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -10,160 +10,13 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "agent-memory-adapters",
-    "agent-memory-cli",
-    "agent-memory-core",
-    "agent-memory-executor",
-    "agent-memory-harness",
-    "agent-memory-mcp",
-    "agent-memory-workspace",
-]
-
-[[package]]
-name = "agent-memory-adapters"
-version = "0.1.0"
-source = { editable = "packages/adapters" }
-dependencies = [
-    { name = "agent-memory-core" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "agent-memory-core", editable = "packages/core" }]
-
-[[package]]
-name = "agent-memory-cli"
-version = "0.1.0"
-source = { editable = "packages/cli" }
-dependencies = [
-    { name = "agent-memory-adapters" },
-    { name = "agent-memory-core" },
-    { name = "agent-memory-executor" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "agent-memory-adapters", editable = "packages/adapters" },
-    { name = "agent-memory-core", editable = "packages/core" },
-    { name = "agent-memory-executor", editable = "packages/executor" },
-]
-
-[[package]]
-name = "agent-memory-core"
-version = "0.1.0"
-source = { editable = "packages/core" }
-
-[package.optional-dependencies]
-cjk = [
-    { name = "jieba" },
-]
-vector = [
-    { name = "fastembed" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fastembed", marker = "extra == 'vector'", specifier = ">=0.7,<1" },
-    { name = "jieba", marker = "extra == 'cjk'", specifier = ">=0.42" },
-]
-provides-extras = ["vector", "cjk"]
-
-[[package]]
-name = "agent-memory-executor"
-version = "0.1.0"
-source = { editable = "packages/executor" }
-dependencies = [
-    { name = "agent-memory-core" },
-    { name = "agent-memory-mcp" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "agent-memory-core", editable = "packages/core" },
-    { name = "agent-memory-mcp", editable = "packages/mcp" },
-]
-
-[[package]]
-name = "agent-memory-harness"
-version = "0.1.0"
-source = { editable = "packages/harness" }
-dependencies = [
-    { name = "agent-memory-cli" },
-    { name = "agent-memory-core" },
-    { name = "agent-memory-executor" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "agent-memory-cli", editable = "packages/cli" },
-    { name = "agent-memory-core", editable = "packages/core" },
-    { name = "agent-memory-executor", editable = "packages/executor" },
-]
-
-[[package]]
-name = "agent-memory-mcp"
-version = "0.1.0"
-source = { editable = "packages/mcp" }
-dependencies = [
-    { name = "agent-memory-core" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "agent-memory-core", editable = "packages/core" }]
-
-[[package]]
-name = "agent-memory-workspace"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "agent-memory-adapters" },
-    { name = "agent-memory-cli" },
-    { name = "agent-memory-core" },
-]
-
-[package.optional-dependencies]
-cjk = [
-    { name = "agent-memory-core", extra = ["cjk"] },
-]
-executor = [
-    { name = "agent-memory-executor" },
-]
-harness = [
-    { name = "agent-memory-harness" },
-]
-mcp = [
-    { name = "agent-memory-mcp" },
-]
-vector = [
-    { name = "agent-memory-core", extra = ["vector"] },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "agent-memory-adapters", editable = "packages/adapters" },
-    { name = "agent-memory-cli", editable = "packages/cli" },
-    { name = "agent-memory-core", editable = "packages/core" },
-    { name = "agent-memory-core", extras = ["cjk"], marker = "extra == 'cjk'", editable = "packages/core" },
-    { name = "agent-memory-core", extras = ["vector"], marker = "extra == 'vector'", editable = "packages/core" },
-    { name = "agent-memory-executor", marker = "extra == 'executor'", editable = "packages/executor" },
-    { name = "agent-memory-harness", marker = "extra == 'harness'", editable = "packages/harness" },
-    { name = "agent-memory-mcp", marker = "extra == 'mcp'", editable = "packages/mcp" },
-]
-provides-extras = ["mcp", "executor", "harness", "vector", "cjk"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = ">=1.11" },
-    { name = "pytest", specifier = ">=8.0" },
-    { name = "pytest-cov", specifier = ">=5.0" },
-    { name = "ruff", specifier = ">=0.6" },
+    "mnemobun-adapters",
+    "mnemobun-cli",
+    "mnemobun-core",
+    "mnemobun-executor",
+    "mnemobun-harness",
+    "mnemobun-mcp",
+    "mnemobun-workspace",
 ]
 
 [[package]]
@@ -883,6 +736,153 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/f5/be/57df5ff90b968bcce8d173df2a69f668702d0940f0d66696f259f904a373/mmh3-5.3.0-cp315-cp315t-win32.whl", hash = "sha256:9e03132ea81849b5732122d3d2f39e46a327a461eb3d678f1e74747c9b7ef154", size = 41667, upload-time = "2026-08-26T04:58:16.579Z" },
     { url = "https://files.pythonhosted.org/packages/03/73/5f5d7a5c0bad6ae5568e3232d8b7bcee9639da0de45f8e664342f22bf682/mmh3-5.3.0-cp315-cp315t-win_amd64.whl", hash = "sha256:1617be1ce93f97513bbf23cafa28a6ab1d20b0928de760054a4c603a89bdab7c", size = 43152, upload-time = "2026-08-26T04:58:17.706Z" },
     { url = "https://files.pythonhosted.org/packages/a2/0a/033fef3d7a486aa369ec11cdf0455bbae6640df13491f6e7d35fd90aa000/mmh3-5.3.0-cp315-cp315t-win_arm64.whl", hash = "sha256:a8389010a2721e568fbe40ba94e7d8f931beabd59b95af2b2ab8238fd40a6b3e", size = 40275, upload-time = "2026-08-26T04:58:18.883Z" },
+]
+
+[[package]]
+name = "mnemobun-adapters"
+version = "0.2.0"
+source = { editable = "packages/adapters" }
+dependencies = [
+    { name = "mnemobun-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "mnemobun-core", editable = "packages/core" }]
+
+[[package]]
+name = "mnemobun-cli"
+version = "0.2.0"
+source = { editable = "packages/cli" }
+dependencies = [
+    { name = "mnemobun-adapters" },
+    { name = "mnemobun-core" },
+    { name = "mnemobun-executor" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mnemobun-adapters", editable = "packages/adapters" },
+    { name = "mnemobun-core", editable = "packages/core" },
+    { name = "mnemobun-executor", editable = "packages/executor" },
+]
+
+[[package]]
+name = "mnemobun-core"
+version = "0.2.0"
+source = { editable = "packages/core" }
+
+[package.optional-dependencies]
+cjk = [
+    { name = "jieba" },
+]
+vector = [
+    { name = "fastembed" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastembed", marker = "extra == 'vector'", specifier = ">=0.7,<1" },
+    { name = "jieba", marker = "extra == 'cjk'", specifier = ">=0.42" },
+]
+provides-extras = ["vector", "cjk"]
+
+[[package]]
+name = "mnemobun-executor"
+version = "0.2.0"
+source = { editable = "packages/executor" }
+dependencies = [
+    { name = "mnemobun-core" },
+    { name = "mnemobun-mcp" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mnemobun-core", editable = "packages/core" },
+    { name = "mnemobun-mcp", editable = "packages/mcp" },
+]
+
+[[package]]
+name = "mnemobun-harness"
+version = "0.2.0"
+source = { editable = "packages/harness" }
+dependencies = [
+    { name = "mnemobun-cli" },
+    { name = "mnemobun-core" },
+    { name = "mnemobun-executor" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mnemobun-cli", editable = "packages/cli" },
+    { name = "mnemobun-core", editable = "packages/core" },
+    { name = "mnemobun-executor", editable = "packages/executor" },
+]
+
+[[package]]
+name = "mnemobun-mcp"
+version = "0.2.0"
+source = { editable = "packages/mcp" }
+dependencies = [
+    { name = "mnemobun-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "mnemobun-core", editable = "packages/core" }]
+
+[[package]]
+name = "mnemobun-workspace"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "mnemobun-adapters" },
+    { name = "mnemobun-cli" },
+    { name = "mnemobun-core" },
+]
+
+[package.optional-dependencies]
+cjk = [
+    { name = "mnemobun-core", extra = ["cjk"] },
+]
+executor = [
+    { name = "mnemobun-executor" },
+]
+harness = [
+    { name = "mnemobun-harness" },
+]
+mcp = [
+    { name = "mnemobun-mcp" },
+]
+vector = [
+    { name = "mnemobun-core", extra = ["vector"] },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mnemobun-adapters", editable = "packages/adapters" },
+    { name = "mnemobun-cli", editable = "packages/cli" },
+    { name = "mnemobun-core", editable = "packages/core" },
+    { name = "mnemobun-core", extras = ["cjk"], marker = "extra == 'cjk'", editable = "packages/core" },
+    { name = "mnemobun-core", extras = ["vector"], marker = "extra == 'vector'", editable = "packages/core" },
+    { name = "mnemobun-executor", marker = "extra == 'executor'", editable = "packages/executor" },
+    { name = "mnemobun-harness", marker = "extra == 'harness'", editable = "packages/harness" },
+    { name = "mnemobun-mcp", marker = "extra == 'mcp'", editable = "packages/mcp" },
+]
+provides-extras = ["mcp", "executor", "harness", "vector", "cjk"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.11" },
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "pytest-cov", specifier = ">=5.0" },
+    { name = "ruff", specifier = ">=0.6" },
 ]
 
 [[package]]

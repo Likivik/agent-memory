@@ -2,7 +2,7 @@
 
 import json
 
-from agent_memory.core import reconcile, sessions, toolkit
+from mnemobun.core import reconcile, sessions, toolkit
 
 LINES = [
     "user: Our queue timeout is 30 seconds now, we raised it from 20 last Tuesday.",

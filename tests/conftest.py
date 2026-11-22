@@ -3,9 +3,9 @@ import os
 import sys
 
 import pytest
-from agent_memory.core.clock import FrozenClock
-from agent_memory.core.config import Config
-from agent_memory.core.store import Store
+from mnemobun.core.clock import FrozenClock
+from mnemobun.core.config import Config
+from mnemobun.core.store import Store
 
 EPOCH = dt.datetime(2026, 1, 15, 9, 0, tzinfo=dt.UTC)
 WINDOWS_SYMLINK_PRIVILEGE_NOT_HELD = 1314
@@ -60,7 +60,7 @@ def seeded(store):
         name="staging-deploy-e4021",
     )
     store.record(
-        abstract="agent-memory keeps markdown files as the single source of truth",
+        abstract="mnemobun keeps markdown files as the single source of truth",
         type="decision",
         body="Indexes are rebuildable caches; rm -rf .index loses zero knowledge.",
         name="file-truth-invariant",

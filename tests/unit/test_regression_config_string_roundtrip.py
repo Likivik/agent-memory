@@ -1,4 +1,4 @@
-from agent_memory.core.config import Config
+from mnemobun.core.config import Config
 
 
 def test_config_strings_and_field_keys_roundtrip(tmp_path):

@@ -7,9 +7,9 @@ import pathlib
 import subprocess
 
 import pytest
-from agent_memory.core.errors import ReasonerUnavailableError
-from agent_memory.executor.hosts import HostResult
-from agent_memory.executor.reasoners import EndpointReasoner, HostReasoner
+from mnemobun.core.errors import ReasonerUnavailableError
+from mnemobun.executor.hosts import HostResult
+from mnemobun.executor.reasoners import EndpointReasoner, HostReasoner
 
 
 class FakeHost:
@@ -101,8 +101,8 @@ def test_an_endpoint_that_refuses_the_connection_is_reported_without_the_key(mon
 
 
 def test_a_host_reasoner_is_named_by_dialect_and_runs_that_dialect_s_binary():
-    from agent_memory.executor.hosts import BINARIES, HOST_CLAUDE_CODE
-    from agent_memory.executor.reasoners import HostReasoner
+    from mnemobun.executor.hosts import BINARIES, HOST_CLAUDE_CODE
+    from mnemobun.executor.reasoners import HostReasoner
 
     reasoner = HostReasoner.for_host(HOST_CLAUDE_CODE)
     assert reasoner.host.spec.binary == BINARIES[HOST_CLAUDE_CODE][0]
@@ -116,7 +116,7 @@ def test_an_unknown_host_reasoner_fails_closed_instead_of_using_another_dialect(
 
 
 def test_codex_jsonl_usage_is_retained_for_native_review_metrics(tmp_path, monkeypatch):
-    from agent_memory.executor import hosts
+    from mnemobun.executor import hosts
 
     def run(command, **kwargs):
         pathlib.Path(command[command.index("--output-last-message") + 1]).write_text("done")
@@ -144,7 +144,7 @@ def test_codex_jsonl_usage_is_retained_for_native_review_metrics(tmp_path, monke
 
 
 def test_claude_structured_result_supplies_the_answer_and_review_usage(monkeypatch):
-    from agent_memory.executor import hosts
+    from mnemobun.executor import hosts
 
     reported = {
         "input_tokens": 40,
@@ -185,7 +185,7 @@ def test_claude_structured_result_supplies_the_answer_and_review_usage(monkeypat
 
 
 def test_claude_plain_output_keeps_its_text_and_reports_no_usage(monkeypatch):
-    from agent_memory.executor import hosts
+    from mnemobun.executor import hosts
 
     def run(command, **kwargs):
         return subprocess.CompletedProcess(command, 0, "  a plain answer  ", "")
@@ -200,7 +200,7 @@ def test_claude_plain_output_keeps_its_text_and_reports_no_usage(monkeypatch):
 
 
 def test_codex_jsonl_trace_separates_startup_model_mcp_and_shutdown():
-    from agent_memory.executor.hosts import _CodexTrace
+    from mnemobun.executor.hosts import _CodexTrace
 
     trace = _CodexTrace(started=10.0)
     trace.observe(json.dumps({"type": "thread.started"}), 11.0)
@@ -235,7 +235,7 @@ def test_codex_jsonl_trace_separates_startup_model_mcp_and_shutdown():
 
 
 def test_a_host_reasoner_marks_its_session_as_the_executor_so_hooks_stand_down():
-    from agent_memory.core.config import EXECUTOR_ENV_VAR
+    from mnemobun.core.config import EXECUTOR_ENV_VAR
 
     host = FakeHost(HostResult(text="ok", ok=True, seconds=0.1))
     HostReasoner(host=host)("review this")
@@ -243,8 +243,8 @@ def test_a_host_reasoner_marks_its_session_as_the_executor_so_hooks_stand_down()
 
 
 def test_the_default_executor_reasons_through_the_host_cli():
-    from agent_memory.core.config import ExecutorConfig
-    from agent_memory.executor import distiller
+    from mnemobun.core.config import ExecutorConfig
+    from mnemobun.executor import distiller
 
     assert isinstance(distiller.distiller(ExecutorConfig()), HostReasoner)
     chosen = distiller.distiller(ExecutorConfig(host="codex"))
@@ -252,10 +252,10 @@ def test_the_default_executor_reasons_through_the_host_cli():
 
 
 def test_hosts_with_a_default_mcp_posture_negotiate_with_tools_and_the_rest_keep_text():
-    from agent_memory.core.config import ExecutorConfig
-    from agent_memory.core.reasoning import ToolReasoner
-    from agent_memory.executor import distiller
-    from agent_memory.executor.hosts import BINARIES, DIALECTS
+    from mnemobun.core.config import ExecutorConfig
+    from mnemobun.core.reasoning import ToolReasoner
+    from mnemobun.executor import distiller
+    from mnemobun.executor.hosts import BINARIES, DIALECTS
 
     for name in BINARIES:
         chosen = distiller.distiller(ExecutorConfig(host=name))
@@ -266,9 +266,9 @@ def test_hosts_with_a_default_mcp_posture_negotiate_with_tools_and_the_rest_keep
 
 @pytest.mark.parametrize("name", ["hermes", "muse-code"])
 def test_additional_native_write_tools_are_automatic_and_text_can_be_forced(name):
-    from agent_memory.core.config import TOOL_MODE_TEXT, ExecutorConfig
-    from agent_memory.core.reasoning import ToolReasoner
-    from agent_memory.executor import distiller
+    from mnemobun.core.config import TOOL_MODE_TEXT, ExecutorConfig
+    from mnemobun.core.reasoning import ToolReasoner
+    from mnemobun.executor import distiller
 
     native = distiller.distiller(ExecutorConfig(host=name))
     text = distiller.distiller(ExecutorConfig(host=name, tool_mode=TOOL_MODE_TEXT))
@@ -278,18 +278,18 @@ def test_additional_native_write_tools_are_automatic_and_text_can_be_forced(name
 
 
 def test_native_write_tools_fail_closed_for_an_unknown_host():
-    from agent_memory.core.config import TOOL_MODE_NATIVE, ExecutorConfig
-    from agent_memory.core.errors import ReasonerUnavailableError
-    from agent_memory.executor import distiller
+    from mnemobun.core.config import TOOL_MODE_NATIVE, ExecutorConfig
+    from mnemobun.core.errors import ReasonerUnavailableError
+    from mnemobun.executor import distiller
 
     with pytest.raises(ReasonerUnavailableError, match="does not support native Write tools"):
         distiller.distiller(ExecutorConfig(host="unknown", tool_mode=TOOL_MODE_NATIVE))
 
 
 def test_hermes_openrouter_does_not_construct_vertex_credentials():
-    from agent_memory.core.config import ExecutorConfig
-    from agent_memory.executor import distiller
-    from agent_memory.executor.hosts import HERMES_DATA_TRAINING_REQUIREMENT
+    from mnemobun.core.config import ExecutorConfig
+    from mnemobun.executor import distiller
+    from mnemobun.executor.hosts import HERMES_DATA_TRAINING_REQUIREMENT
 
     with pytest.raises(ReasonerUnavailableError, match=HERMES_DATA_TRAINING_REQUIREMENT):
         distiller.distiller(
@@ -314,25 +314,25 @@ def test_hermes_openrouter_does_not_construct_vertex_credentials():
 
 
 def test_an_unknown_write_tool_mode_is_not_silently_downgraded():
-    from agent_memory.core.config import ExecutorConfig
-    from agent_memory.core.errors import ReasonerUnavailableError
-    from agent_memory.executor import distiller
+    from mnemobun.core.config import ExecutorConfig
+    from mnemobun.core.errors import ReasonerUnavailableError
+    from mnemobun.executor import distiller
 
     with pytest.raises(ReasonerUnavailableError, match="unsupported Write tool mode"):
         distiller.distiller(ExecutorConfig(host="muse-code", tool_mode="guess"))
 
 
 def test_an_executor_configured_for_an_endpoint_uses_it():
-    from agent_memory.core.config import ExecutorConfig
-    from agent_memory.executor import distiller
+    from mnemobun.core.config import ExecutorConfig
+    from mnemobun.executor import distiller
 
     configured = ExecutorConfig(reasoner="endpoint", project="user-project")
     assert isinstance(distiller.distiller(configured), EndpointReasoner)
 
 
 def test_an_explicit_openai_endpoint_does_not_require_a_google_cloud_project(monkeypatch):
-    from agent_memory.core.config import ExecutorConfig
-    from agent_memory.executor import distiller
+    from mnemobun.core.config import ExecutorConfig
+    from mnemobun.executor import distiller
 
     monkeypatch.setenv("GEMINI_API_KEY", "user-key")
     chosen = distiller.distiller(
@@ -343,7 +343,7 @@ def test_an_explicit_openai_endpoint_does_not_require_a_google_cloud_project(mon
 
 
 def test_an_explicit_vertex_project_does_not_borrow_an_unrelated_api_key(monkeypatch):
-    from agent_memory.executor.credentials import VertexCredentials
+    from mnemobun.executor.credentials import VertexCredentials
 
     class UserVertex(VertexCredentials):
         def _mint(self):

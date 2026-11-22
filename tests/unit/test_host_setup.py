@@ -8,11 +8,11 @@ import shlex
 import subprocess
 
 import pytest
-from agent_memory.adapters import doctor, host_setup, moments, openrouter, setup
-from agent_memory.core import prompts
-from agent_memory.core.config import OperationExecutorConfig
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.store import Store
+from mnemobun.adapters import doctor, host_setup, moments, openrouter, setup
+from mnemobun.core import prompts
+from mnemobun.core.config import OperationExecutorConfig
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.store import Store
 
 HOSTS = (moments.HOST_CLAUDE_CODE, moments.HOST_CODEX, moments.HOST_MUSE_CODE)
 LIVE_REASONER_CHECK = doctor._live_reasoner_check
@@ -199,7 +199,7 @@ def test_muse_openrouter_routing_and_mcp_merge_without_replacing_other_config(tm
     }
     assert configured["mcp_servers"]["other"] == {"command": "other"}
     assert str(store.resolve()) in json.dumps(
-        configured["mcp_servers"]["agent-memory"], ensure_ascii=False
+        configured["mcp_servers"]["mnemobun"], ensure_ascii=False
     ).replace("\\\\", "\\")
 
 
@@ -450,7 +450,7 @@ def test_doctor_attributes_independent_reasoner_availability_to_each_channel(
         reasoner="endpoint", endpoint="https://manage.example/v1"
     )
     monkeypatch.setattr(
-        "agent_memory.executor.hosts.shutil.which",
+        "mnemobun.executor.hosts.shutil.which",
         lambda binary: f"/usr/bin/{binary}" if binary == "muse" else None,
     )
 
@@ -486,7 +486,7 @@ def test_live_preflight_uses_the_resolved_host_for_each_channel(store, monkeypat
             return "AGENT_MEMORY_READY"
 
     monkeypatch.setattr(
-        "agent_memory.executor.distiller.distiller", lambda configured: Ready(configured)
+        "mnemobun.executor.distiller.distiller", lambda configured: Ready(configured)
     )
 
     write = LIVE_REASONER_CHECK(store, moments.HOST_CODEX, "write")

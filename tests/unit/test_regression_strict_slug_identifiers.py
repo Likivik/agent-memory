@@ -1,5 +1,5 @@
 import pytest
-from agent_memory.core.errors import ValidationError
+from mnemobun.core.errors import ValidationError
 
 
 @pytest.mark.parametrize("field", ["name", "type"])

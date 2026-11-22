@@ -1,4 +1,4 @@
-from agent_memory.core import sessions
+from mnemobun.core import sessions
 
 
 def test_host_indices_cannot_redirect_archived_provenance(store):

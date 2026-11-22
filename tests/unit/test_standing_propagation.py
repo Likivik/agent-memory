@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import pytest
-from agent_memory.core import standing
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.record import (
+from mnemobun.core import standing
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.record import (
     STANDING_ACCEPTED,
     STANDING_CONTESTED,
     STANDING_PROPOSED,

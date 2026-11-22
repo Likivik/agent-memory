@@ -6,16 +6,16 @@ import pathlib
 import sys
 
 import pytest
-from agent_memory.cli.main import main
-from agent_memory.core import sessions
-from agent_memory.core.config import OperationExecutorConfig
-from agent_memory.core.errors import ReasonerUnavailableError, ValidationError
-from agent_memory.core.ledger import LEDGER_FILENAME
-from agent_memory.core.manage import Manage
-from agent_memory.core.manage_toolkit import TOOL_LIST, TOOL_READ, TOOL_SUBMIT
-from agent_memory.core.store import Store
-from agent_memory.executor import hosts
-from agent_memory.executor.reasoners import ToolHostReasoner
+from mnemobun.cli.main import main
+from mnemobun.core import sessions
+from mnemobun.core.config import OperationExecutorConfig
+from mnemobun.core.errors import ReasonerUnavailableError, ValidationError
+from mnemobun.core.ledger import LEDGER_FILENAME
+from mnemobun.core.manage import Manage
+from mnemobun.core.manage_toolkit import TOOL_LIST, TOOL_READ, TOOL_SUBMIT
+from mnemobun.core.store import Store
+from mnemobun.executor import hosts
+from mnemobun.executor.reasoners import ToolHostReasoner
 
 FAKE_CODEX = """#!{python}
 import json, os, subprocess, sys, tomllib

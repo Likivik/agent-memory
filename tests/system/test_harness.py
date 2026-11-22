@@ -6,14 +6,14 @@ import os
 import subprocess
 
 import pytest
-from agent_memory.core.config import Config
-from agent_memory.core.recall import Recall
-from agent_memory.core.store import Store
-from agent_memory.executor.hosts import Host, HostResult, HostSpec
-from agent_memory.harness import arms, dataset, framing, report, sampling, systems
-from agent_memory.harness.driver import Driver, IsolationBreach
-from agent_memory.harness.judge import Judge
-from agent_memory.harness.metrics import STATUS_FAILED, STATUS_OK, MetricsSink, RunRecord
+from mnemobun.core.config import Config
+from mnemobun.core.recall import Recall
+from mnemobun.core.store import Store
+from mnemobun.executor.hosts import Host, HostResult, HostSpec
+from mnemobun.harness import arms, dataset, framing, report, sampling, systems
+from mnemobun.harness.driver import Driver, IsolationBreach
+from mnemobun.harness.judge import Judge
+from mnemobun.harness.metrics import STATUS_FAILED, STATUS_OK, MetricsSink, RunRecord
 
 SECRET = "the drain window must exceed the lease TTL by ninety seconds"
 
@@ -96,7 +96,7 @@ class StubJudge(Judge):
         super().__init__(StubHost())
 
     def grade(self, question, expected, candidate):
-        from agent_memory.harness.judge import Verdict
+        from mnemobun.harness.judge import Verdict
 
         return Verdict(correct="lease TTL" in candidate, seconds=0.05, ok=True, raw="stub")
 
@@ -167,8 +167,8 @@ def test_the_control_arm_receives_no_index(tmp_path, suite):
 
 
 def test_injection_is_disabled_by_config_rather_than_by_code(tmp_path, suite):
-    from agent_memory.core.config import Config
-    from agent_memory.core.injection import payload
+    from mnemobun.core.config import Config
+    from mnemobun.core.injection import payload
 
     episodes = dataset.load(suite)
     _driver(tmp_path, StubHost(), episodes).run(episodes[0], arms.W1)
@@ -249,7 +249,7 @@ def test_the_cold_arm_archives_the_transcript_and_asks_the_library_executor_not_
 
 
 def _archived_messages(store):
-    from agent_memory.core import sessions
+    from mnemobun.core import sessions
 
     return [
         message
@@ -316,7 +316,7 @@ def test_trimming_keeps_the_evidence_sessions_first(tmp_path, suite):
 
 
 def test_regrading_rewrites_verdicts_without_touching_the_stores(tmp_path, suite):
-    from agent_memory.harness.judge import Verdict, regrade
+    from mnemobun.harness.judge import Verdict, regrade
 
     episodes = dataset.load(suite)
     driver = _driver(tmp_path, StubHost(), episodes)
@@ -340,7 +340,7 @@ def test_regrading_rewrites_verdicts_without_touching_the_stores(tmp_path, suite
 
 
 def test_a_failed_run_is_never_regraded_into_a_correct_one(tmp_path, suite):
-    from agent_memory.harness.judge import Verdict, regrade
+    from mnemobun.harness.judge import Verdict, regrade
 
     episodes = dataset.load(suite)
     driver = _driver(tmp_path, StubHost(fail_on="Question:"), episodes)
@@ -401,7 +401,7 @@ def test_reusing_a_store_that_was_never_written_is_an_error(tmp_path, suite):
 
 
 def test_an_arm_can_be_expressed_as_a_config_override(tmp_path):
-    from agent_memory.harness.main import _configured
+    from mnemobun.harness.main import _configured
 
     config = _configured(["recall.default_limit=5"])
     assert config.recall.default_limit == 5
@@ -438,7 +438,7 @@ def test_metrics_records_round_trip_through_the_sink(tmp_path):
 
 
 def test_a_write_path_inside_a_worktree_is_refused(tmp_path):
-    from agent_memory.harness.workspace import DisposableWorkspace, for_writing
+    from mnemobun.harness.workspace import DisposableWorkspace, for_writing
 
     inside = tmp_path / ".claude" / "worktrees" / "feat-x" / "experiments" / "runs" / "p1"
     with pytest.raises(DisposableWorkspace) as refusal:
@@ -447,7 +447,7 @@ def test_a_write_path_inside_a_worktree_is_refused(tmp_path):
 
 
 def test_a_write_path_in_the_main_tree_is_accepted_and_absolute(tmp_path):
-    from agent_memory.harness.workspace import for_writing
+    from mnemobun.harness.workspace import for_writing
 
     resolved = for_writing(tmp_path / "experiments" / "runs" / "p1")
 
@@ -456,7 +456,7 @@ def test_a_write_path_in_the_main_tree_is_accepted_and_absolute(tmp_path):
 
 
 def test_a_directory_merely_named_worktrees_is_not_a_worktree(tmp_path):
-    from agent_memory.harness.workspace import for_writing
+    from mnemobun.harness.workspace import for_writing
 
     assert for_writing(tmp_path / "worktrees" / "runs")
 
@@ -464,7 +464,7 @@ def test_a_directory_merely_named_worktrees_is_not_a_worktree(tmp_path):
 def test_every_writing_subcommand_guards_its_path():
     import inspect
 
-    from agent_memory.harness import main as main_module
+    from mnemobun.harness import main as main_module
 
     source = inspect.getsource(main_module)
     for handler in ("_run", "_regrade", "_interop", "_sleep_stores", "_prepare"):
@@ -473,7 +473,7 @@ def test_every_writing_subcommand_guards_its_path():
 
 
 def test_the_cli_refuses_a_worktree_target_without_a_traceback(tmp_path, capsys):
-    from agent_memory.harness.main import main
+    from mnemobun.harness.main import main
 
     code = main(
         [
@@ -620,7 +620,7 @@ def test_the_native_system_is_the_default(tmp_path, suite):
 
 
 def test_the_fixed_exam_refuses_a_system_it_cannot_build_context_for(tmp_path, suite, memcore_home):
-    from agent_memory.harness import exam as exam_module
+    from mnemobun.harness import exam as exam_module
 
     episodes = dataset.load(suite)
     with pytest.raises(ValueError, match="fixed"):
@@ -685,7 +685,7 @@ class LimitedHost(StubHost):
 
 
 def test_a_quota_failure_halts_the_matrix_instead_of_failing_every_episode(tmp_path, suite):
-    from agent_memory.harness.main import _execute
+    from mnemobun.harness.main import _execute
 
     episodes = dataset.load(suite)
     driver = _driver(tmp_path, LimitedHost(), episodes)
@@ -699,7 +699,7 @@ def test_a_quota_failure_halts_the_matrix_instead_of_failing_every_episode(tmp_p
 
 
 def test_an_ordinary_failure_does_not_halt_the_matrix(tmp_path, suite):
-    from agent_memory.harness.main import _execute
+    from mnemobun.harness.main import _execute
 
     episodes = dataset.load(suite)
     driver = _driver(tmp_path, StubHost(fail_on="Question:"), episodes)
@@ -711,7 +711,7 @@ def test_an_ordinary_failure_does_not_halt_the_matrix(tmp_path, suite):
 
 
 def test_resume_reruns_only_what_did_not_succeed(tmp_path, suite):
-    from agent_memory.harness.main import _resumable
+    from mnemobun.harness.main import _resumable
 
     episodes = dataset.load(suite)
     driver = _driver(tmp_path, StubHost(), episodes)
@@ -729,7 +729,7 @@ def test_resume_reruns_only_what_did_not_succeed(tmp_path, suite):
 
 
 def test_resume_refuses_a_workspace_from_another_episode_set_or_system(tmp_path, suite):
-    from agent_memory.harness.main import _resumable
+    from mnemobun.harness.main import _resumable
 
     episodes = dataset.load(suite)
     sink = MetricsSink(tmp_path / "ws")

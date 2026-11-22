@@ -4,15 +4,15 @@ import json
 import pathlib
 
 import pytest
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.manage import (
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.manage import (
     PROPOSAL_ABSTRACT_REVIEW,
     PROPOSAL_MERGE,
     PROPOSAL_SUPERSEDE,
     Manage,
     Proposal,
 )
-from agent_memory.core.manage_toolkit import (
+from mnemobun.core.manage_toolkit import (
     ARG_NAME,
     ARG_PROPOSAL,
     ARG_VERDICTS,
@@ -20,7 +20,7 @@ from agent_memory.core.manage_toolkit import (
     TOOL_READ,
     TOOL_SUBMIT,
 )
-from agent_memory.core.reasoning import (
+from mnemobun.core.reasoning import (
     ReviewLimits,
     ReviewRuntime,
     native_instructions,

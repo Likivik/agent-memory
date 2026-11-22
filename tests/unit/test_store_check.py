@@ -3,8 +3,8 @@
 import hashlib
 import pathlib
 
-from agent_memory.core import sessions
-from agent_memory.core.store import Store
+from mnemobun.core import sessions
+from mnemobun.core.store import Store
 
 
 def _fingerprint(root):

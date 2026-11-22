@@ -4,7 +4,7 @@ import threading
 import time
 
 import pytest
-from agent_memory.core import os_lock
+from mnemobun.core import os_lock
 
 
 @pytest.fixture

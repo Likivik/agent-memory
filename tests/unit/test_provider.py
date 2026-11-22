@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from agent_memory.adapters import moments
-from agent_memory.core import standing
-from agent_memory.core.record import STANDING_ACCEPTED, STANDING_PROPOSED
-from agent_memory.executor.hermes_provider import HermesMemoryProvider
-from agent_memory.mcp.tools import TOOL_STATS, dispatch
+from mnemobun.adapters import moments
+from mnemobun.core import standing
+from mnemobun.core.record import STANDING_ACCEPTED, STANDING_PROPOSED
+from mnemobun.executor.hermes_provider import HermesMemoryProvider
+from mnemobun.mcp.tools import TOOL_STATS, dispatch
 
 
 def _provider(store):

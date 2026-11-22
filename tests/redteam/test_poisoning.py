@@ -4,10 +4,10 @@ import json
 import re
 
 import pytest
-from agent_memory.adapters import hook_entry, moments
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.manage import Manage
-from agent_memory.core.recall import Recall
+from mnemobun.adapters import hook_entry, moments
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.manage import Manage
+from mnemobun.core.recall import Recall
 
 pytestmark = pytest.mark.redteam
 
@@ -119,7 +119,7 @@ def test_an_export_of_a_poisoned_store_stays_inert_json(seeded, tmp_path):
         body=PAYLOAD,
         name="poisoned-note",
     )
-    from agent_memory.core import portability
+    from mnemobun.core import portability
 
     payload = portability.export_store(seeded)
     assert json.loads(json.dumps(payload))[portability.KEY_VERSION] == portability.FORMAT_VERSION

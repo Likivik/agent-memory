@@ -6,9 +6,9 @@ context a configuration produces is a deterministic function of that configurati
 """
 
 import pytest
-from agent_memory.core.recall import Recall
-from agent_memory.harness import exam
-from agent_memory.harness.framing import fixed_exam
+from mnemobun.core.recall import Recall
+from mnemobun.harness import exam
+from mnemobun.harness.framing import fixed_exam
 
 
 @pytest.fixture
@@ -62,7 +62,7 @@ def test_an_empty_store_produces_a_context_that_says_so(store):
 
 
 def test_the_fixed_prompt_carries_the_context_and_the_question(stocked, seeded):
-    from agent_memory.harness import dataset
+    from mnemobun.harness import dataset
 
     episode = dataset.Episode(
         id="q1",
@@ -80,7 +80,7 @@ def test_the_fixed_prompt_carries_the_context_and_the_question(stocked, seeded):
 
 
 def test_the_isolation_gate_sees_the_shell_and_the_store_fills_it_afterwards(stocked):
-    from agent_memory.harness import dataset
+    from mnemobun.harness import dataset
 
     episode = dataset.Episode(
         id="q1",

@@ -3,10 +3,10 @@
 import json
 
 import pytest
-from agent_memory.core.config import Config
-from agent_memory.core.store import Store
-from agent_memory.harness import coverage, systems
-from agent_memory.harness.metrics import STATUS_OK, MetricsSink, RunRecord
+from mnemobun.core.config import Config
+from mnemobun.core.store import Store
+from mnemobun.harness import coverage, systems
+from mnemobun.harness.metrics import STATUS_OK, MetricsSink, RunRecord
 
 GOLD = "a snake plant from her sister in March"
 

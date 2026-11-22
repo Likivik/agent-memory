@@ -1,7 +1,7 @@
 import pytest
-from agent_memory.cli.main import main
-from agent_memory.core.errors import NotFoundError, ValidationError
-from agent_memory.mcp.tools import dispatch
+from mnemobun.cli.main import main
+from mnemobun.core.errors import NotFoundError, ValidationError
+from mnemobun.mcp.tools import dispatch
 
 
 def test_cli_and_mcp_share_relationship_boundaries(store, capsys):

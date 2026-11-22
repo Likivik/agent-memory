@@ -6,13 +6,13 @@ import pathlib
 import sys
 
 import pytest
-from agent_memory.core import distill, sessions, toolkit
-from agent_memory.core.config import ExecutorConfig
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.watermark import Watermark
-from agent_memory.executor import distiller as executor_distiller
-from agent_memory.executor import hosts
-from agent_memory.executor.reasoners import ToolHostReasoner
+from mnemobun.core import distill, sessions, toolkit
+from mnemobun.core.config import ExecutorConfig
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.watermark import Watermark
+from mnemobun.executor import distiller as executor_distiller
+from mnemobun.executor import hosts
+from mnemobun.executor.reasoners import ToolHostReasoner
 
 FAKE_HOST = """#!{python}
 import json, os, subprocess, sys, tomllib

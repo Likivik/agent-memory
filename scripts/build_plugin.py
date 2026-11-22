@@ -1,8 +1,8 @@
 """Build the self-contained Hermes plugin directory (P10 HP1).
 
-Usage: uv run python scripts/build_plugin.py [--out ~/.hermes/plugins/agent-memory]
+Usage: uv run python scripts/build_plugin.py [--out ~/.hermes/plugins/mnemobun]
 
-Copies the vendored `agent_memory` package payloads into hermes-plugin/lib/
+Copies the vendored `mnemobun` package payloads into hermes-plugin/lib/
 and (with --out) installs plugin.yaml + __init__.py + lib/ to the target dir.
 """
 
@@ -15,10 +15,10 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 PLUGIN_SRC = REPO / "hermes-plugin"
 PACKAGES = [
-    REPO / "packages" / "core" / "src" / "agent_memory",
-    REPO / "packages" / "adapters" / "src" / "agent_memory",
-    REPO / "packages" / "executor" / "src" / "agent_memory",
-    REPO / "packages" / "mcp" / "src" / "agent_memory",
+    REPO / "packages" / "core" / "src" / "mnemobun",
+    REPO / "packages" / "adapters" / "src" / "mnemobun",
+    REPO / "packages" / "executor" / "src" / "mnemobun",
+    REPO / "packages" / "mcp" / "src" / "mnemobun",
 ]
 
 
@@ -29,14 +29,14 @@ def build_lib(lib_dir: Path) -> int:
     for src in PACKAGES:
         if not src.is_dir():
             raise SystemExit(f"missing package payload: {src}")
-        shutil.copytree(src, lib_dir / "agent_memory", dirs_exist_ok=True)
+        shutil.copytree(src, lib_dir / "mnemobun", dirs_exist_ok=True)
     return sum(1 for _ in lib_dir.rglob("*.py"))
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--out", default=None, help="install target (e.g. ~/.hermes/plugins/agent-memory)"
+        "--out", default=None, help="install target (e.g. ~/.hermes/plugins/mnemobun)"
     )
     args = parser.parse_args()
 

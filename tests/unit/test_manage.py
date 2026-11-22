@@ -4,9 +4,9 @@ import shutil
 import subprocess
 
 import pytest
-from agent_memory.core import schema
-from agent_memory.core.errors import NotFoundError
-from agent_memory.core.manage import (
+from mnemobun.core import schema
+from mnemobun.core.errors import NotFoundError
+from mnemobun.core.manage import (
     ACTION_CLUSTERED,
     ACTION_DUPLICATE_MERGED,
     ACTION_GROUP_MERGED,
@@ -18,7 +18,7 @@ from agent_memory.core.manage import (
     PROPOSAL_SUPERSEDE,
     Manage,
 )
-from agent_memory.core.recall import Recall
+from mnemobun.core.recall import Recall
 
 
 def _kinds(report):

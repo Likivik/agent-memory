@@ -1,6 +1,6 @@
 import pytest
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.search_index import SearchIndex
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.search_index import SearchIndex
 
 
 def memory(store, name="old-memory", **kwargs):
@@ -89,7 +89,7 @@ def test_all_link_write_paths_validate_before_persisting(store, operation, targe
 
 
 def test_missing_successor_does_not_change_source(store):
-    from agent_memory.core.errors import NotFoundError
+    from mnemobun.core.errors import NotFoundError
 
     source = memory(store, "source")
     before = source.path.read_bytes()

@@ -3,7 +3,7 @@
 import json
 import pathlib
 
-from agent_memory.adapters import doctor
+from mnemobun.adapters import doctor
 
 
 def _write(path: pathlib.Path, payload: dict) -> None:
@@ -16,11 +16,11 @@ def test_a_server_beside_the_settings_is_found(tmp_path):
     _write(settings, {"hooks": {}})
     _write(
         tmp_path / "mcp.json",
-        {"mcpServers": {"agent-memory": {"command": "/opt/mem-mcp"}}},
+        {"mcpServers": {"mnemobun": {"command": "/opt/mem-mcp"}}},
     )
     servers = doctor._mcp_servers(settings, "mcpServers")
     assert servers is not None
-    assert "agent-memory" in servers
+    assert "mnemobun" in servers
 
 
 def test_the_home_file_is_still_found(tmp_path):
@@ -28,11 +28,11 @@ def test_the_home_file_is_still_found(tmp_path):
     _write(settings, {"hooks": {}})
     _write(
         tmp_path / ".claude.json",
-        {"mcpServers": {"agent-memory": {"command": "/opt/mem-mcp"}}},
+        {"mcpServers": {"mnemobun": {"command": "/opt/mem-mcp"}}},
     )
     servers = doctor._mcp_servers(settings, "mcpServers")
     assert servers is not None
-    assert "agent-memory" in servers
+    assert "mnemobun" in servers
 
 
 def test_no_configuration_anywhere_is_not_a_crash(tmp_path):
@@ -47,9 +47,9 @@ def test_a_non_ascii_path_still_matches():
     The server entry is compared as text, so it has to be rendered the way it
     was written rather than with non-ASCII characters escaped.
     """
-    server = {"command": "/Users/工作/ai-agent-memory/repo/.venv/bin/mem-mcp"}
+    server = {"command": "/Users/工作/ai-mnemobun/repo/.venv/bin/mem-mcp"}
     rendered = json.dumps(server, ensure_ascii=False)
-    assert "/Users/工作/ai-agent-memory/repo/.venv/bin/mem-mcp" in rendered
+    assert "/Users/工作/ai-mnemobun/repo/.venv/bin/mem-mcp" in rendered
 
 
 def test_the_probe_token_is_read_through_stray_characters():
@@ -74,7 +74,7 @@ def test_an_empty_queue_is_healthy(store):
 
 
 def test_dead_failed_and_lease_expired_jobs_are_reported(store):
-    from agent_memory.core import write_jobs
+    from mnemobun.core import write_jobs
 
     queue = write_jobs.WriteJobs(store)
     for number in range(4):
@@ -94,7 +94,7 @@ def test_dead_failed_and_lease_expired_jobs_are_reported(store):
 
 
 def test_a_healthy_queue_reports_only_counts(store):
-    from agent_memory.core import write_jobs
+    from mnemobun.core import write_jobs
 
     queue = write_jobs.WriteJobs(store)
     queue.enqueue("session-0", "codex")
@@ -108,7 +108,7 @@ def test_a_healthy_queue_reports_only_counts(store):
 
 
 def test_quarantined_job_files_are_reported_as_degraded(store):
-    from agent_memory.core import write_jobs
+    from mnemobun.core import write_jobs
 
     queue = write_jobs.WriteJobs(store)
     job = queue.enqueue("boundary", "codex")

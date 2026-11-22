@@ -2,8 +2,8 @@
 
 import json
 
-from agent_memory.harness import dataset, locomo
-from agent_memory.harness.main import main as exp_main
+from mnemobun.harness import dataset, locomo
+from mnemobun.harness.main import main as exp_main
 
 SAMPLE = {
     "sample_id": "conv-26",

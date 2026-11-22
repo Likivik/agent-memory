@@ -6,8 +6,8 @@ import json
 import pathlib
 
 import pytest
-from agent_memory.core import reconcile, sessions, toolkit
-from agent_memory.mcp import write_session
+from mnemobun.core import reconcile, sessions, toolkit
+from mnemobun.mcp import write_session
 
 pytestmark = pytest.mark.redteam
 

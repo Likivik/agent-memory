@@ -1,6 +1,6 @@
 # Plan: bring this fork up to par with our memory research (v1)
 
-Fork: `Likivik/agent-memory` (upstream `tigerless-labs/agent-memory`, main @ PR #129).
+Fork: `Likivik/mnemobun` (upstream `tigerless-labs/mnemobun`, main @ PR #129).
 Research base: Trilium *Agent Memory Architecture — research note* (+ §10 addendum), *Hermes Agent
 Memory — Design v1.0/1.1*, and the five source reviews (tigerless, Mnemosyne, memharness, lemmalog,
 Kyros) in the same folder.
@@ -28,7 +28,7 @@ Upstream state model today: one validity interval per file — `active`/`invalid
 `invalid_at` + `superseded_by` (`core/record.py`: "the interval is the sole stored state"). No proposed /
 contested / retracted lifecycle, no support propagation.
 
-New module `packages/core/src/agent_memory/core/standing.py`:
+New module `packages/core/src/mnemobun/core/standing.py`:
 
 - Five states: `proposed | accepted | contested | retracted | superseded` (lemmalog/cortex semantics,
   see Trilium §10.3). Stored as frontmatter fields on the memory file (`standing`, custom fields are
@@ -91,7 +91,7 @@ Tests: `tests/unit/test_provider_prefetch.py`, `test_provider_sync_turn.py` agai
 
 Target surface (design doc §7): `memory_save, memory_revise, memory_recall, memory_search,
 memory_timeline, memory_forget, memory_stats` + `memory_verify` (P2) = 8. Upstream MCP exposes 9
-tools (write/read/manage sessions — `packages/mcp/src/agent_memory/mcp/tools.py`, names verified:
+tools (write/read/manage sessions — `packages/mcp/src/mnemobun/mcp/tools.py`, names verified:
 `memory_*` family). Plan: keep upstream tools but add a `toolset` config so a host can subscribe to
 the minimal set; map ours onto theirs (`memory_save`→record, `memory_revise`→supersede,
 `memory_timeline`→new P1 proof-tree view, `memory_forget`→retract, `memory_search`→raw trace).
@@ -122,7 +122,7 @@ the minimal set; map ours onto theirs (`memory_save`→record, `memory_revise`�
 ## P8 — Packaging
 
 - Nix derivation (pure Python + tomllib; optional sqlite-vec / sentence-transformers extras stay
-  optional). Add `pkgs/agent-memory` to the host config; wire the provider into Hermes plugins.
+  optional). Add `pkgs/mnemobun` to the host config; wire the provider into Hermes plugins.
 
 ---
 

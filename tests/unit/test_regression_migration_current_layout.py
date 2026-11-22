@@ -1,5 +1,5 @@
 import pytest
-from agent_memory.core.migrate import migrate, needs_migration
+from mnemobun.core.migrate import migrate, needs_migration
 
 
 @pytest.mark.parametrize(

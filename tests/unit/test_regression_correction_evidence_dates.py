@@ -1,6 +1,6 @@
 import pytest
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.sessions import render_pointer
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.sessions import render_pointer
 
 
 def test_correction_cannot_date_a_fact_after_its_cited_evidence(store, clock):

@@ -6,10 +6,10 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from agent_memory.executor import hosts
-from agent_memory.harness import main as cli
-from agent_memory.harness.judge import RUBRIC, Judge
-from agent_memory.harness.metrics import RunMetadata, RunMetadataSink
+from mnemobun.executor import hosts
+from mnemobun.harness import main as cli
+from mnemobun.harness.judge import RUBRIC, Judge
+from mnemobun.harness.metrics import RunMetadata, RunMetadataSink
 
 
 class FakeHost(hosts.Host):
@@ -151,7 +151,7 @@ def test_missing_selected_role_is_explicit(tmp_path, monkeypatch, capsys, missin
 def metadata(judge_host="claude-code"):
     return RunMetadata(
         run_id="r",
-        system="agent-memory",
+        system="mnemobun",
         host="codex",
         model="tested",
         judge_model="same",

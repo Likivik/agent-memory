@@ -3,8 +3,8 @@
 import io
 import json
 
-from agent_memory.core import reconcile, sessions, toolkit
-from agent_memory.mcp import server, write_session
+from mnemobun.core import reconcile, sessions, toolkit
+from mnemobun.mcp import server, write_session
 
 
 def _batch(store, tmp_path):

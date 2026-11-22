@@ -4,9 +4,9 @@ import io
 import json
 
 import pytest
-from agent_memory.core import agentic, prompts, reconcile, sessions, toolkit
-from agent_memory.core.errors import ReasonerUnavailableError
-from agent_memory.executor.reasoners import EndpointReasoner, EndpointTextReasoner
+from mnemobun.core import agentic, prompts, reconcile, sessions, toolkit
+from mnemobun.core.errors import ReasonerUnavailableError
+from mnemobun.executor.reasoners import EndpointReasoner, EndpointTextReasoner
 
 SKIP = {toolkit.ARG_OPERATIONS: [{"type": "fact", "op": "skip"}]}
 BRIEF = prompts.Brief(instructions="instructions", material="material")

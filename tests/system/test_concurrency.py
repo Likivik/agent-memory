@@ -2,8 +2,8 @@
 
 import multiprocessing as mp
 
-from agent_memory.core.ledger import Decision, DecisionLedger
-from agent_memory.core.store import Store
+from mnemobun.core.ledger import Decision, DecisionLedger
+from mnemobun.core.store import Store
 
 DECISIONS_PER_WRITER = 6
 

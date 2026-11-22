@@ -11,13 +11,13 @@ import sys
 import time
 
 import pytest
-from agent_memory.adapters import capture, hook_entry
-from agent_memory.cli.main import EXIT_ERROR, EXIT_INVALID, EXIT_OK, main
-from agent_memory.core import toolkit, write_jobs, write_run
-from agent_memory.core.config import Config
-from agent_memory.core.store import Store
-from agent_memory.core.watermark import Watermark
-from agent_memory.core.write_jobs import (
+from mnemobun.adapters import capture, hook_entry
+from mnemobun.cli.main import EXIT_ERROR, EXIT_INVALID, EXIT_OK, main
+from mnemobun.core import toolkit, write_jobs, write_run
+from mnemobun.core.config import Config
+from mnemobun.core.store import Store
+from mnemobun.core.watermark import Watermark
+from mnemobun.core.write_jobs import (
     STATE_CANCELLED,
     STATE_DEAD,
     STATE_QUEUED,
@@ -213,7 +213,7 @@ def test_a_killed_worker_leaves_the_job_to_the_next_run(
     monkeypatch.setenv("PATH", f"{blocking.parent}{os.pathsep}{os.environ.get('PATH', '')}")
     monkeypatch.setenv("FAKE_HOST_STOP", str(tmp_path / "stop-host"))
     worker = subprocess.Popen(
-        [_entry("mem"), "--store", str(root), "distill", "--job", job.id],
+        [_entry("mnemobun"), "--store", str(root), "distill", "--job", job.id],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -618,8 +618,8 @@ def test_a_reclaimed_job_does_not_reason_when_the_watermark_already_settled(stor
 
 
 def _hold_distill_lock(root: str, session: str, ready: str, release: str) -> None:
-    from agent_memory.core.dreaming import distill_lock_path
-    from agent_memory.core.locking import file_lock
+    from mnemobun.core.dreaming import distill_lock_path
+    from mnemobun.core.locking import file_lock
 
     store = Store(root)
     with file_lock(distill_lock_path(store, session), timeout=None):

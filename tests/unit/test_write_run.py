@@ -6,13 +6,13 @@ import json
 import pathlib
 
 import pytest
-from agent_memory.adapters import capture
-from agent_memory.core import distill as distill_module
-from agent_memory.core import store as store_module
-from agent_memory.core import triggers, write_jobs, write_run
-from agent_memory.core.errors import ReasonerUnavailableError
-from agent_memory.core.watermark import Watermark
-from agent_memory.core.write_jobs import (
+from mnemobun.adapters import capture
+from mnemobun.core import distill as distill_module
+from mnemobun.core import store as store_module
+from mnemobun.core import triggers, write_jobs, write_run
+from mnemobun.core.errors import ReasonerUnavailableError
+from mnemobun.core.watermark import Watermark
+from mnemobun.core.write_jobs import (
     STATE_FAILED,
     STATE_QUEUED,
     STATE_RUNNING,
@@ -183,7 +183,7 @@ def test_a_traced_run_and_a_plain_run_produce_the_same_distill_output(store, tmp
         _capture(target)
     job = WriteJobs(traced).enqueue("boundary", "codex")
 
-    from agent_memory.core import write_trace
+    from mnemobun.core import write_trace
 
     trace = write_trace.WriteTrace(pathlib.Path(job.trace), store.config.write.jobs)
     messages = triggers.backlog(plain.layout, "boundary", Watermark(plain.layout, plain.clock))

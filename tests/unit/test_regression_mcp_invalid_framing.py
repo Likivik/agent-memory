@@ -2,7 +2,7 @@ import io
 import json
 
 import pytest
-from agent_memory.mcp import server
+from mnemobun.mcp import server
 
 
 @pytest.mark.parametrize(

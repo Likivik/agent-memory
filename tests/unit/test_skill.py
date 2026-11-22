@@ -2,10 +2,10 @@
 
 import pathlib
 
-from agent_memory.cli.main import main
-from agent_memory.core import prompts
+from mnemobun.cli.main import main
+from mnemobun.core import prompts
 
-SKILL_PATH = pathlib.Path(__file__).resolve().parents[2] / "skills" / "agent-memory" / "SKILL.md"
+SKILL_PATH = pathlib.Path(__file__).resolve().parents[2] / "skills" / "mnemobun" / "SKILL.md"
 
 
 def test_the_checked_in_skill_is_what_the_prompt_module_renders():

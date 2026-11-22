@@ -3,9 +3,9 @@
 import json
 import pathlib
 
-from agent_memory.adapters import hook_entry
-from agent_memory.cli.main import main
-from agent_memory.core.recall import Recall
+from mnemobun.adapters import hook_entry
+from mnemobun.cli.main import main
+from mnemobun.core.recall import Recall
 
 
 def test_muse_hook_capture_distill_and_read(store, tmp_path, monkeypatch, capsys):
@@ -38,7 +38,7 @@ def test_muse_hook_capture_distill_and_read(store, tmp_path, monkeypatch, capsys
         }
     )
     monkeypatch.setattr(
-        "agent_memory.executor.distiller.distiller", lambda config: lambda prompt: reply
+        "mnemobun.executor.distiller.distiller", lambda config: lambda prompt: reply
     )
     assert main(["--store", str(store.root), "--json", "distill", "--session", session_id]) == 0
     report = json.loads(capsys.readouterr().out)

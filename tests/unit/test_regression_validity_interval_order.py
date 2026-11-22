@@ -1,5 +1,5 @@
 import pytest
-from agent_memory.core.errors import ValidationError
+from mnemobun.core.errors import ValidationError
 
 
 def test_reversed_interval_cannot_replace_existing_truth(store):

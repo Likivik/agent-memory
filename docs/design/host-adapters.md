@@ -41,7 +41,7 @@ accepted submission. Muse Code 1.4.4 is the minimum for both native Write and na
 both depend on the same exact MCP selection flag.
 
 Hermes native Write uses a fresh profile below the active Hermes data root per batch and a
-collision-free dynamic MCP toolset named `agent-memory-write`. Its staged config contains only that stdio server and
+collision-free dynamic MCP toolset named `mnemobun-write`. Its staged config contains only that stdio server and
 whitelists `recall`, `read`, and `submit_operations`; resources and prompts are disabled. The
 provider is explicit and independent of the model, so `openrouter` consumes
 `OPENROUTER_API_KEY` directly and does not construct or mint Vertex credentials. Hermes Agent
@@ -92,7 +92,7 @@ as Recall evidence.
 
 Host setup is a preserving merge. Muse settings require their schema version, retain unknown
 settings, hooks, and MCP servers, and are replaced atomically only after valid JSON is read.
-The setup path installs lifecycle hooks and the canonical agent-memory skill; MCP remains an
+The setup path installs lifecycle hooks and the canonical mnemobun skill; MCP remains an
 explicit use of the shared server.
 
 Muse 1.4 lifecycle payloads identify the session but set `transcript_path` to null. The Muse

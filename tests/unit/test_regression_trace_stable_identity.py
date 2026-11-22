@@ -1,4 +1,4 @@
-from agent_memory.core import sessions
+from mnemobun.core import sessions
 
 
 def test_trace_keeps_stored_identity_after_a_truth_file_is_renamed(store):

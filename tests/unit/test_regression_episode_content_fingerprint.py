@@ -1,7 +1,7 @@
 import dataclasses
 
-from agent_memory.harness.dataset import Episode, Session, Turn
-from agent_memory.harness.sampling import fingerprint
+from mnemobun.harness.dataset import Episode, Session, Turn
+from mnemobun.harness.sampling import fingerprint
 
 
 def test_unchanged_ids_cannot_hide_changed_benchmark_inputs():

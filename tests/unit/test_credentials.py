@@ -1,9 +1,9 @@
 """Short-lived credentials: minted on demand, refreshed before they go stale, never logged."""
 
 import pytest
-from agent_memory.core.errors import ReasonerUnavailableError
-from agent_memory.executor import credentials
-from agent_memory.executor.credentials import VertexCredentials
+from mnemobun.core.errors import ReasonerUnavailableError
+from mnemobun.executor import credentials
+from mnemobun.executor.credentials import VertexCredentials
 
 
 class Minting(VertexCredentials):
@@ -76,7 +76,7 @@ def test_a_failed_mint_is_an_explicit_authentication_error(monkeypatch):
 
 
 def test_only_hermes_carries_credentials(monkeypatch):
-    from agent_memory.executor.hosts import (
+    from mnemobun.executor.hosts import (
         HOST_CLAUDE_CODE,
         HOST_CODEX,
         HOST_HERMES,
@@ -111,8 +111,8 @@ def test_the_environment_overrides_the_configured_project(monkeypatch):
 
 
 def test_the_distiller_hands_the_configured_project_to_the_minter():
-    from agent_memory.core.config import ExecutorConfig
-    from agent_memory.executor.distiller import distiller
+    from mnemobun.core.config import ExecutorConfig
+    from mnemobun.executor.distiller import distiller
 
     reasoner = distiller(
         ExecutorConfig(reasoner="endpoint", project="built-in", location="global")

@@ -1,5 +1,5 @@
 import pytest
-from agent_memory.core.portability import FORMAT_VERSION, import_into
+from mnemobun.core.portability import FORMAT_VERSION, import_into
 
 
 def test_late_malformed_import_entry_preserves_existing_truth(store):

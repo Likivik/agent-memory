@@ -1,7 +1,7 @@
 """A rejected as_of surfaces as validation_error; the server lives on for the next call."""
 
 import pytest
-from agent_memory.mcp import server
+from mnemobun.mcp import server
 
 
 def _call(store, name, arguments):

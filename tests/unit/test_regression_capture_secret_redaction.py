@@ -2,8 +2,8 @@
 
 import json
 
-from agent_memory.adapters.capture import capture
-from agent_memory.core import sessions
+from mnemobun.adapters.capture import capture
+from mnemobun.core import sessions
 
 BARE_KEYS = (
     "sk-ant-api03-Aa1Bb2Cc3Dd4Ee5Ff6Gg7Hh8",

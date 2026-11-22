@@ -1,12 +1,12 @@
 """M1 — truth store and the file-boundary rules."""
 
 import pytest
-from agent_memory.core import frontmatter
-from agent_memory.core import record as record_module
-from agent_memory.core.archive import Archive
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.record import STATUS_INVALID, MemoryRecord
-from agent_memory.core.slug import is_valid_slug, slugify
+from mnemobun.core import frontmatter
+from mnemobun.core import record as record_module
+from mnemobun.core.archive import Archive
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.record import STATUS_INVALID, MemoryRecord
+from mnemobun.core.slug import is_valid_slug, slugify
 
 DESTRUCTIVE_NAMES = ("delete", "remove", "purge", "unlink", "drop", "erase")
 

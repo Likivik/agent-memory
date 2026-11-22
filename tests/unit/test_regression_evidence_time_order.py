@@ -1,4 +1,4 @@
-from agent_memory.core import reconcile, sessions
+from mnemobun.core import reconcile, sessions
 
 
 def test_default_fact_date_uses_latest_instant_not_lexical_zone_order(store):

@@ -1,7 +1,7 @@
 """P1 — a host is a dialect, not a branch. Adding one must not touch the driver."""
 
 import pytest
-from agent_memory.executor import hosts
+from mnemobun.executor import hosts
 
 
 def _spec(name):
@@ -179,7 +179,7 @@ def test_hermes_leaves_the_model_alone_when_no_provider_is_pinned(tmp_path):
 
 def test_the_expensive_tier_has_to_be_asked_for_out_loud(monkeypatch):
     """A matrix is hundreds of calls; the costly model must not arrive by default or typo."""
-    from agent_memory.harness.main import ALLOW_COSTLY_ENV, _affordable
+    from mnemobun.harness.main import ALLOW_COSTLY_ENV, _affordable
 
     monkeypatch.delenv(ALLOW_COSTLY_ENV, raising=False)
     with pytest.raises(ValueError, match="expensive tier"):
@@ -195,8 +195,8 @@ def test_the_expensive_tier_has_to_be_asked_for_out_loud(monkeypatch):
 
 
 def test_the_shipped_defaults_are_all_affordable(monkeypatch):
-    from agent_memory.executor.hosts import BINARIES
-    from agent_memory.harness.main import ALLOW_COSTLY_ENV, JUDGE_MODEL, _affordable
+    from mnemobun.executor.hosts import BINARIES
+    from mnemobun.harness.main import ALLOW_COSTLY_ENV, JUDGE_MODEL, _affordable
 
     monkeypatch.delenv(ALLOW_COSTLY_ENV, raising=False)
     _affordable(JUDGE_MODEL, "judge")

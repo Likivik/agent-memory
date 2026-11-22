@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
-from agent_memory.adapters.graphiti_import import SOURCE, seed_from_export
-from agent_memory.core.record import STANDING_ACCEPTED
+from mnemobun.adapters.graphiti_import import SOURCE, seed_from_export
+from mnemobun.core.record import STANDING_ACCEPTED
 
 
 def test_seed_from_export_round_trips(store, tmp_path):
@@ -58,7 +58,7 @@ def test_seed_is_idempotent_on_names(store, tmp_path, config, clock):
         json.dumps({"uuid": "aaa-1", "content": "one", "source": "", "created_at": ""}),
         encoding="utf-8",
     )
-    from agent_memory.core.store import Store
+    from mnemobun.core.store import Store
 
     first = seed_from_export(store, export)
     second_store = Store(tmp_path / "again", config=config, clock=clock, agent="test-agent")

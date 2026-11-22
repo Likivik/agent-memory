@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import json
 
-from agent_memory.core import standing
-from agent_memory.core.recall import Recall
-from agent_memory.core.record import (
+from mnemobun.core import standing
+from mnemobun.core.recall import Recall
+from mnemobun.core.record import (
     STANDING_ACCEPTED,
     STANDING_CONTESTED,
     STANDING_PROPOSED,
     STANDING_RETRACTED,
 )
-from agent_memory.core.standing import CAUSE_SUPPORT_LOST, CAUSE_SUPPORT_RESTORED
+from mnemobun.core.standing import CAUSE_SUPPORT_LOST, CAUSE_SUPPORT_RESTORED
 
 
 def _claim(store, name: str, abstract: str, links: list[str] | None = None):
@@ -126,7 +126,7 @@ def test_contested_ranks_below_accepted_in_recall(store):
 
 
 def test_forget_session_retracts_events_claims_and_dependents(store):
-    from agent_memory.core.record import STANDING_RETRACTED
+    from mnemobun.core.record import STANDING_RETRACTED
 
     # session s1: two turns + a claim derived from them + an unrelated claim
     event = store.record(
@@ -155,7 +155,7 @@ def test_forget_session_retracts_events_claims_and_dependents(store):
 
 
 def test_forget_session_is_permanent_across_restores(store):
-    from agent_memory.core.record import STANDING_RETRACTED
+    from mnemobun.core.record import STANDING_RETRACTED
 
     event = store.record(
         abstract="s2 turned the flag on", type="event", body="x",

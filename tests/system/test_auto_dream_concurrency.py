@@ -6,12 +6,12 @@ import datetime as dt
 import multiprocessing as mp
 import os
 
-from agent_memory.adapters import auto_dream, capture, moments
-from agent_memory.core import dreaming
-from agent_memory.core.clock import FrozenClock
-from agent_memory.core.locking import file_lock
-from agent_memory.core.store import Store
-from agent_memory.core.watermark import Watermark
+from mnemobun.adapters import auto_dream, capture, moments
+from mnemobun.core import dreaming
+from mnemobun.core.clock import FrozenClock
+from mnemobun.core.locking import file_lock
+from mnemobun.core.store import Store
+from mnemobun.core.watermark import Watermark
 
 
 def _claim(root: str, host: str, output) -> None:

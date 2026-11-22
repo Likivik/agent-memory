@@ -10,9 +10,9 @@ import json
 import urllib.error
 
 import pytest
-from agent_memory.adapters.doctor import _probe_matched
-from agent_memory.core.errors import ReasonerUnavailableError
-from agent_memory.executor.reasoners import EndpointReasoner
+from mnemobun.adapters.doctor import _probe_matched
+from mnemobun.core.errors import ReasonerUnavailableError
+from mnemobun.executor.reasoners import EndpointReasoner
 
 
 def _reply(text):
@@ -23,7 +23,7 @@ def _gateway(monkeypatch, *responses):
     """Answer with the given bodies; a body that is an exception is raised instead."""
     monkeypatch.setenv("GEMINI_BASE_URL", "https://example.invalid/openai")
     monkeypatch.setenv("GEMINI_API_KEY", "token")
-    monkeypatch.setattr("agent_memory.executor.reasoners.time.sleep", lambda _seconds: None)
+    monkeypatch.setattr("mnemobun.executor.reasoners.time.sleep", lambda _seconds: None)
     queue = list(responses)
     seen = []
 

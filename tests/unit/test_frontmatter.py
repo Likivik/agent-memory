@@ -1,7 +1,7 @@
 """Frontmatter dialect: parse and render round-trip, including inline arrays."""
 
 import pytest
-from agent_memory.core import frontmatter
+from mnemobun.core import frontmatter
 
 
 def _round_trip(fields, body):

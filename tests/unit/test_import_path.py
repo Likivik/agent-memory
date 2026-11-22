@@ -5,9 +5,9 @@ from __future__ import annotations
 import sqlite3
 
 import pytest
-from agent_memory.adapters.import_source import HermesSource, Turn
-from agent_memory.adapters.replay import replay
-from agent_memory.core.store import Store
+from mnemobun.adapters.import_source import HermesSource, Turn
+from mnemobun.adapters.replay import replay
+from mnemobun.core.store import Store
 
 
 @pytest.fixture()
@@ -97,7 +97,7 @@ def test_invalid_import_stamp_is_rejected(store):
 
 def test_imported_record_weight_survives_a_decay_pass(store, monkeypatch):
     _write(store, "old-fact", "imported long ago")
-    import agent_memory.core.manage as manage_mod
+    import mnemobun.core.manage as manage_mod
 
     monkeypatch.setattr(
         manage_mod.Manage,
@@ -173,7 +173,7 @@ class _StaticSource:
 
 
 def test_replay_writes_history_with_provenance_and_dreams_deterministically(store, monkeypatch):
-    import agent_memory.core.manage as manage_mod
+    import mnemobun.core.manage as manage_mod
 
     turns = [
         Turn(session_id="s-1", user="q one", assistant="a one", at="2026-01-01T00:00:00Z"),

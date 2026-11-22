@@ -1,4 +1,4 @@
-from agent_memory.core import sessions
+from mnemobun.core import sessions
 
 
 def test_blank_messages_keep_append_ranges_contiguous(store):

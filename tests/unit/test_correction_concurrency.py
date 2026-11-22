@@ -1,8 +1,8 @@
 import multiprocessing
 
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.search_index import SearchIndex
-from agent_memory.core.store import Store
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.search_index import SearchIndex
+from mnemobun.core.store import Store
 
 
 def _correct_abstract(root, read_started, release_read):

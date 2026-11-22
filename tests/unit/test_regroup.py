@@ -1,10 +1,10 @@
 import dataclasses
 
 import pytest
-from agent_memory.core import schema
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.manage import ACTION_CLUSTERED, ACTION_GROUP_MERGED, Manage
-from agent_memory.core.recall import Recall
+from mnemobun.core import schema
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.manage import ACTION_CLUSTERED, ACTION_GROUP_MERGED, Manage
+from mnemobun.core.recall import Recall
 
 
 @pytest.fixture(params=[schema.MODE_UPSERT, schema.MODE_ADD_ONLY])

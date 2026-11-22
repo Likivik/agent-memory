@@ -1,6 +1,6 @@
 import dataclasses
 
-from agent_memory.core import memory_md
+from mnemobun.core import memory_md
 
 
 def test_one_oversized_entry_does_not_hide_every_remaining_memory(store):
@@ -17,7 +17,7 @@ def test_one_oversized_entry_does_not_hide_every_remaining_memory(store):
 
 
 def test_root_index_header_cannot_exceed_its_byte_budget(store):
-    from agent_memory.core import memory_md
+    from mnemobun.core import memory_md
 
     for budget in (0, 5, 13):
         store.config.memory_md.budget_bytes = budget

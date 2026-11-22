@@ -12,8 +12,8 @@ import subprocess
 import time
 
 import pytest
-from agent_memory.executor.hosts import BINARIES, DEFAULT_MODEL, HOST_CLAUDE_CODE, HostResult
-from agent_memory.executor.reasoners import CLAUDE_BUNDLED_ENV, ToolHostReasoner
+from mnemobun.executor.hosts import BINARIES, DEFAULT_MODEL, HOST_CLAUDE_CODE, HostResult
+from mnemobun.executor.reasoners import CLAUDE_BUNDLED_ENV, ToolHostReasoner
 
 LIVE_ENV = "AGENT_MEMORY_LIVE_CLAUDE_NATIVE"
 MODEL_ENV = "AGENT_MEMORY_LIVE_CLAUDE_MODEL"

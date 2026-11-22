@@ -1,6 +1,6 @@
 import pytest
-from agent_memory.core.errors import ValidationError
-from agent_memory.mcp.tools import dispatch
+from mnemobun.core.errors import ValidationError
+from mnemobun.mcp.tools import dispatch
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,4 @@
-from agent_memory.core import sessions
+from mnemobun.core import sessions
 
 
 def test_structured_raw_code_keeps_indentation_and_trailing_whitespace(store):

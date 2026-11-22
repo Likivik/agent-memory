@@ -6,8 +6,8 @@ instructions. Batching removes the tax without changing what a memory is.
 """
 
 import pytest
-from agent_memory.core.errors import NotFoundError, ValidationError
-from agent_memory.core.recall import Recall
+from mnemobun.core.errors import NotFoundError, ValidationError
+from mnemobun.core.recall import Recall
 
 SPECS = [
     {
@@ -37,7 +37,7 @@ def test_a_batch_writes_every_record_in_one_call(store):
 
 
 def test_a_batch_leaves_the_same_store_as_records_written_one_by_one(tmp_path, config, clock):
-    from agent_memory.core.store import Store
+    from mnemobun.core.store import Store
 
     batched = Store(tmp_path / "batched", config=config, clock=clock, agent="t")
     batched.init()

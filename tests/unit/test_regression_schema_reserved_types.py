@@ -1,6 +1,6 @@
 import pytest
-from agent_memory.core import schema
-from agent_memory.core.errors import ValidationError
+from mnemobun.core import schema
+from mnemobun.core.errors import ValidationError
 
 
 @pytest.mark.parametrize("type_name", ["archive", "schemas", "dream-reports"])

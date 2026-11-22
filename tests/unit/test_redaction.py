@@ -1,7 +1,7 @@
 """Quoted values are how .env, YAML and JSON spell a credential; they must not survive."""
 
 import pytest
-from agent_memory.core.redaction import REDACTED, redact
+from mnemobun.core.redaction import REDACTED, redact
 
 
 @pytest.mark.parametrize(

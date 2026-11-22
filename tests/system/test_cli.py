@@ -3,13 +3,13 @@
 import json
 
 import pytest
-from agent_memory.adapters import capture as capture_module
-from agent_memory.cli.main import EXIT_ERROR, EXIT_INVALID, EXIT_OK, _parser, main
-from agent_memory.core import schema
-from agent_memory.core.config import OperationExecutorConfig
-from agent_memory.core.errors import ReasonerUnavailableError
-from agent_memory.core.recall import Recall
-from agent_memory.core.store import Store
+from mnemobun.adapters import capture as capture_module
+from mnemobun.cli.main import EXIT_ERROR, EXIT_INVALID, EXIT_OK, _parser, main
+from mnemobun.core import schema
+from mnemobun.core.config import OperationExecutorConfig
+from mnemobun.core.errors import ReasonerUnavailableError
+from mnemobun.core.recall import Recall
+from mnemobun.core.store import Store
 
 
 @pytest.fixture
@@ -520,7 +520,7 @@ def test_a_plain_sleep_asks_the_library_executor(cli, monkeypatch):
     proposal = cli("proposals")["proposals"][0]
     reply = json.dumps({"proposal": proposal["id"], "verdict": "reject"})
     monkeypatch.setattr(
-        "agent_memory.executor.distiller.distiller", lambda config: lambda prompt: reply
+        "mnemobun.executor.distiller.distiller", lambda config: lambda prompt: reply
     )
     report = cli("sleep")
     assert [decision["proposal"] for decision in report["decisions"]] == [proposal["id"]]
@@ -545,7 +545,7 @@ def test_write_and_manage_select_their_own_reasoners_and_cli_wins(cli, monkeypat
             }
         )
 
-    monkeypatch.setattr("agent_memory.executor.distiller.distiller", reasoner)
+    monkeypatch.setattr("mnemobun.executor.distiller.distiller", reasoner)
 
     cli("distill", "--session", "source-session", "--source-host", "codex")
     assert selected[-1].host == "muse-code"
@@ -579,7 +579,7 @@ def test_sleep_reports_a_reasoner_failure_instead_of_succeeding_silently(cli, mo
         raise ReasonerUnavailableError("host reasoner failed")
 
     monkeypatch.setattr(
-        "agent_memory.executor.distiller.distiller", lambda _config: unavailable
+        "mnemobun.executor.distiller.distiller", lambda _config: unavailable
     )
 
     error = cli("sleep", expect=EXIT_ERROR)
@@ -592,7 +592,7 @@ def test_sleep_can_be_handed_a_reasoner_whose_verdicts_reach_the_store(cli, monk
     proposal = cli("proposals")["proposals"][0]
     reply = json.dumps({"proposal": proposal["id"], "verdict": "reject"})
     monkeypatch.setattr(
-        "agent_memory.executor.reasoners.HostReasoner.__call__",
+        "mnemobun.executor.reasoners.HostReasoner.__call__",
         lambda self, prompt: reply,
     )
     report = cli("sleep", "--reason", "host")

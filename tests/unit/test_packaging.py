@@ -52,10 +52,10 @@ def test_every_package_imports_cleanly_on_an_empty_store():
     import importlib
 
     for module in (
-        "agent_memory.core.config",
-        "agent_memory.core.store",
-        "agent_memory.core.recall",
-        "agent_memory.core.indexer",
-        "agent_memory.core.archive",
+        "mnemobun.core.config",
+        "mnemobun.core.store",
+        "mnemobun.core.recall",
+        "mnemobun.core.indexer",
+        "mnemobun.core.archive",
     ):
         importlib.import_module(module)

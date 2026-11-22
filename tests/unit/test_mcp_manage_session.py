@@ -3,9 +3,9 @@
 import io
 import json
 
-from agent_memory.core import reasoning, sessions
-from agent_memory.core.manage import Manage
-from agent_memory.core.manage_toolkit import (
+from mnemobun.core import reasoning, sessions
+from mnemobun.core.manage import Manage
+from mnemobun.core.manage_toolkit import (
     ARG_NAME,
     ARG_POINTER,
     ARG_PROPOSAL,
@@ -14,7 +14,7 @@ from agent_memory.core.manage_toolkit import (
     TOOL_SUBMIT,
     ManageReviewToolkit,
 )
-from agent_memory.mcp import manage_session
+from mnemobun.mcp import manage_session
 
 
 def _batch(store, tmp_path, *, raw_session_evidence=False):

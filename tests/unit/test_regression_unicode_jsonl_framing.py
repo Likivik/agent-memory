@@ -1,6 +1,6 @@
 import pytest
-from agent_memory.core import sessions
-from agent_memory.core.pending import Pending
+from mnemobun.core import sessions
+from mnemobun.core.pending import Pending
 
 
 @pytest.mark.parametrize("separator", ["\u2028", "\u2029", "\u0085"])
@@ -19,7 +19,7 @@ def test_jsonl_values_keep_unicode_line_separators(store, separator):
 def test_executor_operations_and_verdicts_keep_unicode_separators(store, separator):
     import json
 
-    from agent_memory.core import agentic, reasoning, reconcile
+    from mnemobun.core import agentic, reasoning, reconcile
 
     text = "before" + separator + "after"
     spec = {"op": "new", "type": "decision", "abstract": text}

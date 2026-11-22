@@ -9,9 +9,9 @@ from __future__ import annotations
 import hashlib
 
 import pytest
-from agent_memory.core.embeddings import FastEmbedder
-from agent_memory.core.recall import Recall
-from agent_memory.core.store import Store
+from mnemobun.core.embeddings import FastEmbedder
+from mnemobun.core.recall import Recall
+from mnemobun.core.store import Store
 
 
 class StubEmbedder:
@@ -82,20 +82,20 @@ def test_fastembedder_missing_dependency_error_names_the_extra(monkeypatch):
     with pytest.raises(RuntimeError) as excinfo:
         FastEmbedder("BAAI/bge-small-en-v1.5")
     message = str(excinfo.value)
-    assert "agent-memory-core[vector]" in message
+    assert "mnemobun-core[vector]" in message
 
 
 def test_vector_enabled_without_dependency_fails_loud(tmp_path, config, clock, monkeypatch):
     """vector_enabled=True + a broken embedder factory is a config error: Store must
     fail LOUDLY, not silently drop the dense leg."""
-    import agent_memory.core.store as store_module
+    import mnemobun.core.store as store_module
 
     def broken(model):
         raise RuntimeError("Vector capability is enabled but optional embedding dependency"
-                           " is unavailable; install it with: agent-memory-core[vector]")
+                           " is unavailable; install it with: mnemobun-core[vector]")
 
     monkeypatch.setattr(store_module, "create_embedder", broken)
     config.index.vector_enabled = True
     with pytest.raises(RuntimeError) as excinfo:
         Store(tmp_path / "loud", config=config, clock=clock, agent="t")
-    assert "agent-memory-core[vector]" in str(excinfo.value)
+    assert "mnemobun-core[vector]" in str(excinfo.value)

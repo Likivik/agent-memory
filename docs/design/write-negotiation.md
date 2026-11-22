@@ -58,7 +58,7 @@ session persistence are disabled. Muse has no system-prompt replacement flag, so
 instructions and batch material are placed, in that order, in its one prompt file.
 
 Hermes native mode requires Hermes Agent 0.22.2. One temporary profile contains only the batch
-server, and the dynamic `agent-memory-write` toolset avoids collision with Hermes' built-in
+server, and the dynamic `mnemobun-write` toolset avoids collision with Hermes' built-in
 `memory` toolset. The provider is pinned separately from the model. In particular, OpenRouter
 uses its own API key and never enters the Vertex/gcloud credential path. Rules, personal memory,
 plugins, skills, delegation, Shell, Web, and unrelated MCP servers are absent from the run.

@@ -10,7 +10,7 @@ rendered, so a caller-supplied newline never reaches the header.
 """
 
 import pytest
-from agent_memory.core.errors import ValidationError
+from mnemobun.core.errors import ValidationError
 
 
 def test_a_newline_in_the_author_never_reaches_the_file(store):

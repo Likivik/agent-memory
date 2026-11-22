@@ -10,8 +10,8 @@ import multiprocessing
 import sys
 
 import pytest
-from agent_memory.core.manage import Manage
-from agent_memory.core.store import Store
+from mnemobun.core.manage import Manage
+from mnemobun.core.store import Store
 
 
 def _duplicate_pair(store: Store):

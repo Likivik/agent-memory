@@ -5,16 +5,16 @@ from __future__ import annotations
 import pathlib
 
 import pytest
-from agent_memory.core.config import OperationExecutorConfig
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.ledger import LEDGER_FILENAME
-from agent_memory.core.manage import Manage
-from agent_memory.core.manage_toolkit import TOOL_LIST, TOOL_READ, TOOL_SUBMIT
-from agent_memory.core.store import Store
-from agent_memory.executor import distiller as executor_distiller
-from agent_memory.executor import selection
-from agent_memory.executor.reasoners import ToolHostReasoner
 from claude_live import Recording, case, describe, model, requires_live_claude
+from mnemobun.core.config import OperationExecutorConfig
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.ledger import LEDGER_FILENAME
+from mnemobun.core.manage import Manage
+from mnemobun.core.manage_toolkit import TOOL_LIST, TOOL_READ, TOOL_SUBMIT
+from mnemobun.core.store import Store
+from mnemobun.executor import distiller as executor_distiller
+from mnemobun.executor import selection
+from mnemobun.executor.reasoners import ToolHostReasoner
 
 pytestmark = requires_live_claude
 

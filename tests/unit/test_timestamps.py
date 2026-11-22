@@ -1,13 +1,13 @@
 import datetime as dt
 
 import pytest
-from agent_memory.core import timestamp
-from agent_memory.core.clock import FrozenClock
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.manage import ACTION_DATE_NORMALISED, Manage
-from agent_memory.core.recall import Recall
-from agent_memory.core.record import MemoryRecord
-from agent_memory.core.store import Store
+from mnemobun.core import timestamp
+from mnemobun.core.clock import FrozenClock
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.manage import ACTION_DATE_NORMALISED, Manage
+from mnemobun.core.recall import Recall
+from mnemobun.core.record import MemoryRecord
+from mnemobun.core.store import Store
 
 TOKYO = dt.timezone(dt.timedelta(hours=9))
 DENVER = dt.timezone(dt.timedelta(hours=-7))

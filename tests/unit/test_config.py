@@ -2,7 +2,7 @@ import ast
 import pathlib
 
 import pytest
-from agent_memory.core.config import (
+from mnemobun.core.config import (
     CONFIG_FILENAME,
     REASONER_HOST,
     TOOL_MODE_AUTO,
@@ -11,7 +11,7 @@ from agent_memory.core.config import (
 )
 
 CORE_SRC = pathlib.Path(__file__).resolve().parents[2] / "packages" / "core" / "src"
-CONFIG_MODULE = CORE_SRC / "agent_memory" / "core" / "config.py"
+CONFIG_MODULE = CORE_SRC / "mnemobun" / "core" / "config.py"
 LITERALS_ALLOWED_ANYWHERE = frozenset({0, 1, -1})
 
 
@@ -47,7 +47,7 @@ def test_defaults_are_complete_and_self_consistent():
 
 
 def test_every_factory_group_field_has_a_source_that_may_name_a_directory():
-    from agent_memory.core import schema
+    from mnemobun.core import schema
 
     config = Config.default()
     for item in schema.FACTORY:

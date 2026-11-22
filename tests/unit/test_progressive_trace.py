@@ -4,11 +4,11 @@ import json
 from pathlib import PureWindowsPath
 
 import pytest
-from agent_memory.cli.main import main
-from agent_memory.core import context, distill, prompts, sessions
-from agent_memory.core.errors import NotFoundError, ValidationError
-from agent_memory.core.recall import Recall
-from agent_memory.core.store import Store
+from mnemobun.cli.main import main
+from mnemobun.core import context, distill, prompts, sessions
+from mnemobun.core.errors import NotFoundError, ValidationError
+from mnemobun.core.recall import Recall
+from mnemobun.core.store import Store
 
 
 @pytest.fixture
@@ -313,8 +313,8 @@ def test_legacy_plain_transcript_preserves_original_line_numbers(store):
 
 
 def test_agentic_exam_uses_memory_first_and_bound_trace():
-    from agent_memory.core import prompts
-    from agent_memory.harness.systems import NativeSystem
+    from mnemobun.core import prompts
+    from mnemobun.harness.systems import NativeSystem
 
     preamble = NativeSystem().exam_preamble()
     assert 'Start with `mem context "<the question>"`' in preamble

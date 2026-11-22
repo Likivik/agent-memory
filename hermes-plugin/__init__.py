@@ -1,11 +1,11 @@
-"""agent-memory — Hermes memory-provider plugin (P10, docs/plans/hermes-plugin.md).
+"""mnemobun — Hermes memory-provider plugin (P10, docs/plans/hermes-plugin.md).
 
 Deployment: this directory is self-contained. `lib/` carries the vendored
-`agent_memory` packages (copied by scripts/build_plugin.py); the bootstrap below
+`mnemobun` packages (copied by scripts/build_plugin.py); the bootstrap below
 prepends it to sys.path so the plugin works against a read-only Nix Hermes with
 no extra install step (decision D1).
 
-Activation: `memory.provider: agent-memory` in config.yaml. Rollback: set it
+Activation: `memory.provider: mnemobun` in config.yaml. Rollback: set it
 back to `default` (D8) — this plugin never deletes store data.
 """
 
@@ -20,12 +20,12 @@ _LIB = Path(__file__).resolve().parent / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-from agent_memory.core.store import Store  # noqa: E402
-from agent_memory.executor.hermes_provider import (  # noqa: E402
+from mnemobun.core.store import Store  # noqa: E402
+from mnemobun.executor.hermes_provider import (  # noqa: E402
     PROVIDER_NAME,
     HermesMemoryProvider,
 )
-from agent_memory.mcp.tools import catalogue, dispatch  # noqa: E402
+from mnemobun.mcp.tools import catalogue, dispatch  # noqa: E402
 
 # Host base class: present in Hermes, absent in a bare fork checkout — the class
 # degrades to object so the fork's unit tests run without the Hermes package.
@@ -44,8 +44,8 @@ except Exception:  # pragma: no cover
 
     _HOST_BASE = object  # type: ignore[assignment]
 
-DEFAULT_STORE_DIRNAME = "agent-memory-store"
-CONFIG_FILENAME = "agent-memory-plugin.json"
+DEFAULT_STORE_DIRNAME = "mnemobun-store"
+CONFIG_FILENAME = "mnemobun-plugin.json"
 
 
 class AgentMemoryHermesProvider(_HOST_BASE):
@@ -118,7 +118,7 @@ class AgentMemoryHermesProvider(_HOST_BASE):
     # -- read side -----------------------------------------------------------
     def system_prompt_block(self) -> str:
         return (
-            "Memory is available (agent-memory). Verify claims you rely on with"
+            "Memory is available (mnemobun). Verify claims you rely on with"
             " memory_verify; record durable beliefs as claims (they start"
             " `proposed` and are accepted only after a ruling)."
         )
@@ -179,7 +179,7 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             {
                 "name": "store_path",
                 "type": "string",
-                "description": "Filesystem path of the agent-memory store",
+                "description": "Filesystem path of the mnemobun store",
             }
         ]
 
@@ -248,5 +248,5 @@ def register(ctx) -> None:
         import logging
 
         logging.getLogger(__name__).warning(
-            "agent-memory: idle-task dream registration unavailable: %s", error
+            "mnemobun: idle-task dream registration unavailable: %s", error
         )

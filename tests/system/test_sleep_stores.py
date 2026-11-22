@@ -3,8 +3,8 @@
 import json
 import re
 
-from agent_memory.core.store import Store
-from agent_memory.harness.main import main as exp_main
+from mnemobun.core.store import Store
+from mnemobun.harness.main import main as exp_main
 
 
 def _seed(root, name):
@@ -117,7 +117,7 @@ def test_a_sleep_without_a_reasoner_decides_nothing(tmp_path, capsys):
 def test_a_reasoned_sleep_records_what_it_decided(tmp_path, capsys, monkeypatch):
     _twins(tmp_path / "stores" / "W2" / "q1")
     monkeypatch.setattr(
-        "agent_memory.executor.reasoners.HostReasoner.__call__",
+        "mnemobun.executor.reasoners.HostReasoner.__call__",
         lambda self, prompt: "\n".join(
             json.dumps({"proposal": found, "verdict": "reject"})
             for found in re.findall(r"^- ([0-9a-f]{12}) \(", prompt, flags=re.MULTILINE)
@@ -146,7 +146,7 @@ def test_a_reasoned_sleep_records_what_it_decided(tmp_path, capsys, monkeypatch)
 def test_the_per_sleep_cap_is_a_knob_the_step_can_lower(tmp_path, capsys, monkeypatch):
     _twins(tmp_path / "stores" / "W2" / "q1")
     monkeypatch.setattr(
-        "agent_memory.executor.reasoners.HostReasoner.__call__",
+        "mnemobun.executor.reasoners.HostReasoner.__call__",
         lambda self, prompt: "\n".join(
             json.dumps({"proposal": found, "verdict": "accept"})
             for found in re.findall(r"^- ([0-9a-f]{12}) \(", prompt, flags=re.MULTILINE)

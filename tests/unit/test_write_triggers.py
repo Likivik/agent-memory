@@ -8,11 +8,11 @@ import shlex
 import sys
 
 import pytest
-from agent_memory.adapters import capture as capture_module
-from agent_memory.adapters import detached, hook_entry, moments, setup, transcript
-from agent_memory.core import injection, sessions, triggers
-from agent_memory.core.watermark import Watermark
-from agent_memory.core.write_jobs import STATE_QUEUED, WriteJobs
+from mnemobun.adapters import capture as capture_module
+from mnemobun.adapters import detached, hook_entry, moments, setup, transcript
+from mnemobun.core import injection, sessions, triggers
+from mnemobun.core.watermark import Watermark
+from mnemobun.core.write_jobs import STATE_QUEUED, WriteJobs
 
 SEGMENTS = ["user: we moved the deploy to Fridays", "assistant: noted", "user: and E4021 is fixed"]
 
@@ -197,8 +197,8 @@ def _stop_event(store, session="s"):
 
 
 def test_the_launched_executor_call_is_one_the_cli_accepts(store, monkeypatch):
-    from agent_memory.cli.main import _parser
-    from agent_memory.core.config import EXECUTOR_ENV_VAR, STORE_ENV_VAR
+    from mnemobun.cli.main import _parser
+    from mnemobun.core.config import EXECUTOR_ENV_VAR, STORE_ENV_VAR
 
     launched = {}
 
@@ -252,7 +252,7 @@ def test_a_failed_executor_launch_is_written_to_the_hook_log(store, monkeypatch)
 
 
 def test_a_hook_fired_inside_the_executor_session_does_nothing(store, monkeypatch, capsys):
-    from agent_memory.core.config import EXECUTOR_ENV_VAR
+    from mnemobun.core.config import EXECUTOR_ENV_VAR
 
     monkeypatch.setenv(EXECUTOR_ENV_VAR, "1")
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(_stop_event(store))))
@@ -279,7 +279,7 @@ def test_the_hook_takes_its_host_from_the_command_line(store, monkeypatch):
 
 
 def test_muse_hook_passes_pinned_settings_to_background_distillation(store, monkeypatch):
-    from agent_memory.core.config import MUSE_SETTINGS_ENV_VAR
+    from mnemobun.core.config import MUSE_SETTINGS_ENV_VAR
 
     settings = store.root / "isolated muse" / "settings.json"
     observed = []
@@ -345,7 +345,7 @@ def test_codex_rollout_transcripts_yield_the_conversation(tmp_path):
 
 @pytest.mark.parametrize("host", [moments.HOST_CLAUDE_CODE, moments.HOST_CODEX])
 def test_setup_writes_an_absolute_hook_command_and_installs_the_skill(tmp_path, host):
-    from agent_memory.core import prompts
+    from mnemobun.core import prompts
 
     settings = tmp_path / host / "hooks.json"
     setup.install(host, settings)
@@ -356,7 +356,7 @@ def test_setup_writes_an_absolute_hook_command_and_installs_the_skill(tmp_path, 
     assert pathlib.Path(executable).stem == setup.HOOK_COMMAND
     assert pathlib.Path(executable).is_absolute() and pathlib.Path(executable).exists()
     assert arguments == [setup.HOST_FLAG, host]
-    skill = settings.parent / "skills" / "agent-memory" / "SKILL.md"
+    skill = settings.parent / "skills" / "mnemobun" / "SKILL.md"
     assert skill.read_text(encoding="utf-8") == prompts.skill()
 
 

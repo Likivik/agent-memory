@@ -8,7 +8,7 @@ import textwrap
 import time
 
 import pytest
-from agent_memory.adapters import detached
+from mnemobun.adapters import detached
 
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX launch posture")
@@ -29,7 +29,7 @@ def test_a_detached_worker_outlives_its_launcher(tmp_path):
     launcher = textwrap.dedent(
         f"""
         import subprocess, sys
-        from agent_memory.adapters import detached
+        from mnemobun.adapters import detached
         subprocess.Popen(
             [sys.executable, "-c", {worker!r}],
             stdin=subprocess.DEVNULL,
@@ -50,10 +50,10 @@ def test_a_detached_worker_outlives_its_launcher(tmp_path):
 
 def test_installed_entry_points_resolve_without_the_user_path(monkeypatch):
     monkeypatch.setenv("PATH", "")
-    resolved = pathlib.Path(detached.installed("mem"))
+    resolved = pathlib.Path(detached.installed("mnemobun"))
     assert resolved.is_file()
     assert resolved.parent == pathlib.Path(sys.executable).parent
 
 
 def test_an_unknown_entry_point_is_left_for_the_caller_to_report():
-    assert detached.installed("no-such-agent-memory-binary") == "no-such-agent-memory-binary"
+    assert detached.installed("no-such-mnemobun-binary") == "no-such-mnemobun-binary"

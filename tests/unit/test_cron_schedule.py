@@ -7,9 +7,9 @@ import pathlib
 import subprocess
 
 import pytest
-from agent_memory.adapters import cron_schedule
-from agent_memory.core.errors import MemoryStoreError, ValidationError
-from agent_memory.core.store import Store
+from mnemobun.adapters import cron_schedule
+from mnemobun.core.errors import MemoryStoreError, ValidationError
+from mnemobun.core.store import Store
 
 POSIX_CRON = pytest.mark.skipif(os.name == "nt", reason="cron scheduling is POSIX-only")
 
@@ -57,7 +57,7 @@ def test_install_is_idempotent_and_quotes_store_executable_environment_and_log(
     assert second["status"] == "unchanged"
     assert second["changed"] is False
     assert state["text"] == installed
-    assert state["text"].count("# BEGIN agent-memory dream") == 1
+    assert state["text"].count("# BEGIN mnemobun dream") == 1
     assert "--json sleep --if-due --trigger-source cron" in first["command"]
     assert f"AGENT_MEMORY_STORE='{store.root}'" in first["command"]
     assert f"'{binary}'" in first["command"]
@@ -88,7 +88,7 @@ def test_update_status_and_remove_touch_only_the_matching_store(tmp_path, cron_h
     assert removed["changed"] is True
     assert absent["status"] == "not-installed"
     assert absent["changed"] is False
-    assert state["text"].count("# BEGIN agent-memory dream") == 1
+    assert state["text"].count("# BEGIN mnemobun dream") == 1
     assert cron_schedule.status(second)["installed"] is True
     assert "7 3 * * * /usr/bin/existing-job" in state["text"]
 

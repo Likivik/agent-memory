@@ -9,12 +9,12 @@ import pathlib
 import re
 
 import pytest
-from agent_memory.adapters import capture
-from agent_memory.core import timestamp
-from agent_memory.core.dreaming import distill_lock_path
-from agent_memory.core.errors import NotFoundError, ValidationError
-from agent_memory.core.locking import file_lock
-from agent_memory.core.write_jobs import (
+from mnemobun.adapters import capture
+from mnemobun.core import timestamp
+from mnemobun.core.dreaming import distill_lock_path
+from mnemobun.core.errors import NotFoundError, ValidationError
+from mnemobun.core.locking import file_lock
+from mnemobun.core.write_jobs import (
     CORRUPT_SUFFIX,
     JOB_SUFFIX,
     STATE_CANCELLED,

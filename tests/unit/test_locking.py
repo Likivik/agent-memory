@@ -3,10 +3,10 @@
 import pathlib
 
 import pytest
-from agent_memory.core.config import Config
-from agent_memory.core.errors import LockTimeoutError
-from agent_memory.core.locking import file_lock, lock_is_held, store_lock
-from agent_memory.core.paths import StoreLayout
+from mnemobun.core.config import Config
+from mnemobun.core.errors import LockTimeoutError
+from mnemobun.core.locking import file_lock, lock_is_held, store_lock
+from mnemobun.core.paths import StoreLayout
 
 
 def _layout(tmp_path: pathlib.Path) -> StoreLayout:

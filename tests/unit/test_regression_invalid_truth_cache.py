@@ -1,4 +1,4 @@
-from agent_memory.core.recall import Recall
+from mnemobun.core.recall import Recall
 
 
 def test_invalid_external_edit_cannot_keep_old_cached_knowledge(store):

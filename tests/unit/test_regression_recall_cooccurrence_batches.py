@@ -1,6 +1,6 @@
-from agent_memory.core.access_log import KIND_RECALL, AccessEntry, AccessLog
-from agent_memory.core.database import Database
-from agent_memory.core.manage import Manage
+from mnemobun.core.access_log import KIND_RECALL, AccessEntry, AccessLog
+from mnemobun.core.database import Database
+from mnemobun.core.manage import Manage
 
 
 def test_repeated_query_counts_independent_cooccurrence_events(store):

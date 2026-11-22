@@ -5,7 +5,7 @@ are defined in [management operation boundaries](../design/management-operation-
 
 Baseline: `34d12a2f8678d5561aba27bd8ff73c5ae4b6a258` (main).
 This change isolates management boundaries from the separate memory archival lifecycle.
-Paths beginning with `core/` refer to `packages/core/src/agent_memory/core/`.
+Paths beginning with `core/` refer to `packages/core/src/mnemobun/core/`.
 
 ## Operation matrix
 

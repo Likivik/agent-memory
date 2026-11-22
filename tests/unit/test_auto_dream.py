@@ -6,14 +6,14 @@ import json
 import pathlib
 
 import pytest
-from agent_memory.adapters import auto_dream, capture, detached, hook_entry, moments
-from agent_memory.cli.main import main as cli_main
-from agent_memory.core import dreaming
-from agent_memory.core.config import OperationExecutorConfig
-from agent_memory.core.errors import ReasonerUnavailableError
-from agent_memory.core.locking import file_lock
-from agent_memory.core.manage import Manage
-from agent_memory.core.watermark import Watermark
+from mnemobun.adapters import auto_dream, capture, detached, hook_entry, moments
+from mnemobun.cli.main import main as cli_main
+from mnemobun.core import dreaming
+from mnemobun.core.config import OperationExecutorConfig
+from mnemobun.core.errors import ReasonerUnavailableError
+from mnemobun.core.locking import file_lock
+from mnemobun.core.manage import Manage
+from mnemobun.core.watermark import Watermark
 
 
 def _complete(store, session: str, items: list[str] | None = None) -> None:
@@ -326,7 +326,7 @@ def test_sleep_if_due_runs_t0_t1_and_records_the_actual_manage_reasoner(
         selected.append(config)
         return lambda _prompt: json.dumps({"proposal": proposal.id, "verdict": "reject"})
 
-    monkeypatch.setattr("agent_memory.executor.distiller.distiller", reasoner)
+    monkeypatch.setattr("mnemobun.executor.distiller.distiller", reasoner)
 
     assert (
         cli_main(
@@ -369,7 +369,7 @@ def test_sleep_if_due_reasoner_failure_is_persisted_without_a_report(
         raise ReasonerUnavailableError("configured Codex unavailable")
 
     monkeypatch.setattr(
-        "agent_memory.executor.distiller.distiller", lambda _config: unavailable
+        "mnemobun.executor.distiller.distiller", lambda _config: unavailable
     )
 
     assert (
@@ -446,7 +446,7 @@ def test_hook_distill_checks_dream_only_after_watermark_settles(
     observed = []
 
     monkeypatch.setattr(
-        "agent_memory.executor.distiller.distiller", lambda _config: lambda _prompt: "{}"
+        "mnemobun.executor.distiller.distiller", lambda _config: lambda _prompt: "{}"
     )
     monkeypatch.setattr(
         auto_dream,
@@ -490,7 +490,7 @@ def test_hook_distill_uses_manage_host_instead_of_source_host(store, monkeypatch
     capture.capture(store, "boundary", ["user: remember the green queue"], source="pause")
     launched = {}
     monkeypatch.setattr(
-        "agent_memory.executor.distiller.distiller",
+        "mnemobun.executor.distiller.distiller",
         lambda _config: lambda _prompt: json.dumps(
             {
                 "type": "fact",

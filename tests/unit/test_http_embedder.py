@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 
 import pytest
-from agent_memory.core.config import Config
-from agent_memory.core.embeddings import HttpEmbedder, create_embedder
+from mnemobun.core.config import Config
+from mnemobun.core.embeddings import HttpEmbedder, create_embedder
 
 
 class _FakeResponse:

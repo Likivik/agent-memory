@@ -1,10 +1,10 @@
 """Invariant 4's other half: every memory can point at the exact messages it came from."""
 
 import pytest
-from agent_memory.adapters import capture as capture_module
-from agent_memory.core import sessions
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.recall import Recall
+from mnemobun.adapters import capture as capture_module
+from mnemobun.core import sessions
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.recall import Recall
 
 LINES = [
     "user: I finally watched Seaspiracy on 2026-01-04, the one you recommended.",

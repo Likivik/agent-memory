@@ -8,14 +8,14 @@ import shutil
 import time
 
 import pytest
-from agent_memory.adapters import openrouter
-from agent_memory.core import distill, reconcile, sessions, toolkit
-from agent_memory.core.config import TOOL_MODE_TEXT, Config, ExecutorConfig
-from agent_memory.core.store import Store
-from agent_memory.core.watermark import Watermark
-from agent_memory.executor import distiller as executor_distiller
-from agent_memory.executor.hosts import HOST_HERMES
-from agent_memory.executor.reasoners import HostReasoner, ToolHostReasoner
+from mnemobun.adapters import openrouter
+from mnemobun.core import distill, reconcile, sessions, toolkit
+from mnemobun.core.config import TOOL_MODE_TEXT, Config, ExecutorConfig
+from mnemobun.core.store import Store
+from mnemobun.core.watermark import Watermark
+from mnemobun.executor import distiller as executor_distiller
+from mnemobun.executor.hosts import HOST_HERMES
+from mnemobun.executor.reasoners import HostReasoner, ToolHostReasoner
 
 MODEL = "meta/muse-spark-1.3-contributor"
 

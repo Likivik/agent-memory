@@ -1,5 +1,5 @@
-from agent_memory.core.config import Config
-from agent_memory.core.migrate import migrate
+from mnemobun.core.config import Config
+from mnemobun.core.migrate import migrate
 
 
 def test_legacy_upgrade_keeps_supported_storage_customization(tmp_path):

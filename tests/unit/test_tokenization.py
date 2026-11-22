@@ -1,12 +1,12 @@
 """CJK tokenization: query extraction, index-side segmentation, and drift rebuild."""
 
 import pytest
-from agent_memory.core.config import Config
-from agent_memory.core.database import Database
-from agent_memory.core.recall import Recall
-from agent_memory.core.search_index import to_match_query
-from agent_memory.core.store import Store
-from agent_memory.core.tokenization import TOKENIZER_CJK
+from mnemobun.core.config import Config
+from mnemobun.core.database import Database
+from mnemobun.core.recall import Recall
+from mnemobun.core.search_index import to_match_query
+from mnemobun.core.store import Store
+from mnemobun.core.tokenization import TOKENIZER_CJK
 
 
 def test_ascii_queries_keep_the_current_expression():
@@ -45,7 +45,7 @@ def test_missing_jieba_fails_with_an_install_hint(store, monkeypatch):
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", no_jieba)
-    with pytest.raises(RuntimeError, match="agent-memory-core\\[cjk\\]"):
+    with pytest.raises(RuntimeError, match="mnemobun-core\\[cjk\\]"):
         store.record(
             abstract="构件命名规范",
             type="decision",
@@ -90,7 +90,7 @@ def cjk_seeded(cjk_store):
 
 
 def test_cjk_query_tokens_include_words_not_characters():
-    from agent_memory.core.tokenization import query_tokens
+    from mnemobun.core.tokenization import query_tokens
 
     tokens = query_tokens("构件命名规范是什么", TOKENIZER_CJK)
     assert "构件" in tokens and "命名" in tokens
@@ -98,7 +98,7 @@ def test_cjk_query_tokens_include_words_not_characters():
 
 
 def test_ascii_literals_survive_cjk_segmentation():
-    from agent_memory.core.tokenization import segment_text
+    from mnemobun.core.tokenization import segment_text
 
     segmented = segment_text("Blender 的 bpy headless CLI", TOKENIZER_CJK)
     assert "Blender" in segmented.split() and "headless" in segmented.split()

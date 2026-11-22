@@ -1,7 +1,7 @@
 import pytest
-from agent_memory.core.chunking import Chunk
-from agent_memory.core.database import Database
-from agent_memory.core.vector_index import VectorIndex
+from mnemobun.core.chunking import Chunk
+from mnemobun.core.database import Database
+from mnemobun.core.vector_index import VectorIndex
 
 
 class Embedder:

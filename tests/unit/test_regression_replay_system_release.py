@@ -1,8 +1,8 @@
 import pytest
-from agent_memory.harness import arms
-from agent_memory.harness.dataset import Episode
-from agent_memory.harness.driver import Driver, ExperiencePhase
-from agent_memory.harness.systems import NativeSystem
+from mnemobun.harness import arms
+from mnemobun.harness.dataset import Episode
+from mnemobun.harness.driver import Driver, ExperiencePhase
+from mnemobun.harness.systems import NativeSystem
 
 
 class Host:

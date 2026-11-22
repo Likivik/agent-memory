@@ -4,9 +4,9 @@ import json
 import pathlib
 
 import pytest
-from agent_memory.core import reasoning
-from agent_memory.core.errors import ReasonerUnavailableError, ValidationError
-from agent_memory.core.manage import (
+from mnemobun.core import reasoning
+from mnemobun.core.errors import ReasonerUnavailableError, ValidationError
+from mnemobun.core.manage import (
     PROPOSAL_ABSTRACT_REVIEW,
     PROPOSAL_DELETE,
     PROPOSAL_MERGE,
@@ -14,7 +14,7 @@ from agent_memory.core.manage import (
     PROPOSAL_SUPERSEDE,
     Manage,
 )
-from agent_memory.core.manage_toolkit import ARG_VERDICTS, TOOL_SUBMIT
+from mnemobun.core.manage_toolkit import ARG_VERDICTS, TOOL_SUBMIT
 
 ALL_KINDS = {
     PROPOSAL_MERGE,
@@ -121,7 +121,7 @@ def test_every_proposal_kind_enters_one_native_review_without_new_authority(stor
 
 
 def test_text_and_native_rejections_leave_identical_t0_store_state(tmp_path, config, clock):
-    from agent_memory.core.store import Store
+    from mnemobun.core.store import Store
 
     stores = []
     for mode in ("text", "native"):

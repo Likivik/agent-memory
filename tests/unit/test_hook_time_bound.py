@@ -4,7 +4,7 @@ import io
 import json
 import time
 
-from agent_memory.adapters import hook_entry
+from mnemobun.adapters import hook_entry
 
 
 def _run_stuck_hook(store, monkeypatch, *, bound_seconds, stuck_seconds):

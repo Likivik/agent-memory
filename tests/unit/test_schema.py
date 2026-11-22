@@ -1,10 +1,10 @@
 """ADR-008 — a type is a schema file; the tree is a function of type and key, not a choice."""
 
 import pytest
-from agent_memory.core import placement, schema
-from agent_memory.core.errors import ValidationError
-from agent_memory.core.recall import Recall
-from agent_memory.core.record import STATUS_INVALID
+from mnemobun.core import placement, schema
+from mnemobun.core.errors import ValidationError
+from mnemobun.core.recall import Recall
+from mnemobun.core.record import STATUS_INVALID
 
 
 def _schema(store, **overrides):
@@ -47,26 +47,26 @@ def test_a_schema_file_declaring_the_wrong_type_name_is_rejected(store):
 def test_the_same_key_resolves_to_the_same_path_whatever_the_wording(store):
     first = store.record(
         type="decision",
-        fields={"project": "agent-memory", "subject": "BM25 core"},
+        fields={"project": "mnemobun", "subject": "BM25 core"},
         abstract="Use BM25 as the retrieval core",
     )
     second = store.record(
         type="decision",
-        fields={"project": "agent-memory", "subject": "bm25 core"},
+        fields={"project": "mnemobun", "subject": "bm25 core"},
         abstract="BM25 is the retrieval core",
     )
     assert first.path == second.path
-    assert first.path.relative_to(store.root).parts[:2] == ("decision", "agent-memory")
+    assert first.path.relative_to(store.root).parts[:2] == ("decision", "mnemobun")
 
 
 def test_a_free_field_never_becomes_a_directory(store):
     written = store.record(
         type="decision",
-        fields={"project": "agent-memory", "subject": "../etc/passwd"},
+        fields={"project": "mnemobun", "subject": "../etc/passwd"},
         abstract="A subject that tries to climb out",
     )
     parts = written.path.relative_to(store.root).parts
-    assert len(parts) == len(("decision", "agent-memory", "file"))
+    assert len(parts) == len(("decision", "mnemobun", "file"))
     assert ".." not in written.name
 
 
@@ -225,8 +225,8 @@ def test_rebuild_equivalence_holds_with_invalid_files_present(store):
 
 
 def test_a_four_domain_store_migrates_into_the_schema_layout(tmp_path, clock):
-    from agent_memory.core import frontmatter, migrate
-    from agent_memory.core.store import Store
+    from mnemobun.core import frontmatter, migrate
+    from mnemobun.core.store import Store
 
     root = tmp_path / "legacy"
     (root / "project").mkdir(parents=True)

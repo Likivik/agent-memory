@@ -1,8 +1,8 @@
 """P1 — the interop matrix itself, exercised against stub hosts."""
 
-from agent_memory.core.store import Store
-from agent_memory.executor.hosts import Host, HostResult, HostSpec
-from agent_memory.harness import interop
+from mnemobun.core.store import Store
+from mnemobun.executor.hosts import Host, HostResult, HostSpec
+from mnemobun.harness import interop
 
 FACT = interop.Fact(
     subject="the drain window",
@@ -37,7 +37,7 @@ class StubHost(Host):
             return HostResult("drain-window-rule", True, 0.2)
         if not self.can_read:
             return HostResult("", False, 0.1, "cannot read")
-        from agent_memory.core.recall import Recall
+        from mnemobun.core.recall import Recall
 
         hits = Recall(Store(store_root, agent=self.name)).recall(FACT.subject)
         return HostResult(hits[0].abstract if hits else "nothing found", True, 0.2)

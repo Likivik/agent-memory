@@ -3,7 +3,7 @@
 import sys
 
 import pytest
-from agent_memory.executor import hosts
+from mnemobun.executor import hosts
 
 PROMPT = "记住：跨代理代号是 BLUE-HERON-42 — 不要遗忘"
 ANSWER = "已记录 — BLUE-HERON-42"
