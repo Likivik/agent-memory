@@ -1,4 +1,4 @@
-"""Fake native Host processes drive the real run-scoped Manage MCP adapter end to end."""
+"""Fake native Host processes drive the real run-scoped Dream MCP adapter end to end."""
 
 import json
 import os
@@ -9,9 +9,10 @@ import pytest
 from mnemobun.cli.main import main
 from mnemobun.core import sessions
 from mnemobun.core.config import OperationExecutorConfig
+from mnemobun.core.docket import Docket
+from mnemobun.core.dream import Dream
 from mnemobun.core.errors import ReasonerUnavailableError, ValidationError
 from mnemobun.core.ledger import LEDGER_FILENAME
-from mnemobun.core.manage import Manage
 from mnemobun.core.manage_toolkit import TOOL_LIST, TOOL_READ, TOOL_SUBMIT
 from mnemobun.core.store import Store
 from mnemobun.executor import hosts
@@ -44,16 +45,16 @@ rpc(0, "initialize")
 listed = [tool["name"] for tool in rpc(1, "tools/list")["result"]["tools"]]
 calls = []
 print(json.dumps({{"type": "item.started", "item": {{
-    "id": "menu", "type": "mcp_tool_call"
+    "id": "docket", "type": "mcp_tool_call"
 }}}}), flush=True)
 menu_reply = rpc(2, "tools/call", {{"name": "list_proposals", "arguments": {{}}}})
 print(json.dumps({{"type": "item.completed", "item": {{
-    "id": "menu", "type": "mcp_tool_call"
+    "id": "docket", "type": "mcp_tool_call"
 }}}}), flush=True)
 calls.append(menu_reply)
-menu = json.loads(menu_reply["result"]["content"][0]["text"])
+docket = json.loads(menu_reply["result"]["content"][0]["text"])
 request_id = 3
-for proposal in menu:
+for proposal in docket:
     for source in proposal["sources"]:
         reply = rpc(request_id, "tools/call", {{
             "name": "read_evidence",
@@ -61,7 +62,7 @@ for proposal in menu:
         }})
         calls.append(reply)
         request_id += 1
-verdicts = [{{"proposal": proposal["id"], "verdict": "reject"}} for proposal in menu]
+verdicts = [{{"proposal": proposal["id"], "verdict": "reject"}} for proposal in docket]
 calls.append(rpc(request_id, "tools/call", {{
     "name": "submit_verdicts", "arguments": {{"verdicts": verdicts}},
 }}))
@@ -116,31 +117,31 @@ listed = [tool["name"] for tool in rpc(1, "tools/list")["result"]["tools"]]
 calls = []
 menu_reply = rpc(2, "tools/call", {{"name": "list_proposals", "arguments": {{}}}})
 calls.append(menu_reply)
-menu = json.loads(menu_reply["result"]["content"][0]["text"])
+docket = json.loads(menu_reply["result"]["content"][0]["text"])
 request_id = 3
 if mode == "normal":
     calls.append(rpc(request_id, "tools/call", {{
         "name": "read_evidence",
-        "arguments": {{"proposal": "not-in-this-run", "name": menu[0]["sources"][0]["name"]}},
+        "arguments": {{"proposal": "not-in-this-run", "name": docket[0]["sources"][0]["name"]}},
     }}))
     request_id += 1
     calls.append(rpc(request_id, "tools/call", {{
         "name": "read_evidence",
-        "arguments": {{"proposal": menu[0]["id"], "name": "not-a-target"}},
+        "arguments": {{"proposal": docket[0]["id"], "name": "not-a-target"}},
     }}))
     request_id += 1
     calls.append(rpc(request_id, "tools/call", {{
         "name": "read_evidence",
         "arguments": {{
-            "proposal": menu[0]["id"],
-            "name": menu[0]["sources"][0]["name"],
+            "proposal": docket[0]["id"],
+            "name": docket[0]["sources"][0]["name"],
             "pointer": "sessions/../secret#0",
         }},
     }}))
     request_id += 1
 
 if mode in ("normal", "raw"):
-    for proposal in menu:
+    for proposal in docket:
         for source in proposal["sources"]:
             calls.append(rpc(request_id, "tools/call", {{
                 "name": "read_evidence",
@@ -157,7 +158,7 @@ if mode in ("normal", "raw"):
                     }},
                 }}))
                 request_id += 1
-    verdicts = [{{"proposal": proposal["id"], "verdict": "reject"}} for proposal in menu]
+    verdicts = [{{"proposal": proposal["id"], "verdict": "reject"}} for proposal in docket]
     calls.append(rpc(request_id, "tools/call", {{
         "name": "submit_verdicts", "arguments": {{"verdicts": verdicts}},
     }}))
@@ -226,24 +227,24 @@ def accepted(proposal):
 rpc("initialize")
 listed = [item["name"] for item in rpc("tools/list")["result"]["tools"]]
 calls = []
-menu = json.loads(tool("list_proposals", {{}})["result"]["content"][0]["text"])
+docket = json.loads(tool("list_proposals", {{}})["result"]["content"][0]["text"])
 if mode in ("reject", "accept"):
-    first = menu[0]
+    first = docket[0]
     tool("read_evidence", {{"proposal": "not-in-this-run", "name": first["sources"][0]["name"]}})
     tool("read_evidence", {{"proposal": first["id"], "name": "not-a-target"}})
     tool("read_evidence", {{
         "proposal": first["id"], "name": first["sources"][0]["name"],
         "pointer": "sessions/../secret#0",
     }})
-    for proposal in menu:
+    for proposal in docket:
         for source in proposal["sources"]:
             tool("read_evidence", {{"proposal": proposal["id"], "name": source["name"]}})
     foreign = [{{"proposal": "not-in-this-run", "verdict": "reject"}}]
     tool("submit_verdicts", {{"verdicts": foreign}})
     if mode == "accept":
-        verdicts = [accepted(proposal) for proposal in menu]
+        verdicts = [accepted(proposal) for proposal in docket]
     else:
-        verdicts = [{{"proposal": proposal["id"], "verdict": "reject"}} for proposal in menu]
+        verdicts = [{{"proposal": proposal["id"], "verdict": "reject"}} for proposal in docket]
     tool("submit_verdicts", {{"verdicts": verdicts}})
 child.stdin.close()
 child.wait()
@@ -347,7 +348,7 @@ def test_mem_sleep_runs_native_codex_mcp_review_then_manage_validation(
     assert all(
         reopened.find(name).is_active() for name in ("drain-window-first", "drain-window-second")
     )
-    assert not Manage(reopened).proposals()
+    assert not Docket(reopened).proposals()
     report = pathlib.Path(payload["path"]).read_text(encoding="utf-8")
     assert "list_proposals" in report
     assert "read_evidence" in report
@@ -442,7 +443,7 @@ def test_native_muse_failure_modes_leave_store_unchanged(
     )
 
     with pytest.raises(error_type, match=match):
-        Manage(store).sleep(reasoner=reasoner)
+        Dream(store).sleep(reasoner=reasoner)
 
     assert {record.name: record.to_text() for record in store.records()} == before
     assert not list(store.layout.dream_reports.glob("*.md"))
@@ -516,7 +517,7 @@ def test_mem_sleep_runs_native_claude_review_through_manage_validation(
     else:
         assert verdicts == {"accepted"}
         assert sorted(active.values()) == [False, True]
-    assert not Manage(reopened).proposals()
+    assert not Docket(reopened).proposals()
     assert (store.layout.dream_reports / LEDGER_FILENAME).is_file()
     report = pathlib.Path(payload["path"]).read_text(encoding="utf-8")
     assert TOOL_SUBMIT in report
@@ -553,7 +554,7 @@ def test_native_claude_failure_modes_leave_store_unchanged(
         store.config.executor.manage.timeout_seconds = 0.5
 
     with pytest.raises(error_type, match=match):
-        Manage(store).sleep(reasoner=reasoner)
+        Dream(store).sleep(reasoner=reasoner)
 
     after = {record.name: record.to_text() for record in store.records(include_invalid=True)}
     assert after == before

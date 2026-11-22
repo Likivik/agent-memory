@@ -97,14 +97,14 @@ def test_invalid_import_stamp_is_rejected(store):
 
 def test_imported_record_weight_survives_a_decay_pass(store, monkeypatch):
     _write(store, "old-fact", "imported long ago")
-    import mnemobun.core.manage as manage_mod
+    import mnemobun.core.dream as manage_mod
 
     monkeypatch.setattr(
-        manage_mod.Manage,
+        manage_mod.Dream,
         "_idle_days",
         lambda self, record, last_access, now: 999.0,  # far past the decay threshold
     )
-    manage = manage_mod.Manage(store)
+    manage = manage_mod.Dream(store)
     before = {r.name: r.weight for r in store.records()}
     manage._settle_weights(store.records(), {}, {})
     after = {r.name: r.weight for r in store.records()}
@@ -173,7 +173,7 @@ class _StaticSource:
 
 
 def test_replay_writes_history_with_provenance_and_dreams_deterministically(store, monkeypatch):
-    import mnemobun.core.manage as manage_mod
+    import mnemobun.core.dream as manage_mod
 
     turns = [
         Turn(session_id="s-1", user="q one", assistant="a one", at="2026-01-01T00:00:00Z"),
@@ -182,7 +182,7 @@ def test_replay_writes_history_with_provenance_and_dreams_deterministically(stor
     ]
     drafted = []
     monkeypatch.setattr(
-        manage_mod.Manage,
+        manage_mod.Dream,
         "sleep",
         lambda self, reasoner=None, *, dream_id="": drafted.append(dream_id)
         or manage_mod.DreamReport(at="2026-01-01T00:00:00Z", actions=(), proposals=(), inspected=0),

@@ -1,4 +1,4 @@
-"""Decisions taken on Manage proposals.
+"""Decisions taken on Dream proposals.
 
 Truth, not cache: no memory file records that a human already refused a merge, so a rebuilt
 index cannot bring the refusal back. The ledger is markdown beside the dream reports —

@@ -115,7 +115,7 @@ class ToolHostReasoner(HostReasoner):
     def review_converse(
         self, instructions: str, material: str, toolkit: ManageReviewToolkit
     ) -> ReviewRuntime:
-        """Run one bounded native Manage review and return measured Host wall time."""
+        """Run one bounded native Dream review and return measured Host wall time."""
         result = self._converse(
             instructions,
             material,

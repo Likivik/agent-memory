@@ -1,7 +1,7 @@
 """The duplicate keeper must be revalidated inside the T0 invalidation lock.
 
 docs/TODO.md (management follow-ups): the stale-write detection guards only
-the record being invalidated, so a keeper that dies between Manage's snapshot
+the record being invalidated, so a keeper that dies between Dream's snapshot
 and the merge would orphan the duplicate into a dead name. These tests pin
 the revalidation contract of ``Store.merge_exact_duplicate`` and the race it
 closes."""
@@ -10,7 +10,7 @@ import multiprocessing
 import sys
 
 import pytest
-from mnemobun.core.manage import Manage
+from mnemobun.core.dream import Dream
 from mnemobun.core.store import Store
 
 
@@ -67,10 +67,10 @@ def test_manage_does_not_merge_into_a_keeper_that_died_after_the_snapshot(store)
     duplicate into the dead keeper; with the revalidating merge it must back
     off."""
     first, second = _duplicate_pair(store)
-    snapshot = [first, second]  # both active when Manage took this snapshot
+    snapshot = [first, second]  # both active when Dream took this snapshot
     store.supersede("dup-a", "dup-b")  # the keeper dies after the snapshot
 
-    actions = Manage(store)._merge_exact_duplicates(snapshot)
+    actions = Dream(store)._merge_exact_duplicates(snapshot)
 
     assert actions == [], "a merge into a dead keeper was recorded"
     assert store.find("dup-b").is_active(), "duplicate was orphaned into a dead keeper"

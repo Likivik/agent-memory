@@ -113,7 +113,13 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             return False
         self._store_path = str(path)
         self._store = Store(root=path)
+        self._provider_instance = HermesMemoryProvider(store=self._store, reasoner=None)
         return True
+
+    def _provider(self) -> HermesMemoryProvider:
+        """The engine wrapper; one instance per plugin instance (multiplexing contract)."""
+        assert self._provider_instance is not None
+        return self._provider_instance
 
     # -- read side -----------------------------------------------------------
     def system_prompt_block(self) -> str:
@@ -126,9 +132,8 @@ class AgentMemoryHermesProvider(_HOST_BASE):
     def prefetch(self, query: str, *, session_id: str = "") -> str:
         if not self._ensure_store():
             return ""
-        provider = HermesMemoryProvider(store=self._store, reasoner=None)
-        text = provider.prefetch(query, session_id=session_id or self._session_id)
-        self._last_recall_count = len([ln for ln in text.splitlines() if ln.strip()])
+        text = self._provider().prefetch(query, session_id=session_id or self._session_id)
+        self._last_recall_count = self._provider().last_recall_count
         return text
 
     def recall_status(self):
@@ -146,8 +151,7 @@ class AgentMemoryHermesProvider(_HOST_BASE):
     ) -> None:
         if not self._ensure_store():
             return
-        provider = HermesMemoryProvider(store=self._store, reasoner=None)
-        provider.sync_turn(
+        self._provider().sync_turn(
             user_content, assistant_content, session_id=session_id or self._session_id
         )
 
@@ -213,9 +217,8 @@ class AgentMemoryHermesProvider(_HOST_BASE):
         """
         if not self._ensure_store():
             return None
-        provider = HermesMemoryProvider(store=self._store, reasoner=None)
         sessions_since = getattr(run, "run_count", 0)
-        report = provider.run_sleep(sessions_since)
+        report = self._provider().run_sleep(sessions_since)
         if report.get("skipped"):
             return None
         return "deterministic sleep ran (proposals queued, none ruled)"

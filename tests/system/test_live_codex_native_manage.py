@@ -1,4 +1,4 @@
-"""Authenticated Codex coverage for the complete native Manage review path."""
+"""Authenticated Codex coverage for the complete native Dream review path."""
 
 import json
 import os
@@ -16,7 +16,7 @@ MODEL = os.environ.get("AGENT_MEMORY_LIVE_CODEX_MODEL", "gpt-5.6-sol")
 
 pytestmark = pytest.mark.skipif(
     not LIVE,
-    reason="set AGENT_MEMORY_LIVE_CODEX=1 for authenticated Codex Manage coverage",
+    reason="set AGENT_MEMORY_LIVE_CODEX=1 for authenticated Codex Dream coverage",
 )
 
 

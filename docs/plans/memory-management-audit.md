@@ -44,7 +44,7 @@ and validates before appending provenance. This prevents stale correction update
 and evidence side effects; a whole Manage sleep remains nontransactional. Automatic
 cooccurrence linking remains enabled. No link/unlink delta command is added.
 
-Manage._review uses existing caps, proposal menu and decide; _open regenerates proposals
+Manage._review uses existing caps, proposal docket and decide; _open regenerates proposals
 before decisions. Unknown/stale proposals cannot dictate arbitrary targets. Direct CLI
 decide lacks the per-sleep cap. reasoning.parse accepts verdicts/text, not executable
 operations. Executor reconcile handles do not apply to direct CLI/MCP record/correct.

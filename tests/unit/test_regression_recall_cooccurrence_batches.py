@@ -1,6 +1,6 @@
 from mnemobun.core.access_log import KIND_RECALL, AccessEntry, AccessLog
 from mnemobun.core.database import Database
-from mnemobun.core.manage import Manage
+from mnemobun.core.dream import Dream
 
 
 def test_repeated_query_counts_independent_cooccurrence_events(store):
@@ -15,7 +15,7 @@ def test_repeated_query_counts_independent_cooccurrence_events(store):
                 for name in [left.name, right.name]
             ]
         )
-    actions = Manage(store)._add_cooccurrence_links([left, right])
+    actions = Dream(store)._add_cooccurrence_links([left, right])
     assert len(actions) == 2
     assert right.name in store.find(left.name).links
 
@@ -35,4 +35,4 @@ def test_same_query_on_separate_events_does_not_invent_cooccurrence(store):
                 ),
             ]
         )
-    assert Manage(store)._add_cooccurrence_links([left, right]) == []
+    assert Dream(store)._add_cooccurrence_links([left, right]) == []

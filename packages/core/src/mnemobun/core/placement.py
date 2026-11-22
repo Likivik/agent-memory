@@ -1,7 +1,7 @@
 """Where a memory lives is a function of its type and its key, never a choice the writer makes.
 
 The convention is fixed: type / group / key. A directory segment only ever comes from a
-system-supplied value or from a menu of directories that already exist, so two writers
+system-supplied value or from a docket of directories that already exist, so two writers
 describing the same thing land in the same place (ADR-008).
 """
 
@@ -109,12 +109,12 @@ def resolve(
         if source == SOURCE_MENU and not (
             group in existing_groups or group == config.storage.default_group or create_group
         ):
-            menu = ", ".join(sorted(existing_groups)) or "(none yet)"
+            docket = ", ".join(sorted(existing_groups)) or "(none yet)"
             raise ValidationError(
                 [
                     FieldError(
                         schema.group,
-                        f"{group} is not an existing {schema.type} group; menu: {menu};"
+                        f"{group} is not an existing {schema.type} group; docket: {docket};"
                         " pass create_group to add it",
                     )
                 ]

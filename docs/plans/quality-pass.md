@@ -1,4 +1,4 @@
-# Code-Quality Pass (P12): all review findings, plus menu → docket
+# Code-Quality Pass (P12): all review findings, plus docket → docket
 
 Status: DECIDED 2026-11-22 (Likivik: address all findings; the sleep ruling list is renamed **docket**).
 Source: whole-app best-practices review of 97 files / 19.6k lines, 2026-11-22.
@@ -9,7 +9,7 @@ Source: whole-app best-practices review of 97 files / 19.6k lines, 2026-11-22.
 |---|---|---|
 | D1 | Naming | The sleep ruling list is the **docket**: proposals are *docketed*, the reasoner *rules the docket* at the existing caps (10 accepts + 5 conflicts + 3 merges). No behavioural change — rename plus docstring truth. |
 | D2 | Order | Small safe fixes first (Q4/Q5/Q6), then the two structural refactors (Q1/Q2), plugin de-duplication last (Q3) — each its own PR, full suite as the gate. |
-| D3 | Refactor guardrail | Every refactor PR must keep the suite green **without editing assertions to fit new names** — except mechanical identifier renames (menu→docket), which may touch tests. |
+| D3 | Refactor guardrail | Every refactor PR must keep the suite green **without editing assertions to fit new names** — except mechanical identifier renames (docket→docket), which may touch tests. |
 | D4 | The Manage split stops at two classes | `Dream` (deterministic half: normalise, settle, co-occur, dedupe, cluster) and `Docket` (drafting + rulings + caps). NOT more pieces; `manage.py` becomes a thin façade re-exporting both so `mem sleep` and callers are untouched. |
 | D5 | Hosts split is per-dialect files | `hosts.py` (1,190 lines) → `hosts/` package: `hosts/base.py`, `claude_code.py`, `codex.py`, `hermes.py`, `muse.py`, `specs.py`. `hosts.py` re-exports for back-compat within the repo. |
 
@@ -22,10 +22,10 @@ Source: whole-app best-practices review of 97 files / 19.6k lines, 2026-11-22.
 3. `mcp/tools.py` — delete the design-doc mapping table from the docstring (it duplicates `DESCRIPTIONS`); keep a one-line pointer to `docs/`.
 **Accept:** full suite green; no behavioural diff except the new debug line.
 
-### Q-2 — menu → docket rename, same PR or its own
+### Q-2 — docket → docket rename, same PR or its own
 
-Mechanical rename: `menu`/`_menu_group_fields`/docstrings/tests → `docket`/`_docket_group_fields`. Public `DreamReport` fields keep their names unless they contain "menu" (they don't).
-**Accept:** `grep -ri menu packages tests` returns only the word "menu" in user-facing prose where it means the restaurant kind (none expected); suite green.
+Mechanical rename: `docket`/`_docket_group_fields`/docstrings/tests → `docket`/`_docket_group_fields`. Public `DreamReport` fields keep their names unless they contain "docket" (they don't).
+**Accept:** `grep -ri docket packages tests` returns only the word "docket" in user-facing prose where it means the restaurant kind (none expected); suite green.
 
 ### Q-3 — Manage split: `Dream` + `Docket`
 
@@ -43,7 +43,7 @@ Mechanical rename: `menu`/`_menu_group_fields`/docstrings/tests → `docket`/`_d
 **Accept:** plugin tests green (theirs updated only for moved identifiers); one live turn still sync_turns; `hermes memory status` available ✓.
 
 ## Risks (mitigated)
-- **Rename collateral in CI or Nix flake**: the flake builds from pyproject names only — no "menu"/"agent_memory" strings expected; R1's rename already proved the pattern.
+- **Rename collateral in CI or Nix flake**: the flake builds from pyproject names only — no "docket"/"agent_memory" strings expected; R1's rename already proved the pattern.
 - **Docket/Dream split touching standing propagation tests**: those test outcomes, not class boundaries — no edits expected beyond imports.
 - **Live plugin swap mid-rename**: Q-5 ends with `scripts/build_plugin.py --out ~/.hermes/plugins/mnemobun` + a restart, same as the P11 swap.
 

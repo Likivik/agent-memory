@@ -1,4 +1,4 @@
-"""P1 acceptance: the standing machine's menu path, journal, and proof tree."""
+"""P1 acceptance: the standing machine's docket path, journal, and proof tree."""
 
 from __future__ import annotations
 

@@ -1,19 +1,20 @@
-"""Native proposal review preserves every existing Manage authority boundary."""
+"""Native proposal review preserves every existing Dream authority boundary."""
 
 import json
 import pathlib
 
 import pytest
 from mnemobun.core import reasoning
-from mnemobun.core.errors import ReasonerUnavailableError, ValidationError
-from mnemobun.core.manage import (
+from mnemobun.core.docket import Docket
+from mnemobun.core.dream import (
     PROPOSAL_ABSTRACT_REVIEW,
     PROPOSAL_DELETE,
     PROPOSAL_MERGE,
     PROPOSAL_SPLIT,
     PROPOSAL_SUPERSEDE,
-    Manage,
+    Dream,
 )
+from mnemobun.core.errors import ReasonerUnavailableError, ValidationError
 from mnemobun.core.manage_toolkit import ARG_VERDICTS, TOOL_SUBMIT
 
 ALL_KINDS = {
@@ -109,7 +110,7 @@ def _reject(proposal):
 def test_every_proposal_kind_enters_one_native_review_without_new_authority(store):
     _seed_every_kind(store)
     reviewer = NativeScript(_reject)
-    report = Manage(store).sleep(reasoner=reviewer)
+    report = Dream(store).sleep(reasoner=reviewer)
 
     assert {proposal.kind for proposal in reviewer.proposals} >= ALL_KINDS
     assert {decision.proposal_id for decision in report.decisions} == {
@@ -131,8 +132,8 @@ def test_text_and_native_rejections_leave_identical_t0_store_state(tmp_path, con
         stores.append(candidate)
     text, native = stores
 
-    text_report = Manage(text).sleep(reasoner=TextReject())
-    native_report = Manage(native).sleep(reasoner=NativeScript(_reject))
+    text_report = Dream(text).sleep(reasoner=TextReject())
+    native_report = Dream(native).sleep(reasoner=NativeScript(_reject))
 
     text_records = {record.name: record.to_text() for record in text.records(True)}
     native_records = {record.name: record.to_text() for record in native.records(True)}
@@ -155,7 +156,7 @@ def test_native_accept_still_obeys_the_existing_per_kind_cap(store):
         abstract="Release window starts Friday evening nightly",
     )
     reviewer = NativeScript(lambda proposal: {"proposal": proposal.id, "verdict": "accept"})
-    report = Manage(store).sleep(reasoner=reviewer)
+    report = Dream(store).sleep(reasoner=reviewer)
 
     proposal = next(item for item in reviewer.proposals if item.kind == PROPOSAL_SUPERSEDE)
     assert proposal.id in report.withheld
@@ -180,7 +181,7 @@ def test_concurrent_write_after_submission_makes_the_proposal_stale(store):
         lambda proposal: {"proposal": proposal.id, "verdict": "accept"},
         mutate=lambda: store.correct(first.name, body="Concurrent writer won."),
     )
-    report = Manage(store).sleep(reasoner=reviewer)
+    report = Dream(store).sleep(reasoner=reviewer)
 
     proposal = next(item for item in reviewer.proposals if item.kind == PROPOSAL_SUPERSEDE)
     assert proposal.id in report.withheld
@@ -192,9 +193,9 @@ def test_concurrent_write_after_submission_makes_the_proposal_stale(store):
 def test_native_host_failure_creates_no_success_report_or_decision(store):
     store.record(type="fact", name="thin-memory", abstract="Thin", body="Useful body.")
     with pytest.raises(ReasonerUnavailableError, match="exited abnormally"):
-        Manage(store).sleep(reasoner=NativeScript(_reject, fail=True))
+        Dream(store).sleep(reasoner=NativeScript(_reject, fail=True))
     assert not list(store.layout.dream_reports.glob("*.md"))
-    assert Manage(store).proposals()
+    assert Docket(store).proposals()
 
 
 def test_store_lock_rechecks_expected_hash_for_destructive_operations(store):

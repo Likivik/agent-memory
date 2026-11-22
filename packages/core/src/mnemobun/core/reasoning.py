@@ -64,7 +64,7 @@ class ToolReasoner(Protocol):
 
 @runtime_checkable
 class ManageToolReasoner(Protocol):
-    """A Host-owned native loop over the strictly scoped Manage review toolkit."""
+    """A Host-owned native loop over the strictly scoped Dream review toolkit."""
 
     def review_converse(
         self, instructions: str, material: str, toolkit: ManageReviewToolkit
@@ -182,7 +182,7 @@ class ReviewRequest:
 
 @dataclasses.dataclass(frozen=True)
 class ReviewOutcome:
-    """Transport-neutral output; only Manage may turn its verdicts into decisions."""
+    """Transport-neutral output; only Dream may turn its verdicts into decisions."""
 
     verdicts: tuple[Verdict, ...]
     submitted: bool
@@ -224,7 +224,7 @@ class ReviewRuntime:
 def prepare(
     proposals: Sequence[Draft], records: Sequence[MemoryRecord], limits: ReviewLimits
 ) -> ReviewRequest:
-    """Freeze the proposal menu and its allowed evidence before external reasoning starts."""
+    """Freeze the proposal docket and its allowed evidence before external reasoning starts."""
     named = {name for proposal in proposals for name in proposal.targets}
     scoped_sources = tuple(_source(record) for record in records if record.name in named)
     by_name = {source.name: source for source in scoped_sources}
@@ -287,7 +287,7 @@ def render(
 ) -> str:
     """Render the legacy full-evidence prompt.
 
-    The two-argument form remains for callers outside Manage while the one-argument form consumes
+    The two-argument form remains for callers outside Dream while the one-argument form consumes
     the shared review request used by both execution modes.
     """
     if isinstance(request_or_proposals, ReviewRequest):

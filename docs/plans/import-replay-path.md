@@ -16,7 +16,7 @@ Goal: replay historical conversation logs into the store so it behaves as if acc
 | D1 | Historical stamps | `record_many(specs, import_stamps=False)` — when True, specs may carry `created` and `updated`; validated: stamps must parse ISO-8601 and be ≤ now (no future forgery). Live writes keep system stamps. |
 | D2 | Recency ranking | NO ranking change. Import sets `updated` = source timestamp, so existing recency decay operates on true history. `created` = source time. |
 | D3 | Standing for imported claims | `accepted` with provenance marker `import-batch:<id>` — the import source is the live memory of record. A `standing_policy="proposed"` option exists for replay-strict replays (opt-in, default accepted). |
-| D4 | LLM dreaming on import | **Deterministic half only, one pass at the end.** Sleep's date normalisation, co-occurrence links, exact/near-duplicate grouping run over the full corpus. The reasoner NEVER sees the import: merge/split/conflict proposals stay OPEN and drain through the normal nightly menu at its caps (10 accepts + 5 conflicts + 3 merges per sleep). No import-day LLM bill. Rationale: menu-capped rulings are the design's safety property; mass-ruling 22k claims through a reasoner in one shot breaks decision 4/5. |
+| D4 | LLM dreaming on import | **Deterministic half only, one pass at the end.** Sleep's date normalisation, co-occurrence links, exact/near-duplicate grouping run over the full corpus. The reasoner NEVER sees the import: merge/split/conflict proposals stay OPEN and drain through the normal nightly docket at its caps (10 accepts + 5 conflicts + 3 merges per sleep). No import-day LLM bill. Rationale: docket-capped rulings are the design's safety property; mass-ruling 22k claims through a reasoner in one shot breaks decision 4/5. |
 | D5 | Imported claims are standing=accepted, so no accept backlog | Follows D3/D4. Only duplicate/cluster proposals queue. |
 | D6 | Weight decay protection | Imported records have zero access history; first decay pass would sink them to the floor. Mitigation: seed the access log with one synthetic read entry per imported record, `agent="import"`, at import time. Probe `_settle_weights` behaviour on zero-access records before coding; if it ignores zero-access records, the synthetic entry is skipped (verify, don't assume). |
 | D7 | Primary source | Hermes `state.db` messages table (~554k messages, timestamps, session ids) — richest and structured. Session JSONLs as a secondary adapter later. Graphiti export adapter already exists (graphiti_import.py). |
@@ -29,8 +29,8 @@ The import path runs exactly one deterministic sleep pass after all writes:
 
 1. `_normalise_dates`, `_add_cooccurrence_links`, `_merge_exact_duplicates`, `_merge_near_duplicate_groups`, `_cluster` — all deterministic, all benefit from the historical corpus.
 2. `proposals()` drafts merges/splits/conflicts — they are RECORDED, not ruled.
-3. The host reasoner never runs during import. The open proposals drain through the normal nightly Dream at the existing caps. This is deliberate: the menu is the safety boundary between deterministic drafting and mutation; mass-import must not bypass it.
-4. Imported claims enter `accepted` (D3), so the accept menu is not flooded either.
+3. The host reasoner never runs during import. The open proposals drain through the normal nightly Dream at the existing caps. This is deliberate: the docket is the safety boundary between deterministic drafting and mutation; mass-import must not bypass it.
+4. Imported claims enter `accepted` (D3), so the accept docket is not flooded either.
 
 ## Phases (each with acceptance)
 

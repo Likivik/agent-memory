@@ -2,8 +2,8 @@ import dataclasses
 
 import pytest
 from mnemobun.core import schema
+from mnemobun.core.dream import ACTION_CLUSTERED, ACTION_GROUP_MERGED, Dream
 from mnemobun.core.errors import ValidationError
-from mnemobun.core.manage import ACTION_CLUSTERED, ACTION_GROUP_MERGED, Manage
 from mnemobun.core.recall import Recall
 
 
@@ -39,7 +39,7 @@ def test_regrouping_preserves_identity_and_evidence(menu_store, clock, operation
     store.record(type="fact", name="index", abstract="Related notes", links=list(before))
     clock.advance(hours=1)
 
-    report = Manage(store).sleep()
+    report = Dream(store).sleep()
 
     expected = ACTION_CLUSTERED if operation == "cluster" else ACTION_GROUP_MERGED
     assert expected in {action.kind for action in report.actions}
@@ -60,7 +60,7 @@ def test_regrouping_preserves_identity_and_evidence(menu_store, clock, operation
     store.rebuild_index()
     assert {hit.name for hit in Recall(store).recall("cache latency", log=False)} == set(before)
     assert not {ACTION_CLUSTERED, ACTION_GROUP_MERGED} & {
-        action.kind for action in Manage(store).sleep().actions
+        action.kind for action in Dream(store).sleep().actions
     }
 
 
@@ -87,7 +87,7 @@ def test_overlapping_clusters_keep_the_latest_source_version(menu_store):
         )
     before = {record.name: (record.body, record.provenance) for record in store.records()}
 
-    report = Manage(store).sleep()
+    report = Dream(store).sleep()
 
     moved = [action.target for action in report.actions if action.kind == ACTION_CLUSTERED]
     assert len(moved) > len(set(moved))
@@ -163,7 +163,7 @@ def test_regroup_rejects_a_system_group(store):
     original = store.record(type="event", name="source", abstract="Dated event")
     before = original.path.read_bytes()
 
-    with pytest.raises(ValidationError, match="menu"):
+    with pytest.raises(ValidationError, match="docket"):
         store.regroup(original.name, "new-group")
 
     assert original.path.read_bytes() == before

@@ -5,8 +5,8 @@ import re
 
 import pytest
 from mnemobun.adapters import hook_entry, moments
+from mnemobun.core.dream import Dream
 from mnemobun.core.errors import ValidationError
-from mnemobun.core.manage import Manage
 from mnemobun.core.recall import Recall
 
 pytestmark = pytest.mark.redteam
@@ -25,7 +25,7 @@ def test_a_poisoned_memory_changes_nothing_about_what_manage_does(seeded):
         name="poisoned-note",
     )
     before = {record.name for record in seeded.records(include_invalid=True)}
-    report = Manage(seeded).sleep()
+    report = Dream(seeded).sleep()
     after = {record.name for record in seeded.records(include_invalid=True)}
 
     assert after == before
@@ -156,7 +156,7 @@ def test_a_captured_reasoner_is_bounded_by_the_menu_and_the_per_sleep_cap(seeded
     seeded.config.manage.max_supersedes_per_sleep = 1
     before = len(seeded.records(include_invalid=True))
 
-    report = Manage(seeded).sleep(reasoner=Obedient())
+    report = Dream(seeded).sleep(reasoner=Obedient())
 
     assert len(seeded.records(include_invalid=True)) == before
     applied = [decision for decision in report.decisions if decision.verdict == "accepted"]

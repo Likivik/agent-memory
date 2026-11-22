@@ -129,12 +129,12 @@ def test_dream_tick_skips_when_not_due(provider, tmp_path):
 def test_dream_tick_runs_deterministic_sleep_when_due(provider, tmp_path, monkeypatch):
     _store_ready(provider, tmp_path)
     provider.initialize("sess-1", hermes_home=str(tmp_path))
-    import mnemobun.core.manage as manage_mod
+    import mnemobun.core.dream as dream_mod
 
-    monkeypatch.setattr(manage_mod.Manage, "due", lambda self, sessions_since: sessions_since >= 3)
+    monkeypatch.setattr(dream_mod.Dream, "due", lambda self, sessions_since: sessions_since >= 3)
     ran = []
     monkeypatch.setattr(
-        manage_mod.Manage,
+        dream_mod.Dream,
         "sleep",
         lambda self, reasoner=None, *, dream_id="": (
             ran.append(dream_id) or type("R", (), {"as_dict": lambda s: {"actions": []}})()

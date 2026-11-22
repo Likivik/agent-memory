@@ -14,6 +14,7 @@ scoring, same eligibility — the only thing that moves inside is who decides wh
 from __future__ import annotations
 
 import dataclasses
+import logging
 
 from .recall import Recall
 from .store import LEVEL_FULL, Store
@@ -66,4 +67,5 @@ def _body(store: Store, name: str) -> str:
     try:
         return store.read(name, level=LEVEL_FULL).text
     except Exception:
+        logging.getLogger(__name__).debug("context body unread: %s", name, exc_info=True)
         return ""

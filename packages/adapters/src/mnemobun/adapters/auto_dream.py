@@ -12,9 +12,9 @@ from mnemobun.core.config import (
     REASONER_HOST,
     STORE_ENV_VAR,
 )
+from mnemobun.core.dream import Dream
 from mnemobun.core.errors import LockTimeoutError
 from mnemobun.core.locking import file_lock
-from mnemobun.core.manage import Manage
 from mnemobun.core.reasoning import Reasoner
 from mnemobun.core.store import Store
 
@@ -30,7 +30,7 @@ REASON_MODEL_FLAG = "--reason-model"
 
 
 def launch(store: Store, *, trigger_source: str = "hook") -> dreaming.ClaimResult:
-    """Claim with the configured Manage reasoner and launch its one-shot worker."""
+    """Claim with the configured Dream reasoner and launch its one-shot worker."""
     reasoner_kind, host, model = _manage_target(store)
     result = dreaming.claim_due(
         store,
@@ -80,7 +80,7 @@ def run_due(
     model: str = "",
     trigger_source: str,
 ) -> dict[str, object]:
-    """Run the same claimed Manage pipeline used by a detached Hook worker."""
+    """Run the same claimed Dream pipeline used by a detached Hook worker."""
     target = host if reasoner_kind == REASONER_HOST else reasoner_kind
     result = dreaming.claim_due(
         store,
@@ -131,7 +131,7 @@ def run_worker(store: Store, claim_id: str, reasoner: Reasoner | None) -> dict[s
                 claim = dreaming.current_claim(store, claim_id)
                 if claim is None:
                     return {"dreamed": False, "claim": claim_id, "reason": "claim superseded"}
-                report = Manage(store).sleep(reasoner=reasoner, dream_id=claim.id)
+                report = Dream(store).sleep(reasoner=reasoner, dream_id=claim.id)
             dreaming.mark_succeeded(store, claim, report.path)
             return {
                 "dreamed": True,
@@ -156,7 +156,7 @@ def run_worker(store: Store, claim_id: str, reasoner: Reasoner | None) -> dict[s
 
 
 def _manage_target(store: Store) -> tuple[str, str, str]:
-    """Resolve the configured Manage target without borrowing the Write source Host."""
+    """Resolve the configured Dream target without borrowing the Write source Host."""
     executor = store.config.executor
     manage = executor.manage
     reasoner = manage.reasoner or executor.reasoner

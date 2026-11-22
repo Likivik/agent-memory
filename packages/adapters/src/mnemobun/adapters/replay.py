@@ -6,7 +6,7 @@ Decisions implemented (docs/plans/import-replay-path.md):
 - D3/D5: imported records enter ``accepted`` with provenance ``import-batch:<id>``
   (standing_policy="proposed" available for replay-strict runs).
 - D4: exactly ONE deterministic dream pass at the end; the reasoner never runs —
-  proposals stay open and drain through the normal nightly menu.
+  proposals stay open and drain through the normal nightly docket.
 - D6: synthetic access entries (agent="import") so the first decay pass counts from
   import time, not from the historical timestamps.
 """
@@ -111,8 +111,8 @@ def replay(
         store.log_access(entries)
 
     if run_dream and report.written:
-        from mnemobun.core.manage import Manage
+        from mnemobun.core.dream import Dream
 
-        dream = Manage(store).sleep(reasoner=None, dream_id="import")
+        dream = Dream(store).sleep(reasoner=None, dream_id="import")
         report.dream_actions = len(getattr(dream, "actions", []) or [])
     return report

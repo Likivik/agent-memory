@@ -1,12 +1,12 @@
-"""M6 — unattended Manage adds and amends; anything that loses a distinction is a proposal."""
+"""M6 — unattended Dream adds and amends; anything that loses a distinction is a proposal."""
 
 import shutil
 import subprocess
 
 import pytest
 from mnemobun.core import schema
-from mnemobun.core.errors import NotFoundError
-from mnemobun.core.manage import (
+from mnemobun.core.docket import Docket
+from mnemobun.core.dream import (
     ACTION_CLUSTERED,
     ACTION_DUPLICATE_MERGED,
     ACTION_GROUP_MERGED,
@@ -16,8 +16,9 @@ from mnemobun.core.manage import (
     PROPOSAL_MERGE,
     PROPOSAL_SPLIT,
     PROPOSAL_SUPERSEDE,
-    Manage,
+    Dream,
 )
+from mnemobun.core.errors import NotFoundError
 from mnemobun.core.recall import Recall
 
 
@@ -31,15 +32,15 @@ def _proposal_kinds(report):
 
 def test_unattended_sleep_never_shrinks_the_store(seeded):
     before = len(seeded.records(include_invalid=True))
-    Manage(seeded).sleep()
-    Manage(seeded).sleep()
+    Dream(seeded).sleep()
+    Dream(seeded).sleep()
     assert len(seeded.records(include_invalid=True)) >= before
 
 
 def test_sleep_is_idempotent(seeded):
-    first = Manage(seeded).sleep()
+    first = Dream(seeded).sleep()
     after_first = {record.name: record.to_text() for record in seeded.records()}
-    second = Manage(seeded).sleep()
+    second = Dream(seeded).sleep()
     after_second = {record.name: record.to_text() for record in seeded.records()}
     assert after_second == after_first
     assert _proposal_kinds(second) == _proposal_kinds(first)
@@ -48,7 +49,7 @@ def test_sleep_is_idempotent(seeded):
 def test_reading_a_memory_raises_its_weight_at_the_next_sleep(seeded):
     before = seeded.find("staging-deploy-e4021").weight
     seeded.read("staging-deploy-e4021")
-    report = Manage(seeded).sleep()
+    report = Dream(seeded).sleep()
     assert ACTION_WEIGHT_SETTLED in _kinds(report)
     assert seeded.find("staging-deploy-e4021").weight > before
 
@@ -56,13 +57,13 @@ def test_reading_a_memory_raises_its_weight_at_the_next_sleep(seeded):
 def test_an_untouched_memory_decays_but_never_below_the_floor(seeded, clock):
     clock.advance(days=seeded.config.weight.decay_after_days * 2)
     for _ in range(int(seeded.config.weight.ceiling / seeded.config.weight.decay_step) + 1):
-        Manage(seeded).sleep()
+        Dream(seeded).sleep()
     assert all(record.weight >= seeded.config.weight.floor for record in seeded.records())
 
 
 def test_decay_is_reversible_by_an_explicit_boost(seeded, clock):
     clock.advance(days=seeded.config.weight.decay_after_days * 2)
-    Manage(seeded).sleep()
+    Dream(seeded).sleep()
     decayed = seeded.find("file-truth-invariant").weight
     restored = seeded.feedback("file-truth-invariant", seeded.config.weight.boost_step)
     assert restored.weight > decayed
@@ -78,7 +79,7 @@ def test_exact_duplicates_are_merged_by_supersede_not_by_deletion(seeded):
         valid_from=original.valid_from,
         name="file-truth-invariant-copy",
     )
-    report = Manage(seeded).sleep()
+    report = Dream(seeded).sleep()
     assert ACTION_DUPLICATE_MERGED in _kinds(report)
     copy = seeded.find("file-truth-invariant-copy")
     assert copy is not None
@@ -109,7 +110,7 @@ def test_t0_preserves_distinct_text(store, field, left, right):
     for name, text in (("first", left), ("second", right)):
         store.record(name=name, **{**common, field: text})
 
-    report = Manage(store).sleep()
+    report = Dream(store).sleep()
 
     assert {record.name for record in store.records()} == {"first", "second"}
     assert ACTION_DUPLICATE_MERGED not in _kinds(report)
@@ -142,7 +143,7 @@ def test_t0_preserves_distinct_semantic_metadata(store, difference):
     store.record(name="first", **common)
     store.record(name="second", **{**common, **difference})
 
-    report = Manage(store).sleep()
+    report = Dream(store).sleep()
 
     assert {record.name for record in store.records()} == {"target", "first", "second"}
     assert ACTION_DUPLICATE_MERGED not in _kinds(report)
@@ -174,7 +175,7 @@ def test_t0_exact_duplicates_keep_the_oldest_copy_and_are_idempotent(store, cloc
         weight=store.config.weight.ceiling,
     )
 
-    report = Manage(store).sleep()
+    report = Dream(store).sleep()
 
     assert {record.name for record in store.records()} == {"target", original.name}
     copy = store.find("a-copy")
@@ -187,13 +188,13 @@ def test_t0_exact_duplicates_keep_the_oldest_copy_and_are_idempotent(store, cloc
         if action.kind == ACTION_DUPLICATE_MERGED
     ]
     assert duplicates == [(copy.name, original.name)]
-    assert ACTION_DUPLICATE_MERGED not in _kinds(Manage(store).sleep())
+    assert ACTION_DUPLICATE_MERGED not in _kinds(Dream(store).sleep())
 
 
 def test_records_that_keep_surfacing_together_grow_links_between_them(seeded):
     for index in range(seeded.config.manage.link_cooccurrence_min):
         Recall(seeded).recall(f"deploy drain queue file truth concise answers {index}")
-    report = Manage(seeded).sleep()
+    report = Dream(seeded).sleep()
     assert ACTION_LINK_ADDED in _kinds(report)
     assert any(record.links for record in seeded.records())
 
@@ -204,7 +205,7 @@ def test_similar_but_not_identical_entries_become_a_proposal_not_an_edit(seeded)
         type="preference",
         name="ryan-concise-restated",
     )
-    report = Manage(seeded).sleep()
+    report = Dream(seeded).sleep()
     assert {PROPOSAL_MERGE, PROPOSAL_SUPERSEDE} & _proposal_kinds(report)
     assert seeded.find("ryan-concise-restated") is not None
     assert seeded.find("ryan-prefers-concise-answers") is not None
@@ -221,7 +222,7 @@ def test_a_crowded_menu_directory_is_clustered_without_a_ruling(store, type_name
             provenance=[f"The operator recorded release rollout step {index}."],
         )
     before = {record.name: (record.body, record.provenance) for record in store.records()}
-    report = Manage(store).sleep()
+    report = Dream(store).sleep()
     moved = [action for action in report.actions if action.kind == ACTION_CLUSTERED]
     assert {action.target for action in moved} == set(before)
     parents = {record.path.parent for record in store.records()}
@@ -248,7 +249,7 @@ def test_a_crowded_system_directory_keeps_its_fields_paths_and_scope(store, type
     assert expected == set(before)
 
     for _ in range(2):
-        report = Manage(store).sleep()
+        report = Dream(store).sleep()
         assert ACTION_CLUSTERED not in _kinds(report)
         assert {r.name: (r.fields, r.path) for r in store.records()} == before
         recalled = Recall(store).recall("cache latency", scope=scope, log=False)
@@ -263,7 +264,7 @@ def test_spelling_similar_system_groups_remain_separate(store):
         store.record(type="fact", name=name, fields={"project": project}, abstract=abstract)
     before = {record.name: (record.fields, record.path) for record in store.records()}
 
-    report = Manage(store).sleep()
+    report = Dream(store).sleep()
 
     assert ACTION_GROUP_MERGED not in _kinds(report)
     assert {r.name: (r.fields, r.path) for r in store.records()} == before
@@ -293,7 +294,7 @@ def test_system_group_protection_uses_configured_sources(store, type_name, group
         )
     before = {record.name: (record.fields, record.path) for record in store.records()}
 
-    report = Manage(store).sleep()
+    report = Dream(store).sleep()
 
     assert not {ACTION_CLUSTERED, ACTION_GROUP_MERGED} & _kinds(report)
     assert {r.name: (r.fields, r.path) for r in store.records()} == before
@@ -321,7 +322,7 @@ def test_a_field_configured_as_menu_can_be_regrouped(store, operation, type_name
         )
     before = {record.name: record.path for record in store.records()}
 
-    report = Manage(store).sleep()
+    report = Dream(store).sleep()
 
     expected_action = ACTION_CLUSTERED if operation == "cluster" else ACTION_GROUP_MERGED
     assert expected_action in _kinds(report)
@@ -336,7 +337,7 @@ def test_menu_cleanup_preserves_empty_system_directories(store):
     menu_folder.mkdir(parents=True)
     _flat_topic(store, store.config.manage.cluster_min_files, "Cache latency note {index}")
 
-    assert ACTION_CLUSTERED in _kinds(Manage(store).sleep())
+    assert ACTION_CLUSTERED in _kinds(Dream(store).sleep())
 
     assert system_folder.is_dir()
     assert not menu_folder.exists()
@@ -361,7 +362,7 @@ def test_group_directories_that_differ_only_in_spelling_are_merged(store):
         abstract="Prefers a large cup",
         create_group=True,
     )
-    report = Manage(store).sleep()
+    report = Dream(store).sleep()
     merged = [action for action in report.actions if action.kind == ACTION_GROUP_MERGED]
     assert [action.target for action in merged] == ["cup"]
     assert store.layout.groups_of("preference") == {"coffee"}
@@ -371,7 +372,7 @@ def test_group_directories_that_differ_only_in_spelling_are_merged(store):
 def test_sleep_does_not_search_raw_material(store):
     store.archive.append_session("chat", ["user: the queue timeout is 30 seconds now"])
     store.rebuild_index()
-    report = Manage(store).sleep()
+    report = Dream(store).sleep()
     assert report.actions == ()
 
 
@@ -384,7 +385,7 @@ def test_a_file_with_sections_from_several_conversations_becomes_a_split_proposa
         body=body,
         provenance=["sessions/a#0-0", "sessions/b#0-0"],
     )
-    proposals = Manage(store).proposals()
+    proposals = Docket(store).proposals()
     assert [p.kind for p in proposals if p.targets == ("two-things",)] == [PROPOSAL_SPLIT]
 
 
@@ -395,9 +396,9 @@ def test_a_memory_at_the_floor_that_nobody_recalled_becomes_a_delete_proposal(st
         abstract="Nobody asks about this",
         weight=store.config.weight.floor,
     )
-    proposals = Manage(store).proposals()
+    proposals = Docket(store).proposals()
     assert [p.kind for p in proposals if p.targets == ("forgotten",)] == [PROPOSAL_DELETE]
-    Manage(store).decide(next(p for p in proposals if p.kind == PROPOSAL_DELETE).id, accept=True)
+    Docket(store).decide(next(p for p in proposals if p.kind == PROPOSAL_DELETE).id, accept=True)
     assert not store.find("forgotten").is_active()
     assert store.find("forgotten").path.exists()
 
@@ -405,19 +406,19 @@ def test_a_memory_at_the_floor_that_nobody_recalled_becomes_a_delete_proposal(st
 def test_after_any_sleep_the_files_on_disk_never_shrink(seeded):
     _twins(seeded)
     before = len(seeded.records(include_invalid=True))
-    for proposal in Manage(seeded).proposals():
+    for proposal in Docket(seeded).proposals():
         try:
-            Manage(seeded).decide(proposal.id, accept=True)
+            Docket(seeded).decide(proposal.id, accept=True)
         except Exception:
             continue
-    Manage(seeded).sleep()
+    Dream(seeded).sleep()
     assert len(seeded.records(include_invalid=True)) >= before
 
 
 def test_gc_is_the_only_road_to_physical_removal(seeded):
     thin, rich = _twins(seeded)
-    proposal = _find(Manage(seeded).proposals(), PROPOSAL_SUPERSEDE)
-    Manage(seeded).decide(proposal.id, accept=True)
+    proposal = _find(Docket(seeded).proposals(), PROPOSAL_SUPERSEDE)
+    Docket(seeded).decide(proposal.id, accept=True)
     invalid_path = seeded.find(thin).path
     assert invalid_path.exists()
     assert seeded.gc() == [thin]
@@ -431,7 +432,7 @@ def test_a_sleep_inside_a_repository_leaves_one_commit(seeded):
         ["git", "-C", str(seeded.root), "config", "user.email", "t@example.com"], check=True
     )
     subprocess.run(["git", "-C", str(seeded.root), "config", "user.name", "t"], check=True)
-    report = Manage(seeded).sleep()
+    report = Dream(seeded).sleep()
     assert report.committed
     log = subprocess.run(
         ["git", "-C", str(seeded.root), "log", "--oneline"],
@@ -444,25 +445,25 @@ def test_a_sleep_inside_a_repository_leaves_one_commit(seeded):
 
 
 def test_a_sleep_outside_a_repository_commits_nothing_and_says_so(seeded):
-    assert Manage(seeded).sleep().committed is False
+    assert Dream(seeded).sleep().committed is False
 
 
 def test_every_sleep_leaves_an_auditable_report(seeded):
-    report = Manage(seeded).sleep()
+    report = Dream(seeded).sleep()
     text = (seeded.layout.dream_reports / report.path.split("/")[-1]).read_text(encoding="utf-8")
     assert "proposals" in text
     assert report.inspected == len(seeded.records())
 
 
 def test_trigger_needs_both_elapsed_time_and_new_sessions(seeded, clock):
-    manage = Manage(seeded)
+    manage = Dream(seeded)
     assert not manage.due(sessions_since=0)
     assert manage.due(sessions_since=seeded.config.manage.trigger_min_sessions)
 
     manage.sleep()
-    assert not Manage(seeded).due(sessions_since=seeded.config.manage.trigger_min_sessions)
+    assert not Dream(seeded).due(sessions_since=seeded.config.manage.trigger_min_sessions)
     clock.advance(hours=seeded.config.manage.trigger_min_hours + 1)
-    assert Manage(seeded, clock).due(sessions_since=seeded.config.manage.trigger_min_sessions)
+    assert Dream(seeded, clock).due(sessions_since=seeded.config.manage.trigger_min_sessions)
 
 
 def _twins(store):
@@ -487,23 +488,23 @@ def _find(proposals, kind):
 
 def test_a_proposal_keeps_the_same_identity_across_sleeps(seeded):
     _twins(seeded)
-    first = _find(Manage(seeded).sleep().proposals, PROPOSAL_SUPERSEDE)
-    second = _find(Manage(seeded).sleep().proposals, PROPOSAL_SUPERSEDE)
+    first = _find(Dream(seeded).sleep().proposals, PROPOSAL_SUPERSEDE)
+    second = _find(Dream(seeded).sleep().proposals, PROPOSAL_SUPERSEDE)
     assert first.id == second.id
 
 
 def test_a_decided_proposal_is_never_proposed_again(seeded):
     _twins(seeded)
-    proposal = _find(Manage(seeded).proposals(), PROPOSAL_SUPERSEDE)
-    Manage(seeded).decide(proposal.id, accept=False)
-    assert proposal.id not in {open_one.id for open_one in Manage(seeded).proposals()}
-    assert proposal.id not in {open_one.id for open_one in Manage(seeded).sleep().proposals}
+    proposal = _find(Docket(seeded).proposals(), PROPOSAL_SUPERSEDE)
+    Docket(seeded).decide(proposal.id, accept=False)
+    assert proposal.id not in {open_one.id for open_one in Docket(seeded).proposals()}
+    assert proposal.id not in {open_one.id for open_one in Dream(seeded).sleep().proposals}
 
 
 def test_accepting_a_supersede_keeps_the_richer_entry(seeded):
     thin, rich = _twins(seeded)
-    proposal = _find(Manage(seeded).proposals(), PROPOSAL_SUPERSEDE)
-    Manage(seeded).decide(proposal.id, accept=True)
+    proposal = _find(Docket(seeded).proposals(), PROPOSAL_SUPERSEDE)
+    Docket(seeded).decide(proposal.id, accept=True)
     assert seeded.find(rich).is_active()
     assert seeded.find(thin).superseded_by == rich
 
@@ -511,56 +512,56 @@ def test_accepting_a_supersede_keeps_the_richer_entry(seeded):
 def test_accepting_a_supersede_loses_no_file(seeded):
     _twins(seeded)
     before = len(seeded.records(include_invalid=True))
-    proposal = _find(Manage(seeded).proposals(), PROPOSAL_SUPERSEDE)
-    Manage(seeded).decide(proposal.id, accept=True)
+    proposal = _find(Docket(seeded).proposals(), PROPOSAL_SUPERSEDE)
+    Docket(seeded).decide(proposal.id, accept=True)
     assert len(seeded.records(include_invalid=True)) == before
 
 
 def test_rejecting_a_proposal_changes_no_memory_file(seeded):
     _twins(seeded)
     before = {record.name: record.to_text() for record in seeded.records()}
-    proposal = _find(Manage(seeded).proposals(), PROPOSAL_SUPERSEDE)
-    Manage(seeded).decide(proposal.id, accept=False)
+    proposal = _find(Docket(seeded).proposals(), PROPOSAL_SUPERSEDE)
+    Docket(seeded).decide(proposal.id, accept=False)
     assert {record.name: record.to_text() for record in seeded.records()} == before
 
 
 def test_deciding_an_unknown_proposal_is_refused(seeded):
     with pytest.raises(NotFoundError):
-        Manage(seeded).decide("not-a-proposal", accept=True)
+        Docket(seeded).decide("not-a-proposal", accept=True)
 
 
 def test_the_decision_ledger_survives_an_index_rebuild(seeded):
     _twins(seeded)
-    proposal = _find(Manage(seeded).proposals(), PROPOSAL_SUPERSEDE)
-    Manage(seeded).decide(proposal.id, accept=False)
+    proposal = _find(Docket(seeded).proposals(), PROPOSAL_SUPERSEDE)
+    Docket(seeded).decide(proposal.id, accept=False)
     shutil.rmtree(seeded.layout.index_dir)
     seeded.rebuild_index()
-    assert proposal.id not in {open_one.id for open_one in Manage(seeded).proposals()}
+    assert proposal.id not in {open_one.id for open_one in Docket(seeded).proposals()}
 
 
 def test_one_read_is_settled_once_however_many_sleeps_follow(seeded):
     seeded.read("staging-deploy-e4021")
-    Manage(seeded).sleep()
+    Dream(seeded).sleep()
     settled = seeded.find("staging-deploy-e4021").weight
-    Manage(seeded).sleep()
-    Manage(seeded).sleep()
+    Dream(seeded).sleep()
+    Dream(seeded).sleep()
     assert seeded.find("staging-deploy-e4021").weight == settled
 
 
 def test_a_read_between_two_sleeps_raises_the_weight_again(seeded, clock):
     seeded.read("staging-deploy-e4021")
-    Manage(seeded).sleep()
+    Dream(seeded).sleep()
     settled = seeded.find("staging-deploy-e4021").weight
     clock.advance(hours=1)
     seeded.read("staging-deploy-e4021")
-    Manage(seeded).sleep()
+    Dream(seeded).sleep()
     assert seeded.find("staging-deploy-e4021").weight > settled
 
 
 def test_a_sleep_with_no_new_reads_settles_no_weight(seeded):
     seeded.read("staging-deploy-e4021")
-    Manage(seeded).sleep()
-    assert ACTION_WEIGHT_SETTLED not in _kinds(Manage(seeded).sleep())
+    Dream(seeded).sleep()
+    assert ACTION_WEIGHT_SETTLED not in _kinds(Dream(seeded).sleep())
 
 
 def _flat_topic(store, count, abstract):
@@ -579,7 +580,7 @@ def test_one_group_moves_into_one_directory_however_many_tokens_it_shares(seeded
         seeded.config.manage.cluster_min_files,
         "Kubernetes control plane upgrade note {index}",
     )
-    report = Manage(seeded).sleep()
+    report = Dream(seeded).sleep()
     moved = [action for action in report.actions if action.kind == ACTION_CLUSTERED]
     assert len(moved) == seeded.config.manage.cluster_min_files
     assert len({action.detail for action in moved}) == 1
@@ -592,4 +593,4 @@ def test_a_group_sharing_too_few_tokens_is_not_a_topic(seeded):
         seeded.config.manage.cluster_min_files,
         "Kubernetes control plane upgrade note {index}",
     )
-    assert ACTION_CLUSTERED not in _kinds(Manage(seeded).sleep())
+    assert ACTION_CLUSTERED not in _kinds(Dream(seeded).sleep())

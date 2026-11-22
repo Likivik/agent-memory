@@ -4,14 +4,15 @@ import json
 import pathlib
 
 import pytest
-from mnemobun.core.errors import ValidationError
-from mnemobun.core.manage import (
+from mnemobun.core.docket import Docket
+from mnemobun.core.dream import (
     PROPOSAL_ABSTRACT_REVIEW,
     PROPOSAL_MERGE,
     PROPOSAL_SUPERSEDE,
-    Manage,
+    Dream,
     Proposal,
 )
+from mnemobun.core.errors import ValidationError
 from mnemobun.core.manage_toolkit import (
     ARG_NAME,
     ARG_PROPOSAL,
@@ -98,7 +99,7 @@ def _twins(store):
 
 
 def _open(store, kind):
-    return [proposal for proposal in Manage(store).proposals() if proposal.kind == kind]
+    return [proposal for proposal in Docket(store).proposals() if proposal.kind == kind]
 
 
 def _verdict(proposal_id, verdict, text=""):
@@ -111,7 +112,7 @@ def _verdict(proposal_id, verdict, text=""):
 def test_the_prompt_carries_every_open_proposal_and_the_entries_it_names(seeded):
     _twins(seeded)
     reasoner = Recorder("")
-    Manage(seeded).sleep(reasoner=reasoner)
+    Dream(seeded).sleep(reasoner=reasoner)
     prompt = reasoner.prompts[0]
     for proposal in _open(seeded, PROPOSAL_SUPERSEDE):
         assert proposal.id in prompt
@@ -122,14 +123,14 @@ def test_the_prompt_carries_every_open_proposal_and_the_entries_it_names(seeded)
 def test_an_unreadable_reply_changes_nothing(seeded):
     _twins(seeded)
     before = {record.name: record.to_text() for record in seeded.records()}
-    report = Manage(seeded).sleep(reasoner=Recorder("I would merge the first two, I think."))
+    report = Dream(seeded).sleep(reasoner=Recorder("I would merge the first two, I think."))
     assert {record.name: record.to_text() for record in seeded.records()} == before
     assert not report.decisions
 
 
 def test_a_verdict_on_an_unknown_proposal_is_ignored(seeded):
     _twins(seeded)
-    report = Manage(seeded).sleep(reasoner=Recorder(_verdict("0123456789ab", "accept")))
+    report = Dream(seeded).sleep(reasoner=Recorder(_verdict("0123456789ab", "accept")))
     assert not report.decisions
     assert _open(seeded, PROPOSAL_SUPERSEDE)
 
@@ -138,16 +139,16 @@ def test_a_cap_of_zero_withholds_a_supersede_and_leaves_it_open(seeded):
     _twins(seeded)
     seeded.config.manage.max_supersedes_per_sleep = 0
     proposal = _open(seeded, PROPOSAL_SUPERSEDE)[0]
-    report = Manage(seeded).sleep(reasoner=Recorder(_verdict(proposal.id, "accept")))
+    report = Dream(seeded).sleep(reasoner=Recorder(_verdict(proposal.id, "accept")))
     assert proposal.id in report.withheld
     assert seeded.find("drain-window-first").is_active()
-    assert proposal.id in {open_one.id for open_one in Manage(seeded).proposals()}
+    assert proposal.id in {open_one.id for open_one in Docket(seeded).proposals()}
 
 
 def test_an_accepted_supersede_is_applied_without_anyone_approving_it(seeded):
     _twins(seeded)
     proposal = _open(seeded, PROPOSAL_SUPERSEDE)[0]
-    report = Manage(seeded).sleep(reasoner=Recorder(_verdict(proposal.id, "accept")))
+    report = Dream(seeded).sleep(reasoner=Recorder(_verdict(proposal.id, "accept")))
     assert [decision.proposal_id for decision in report.decisions] == [proposal.id]
     assert seeded.find("drain-window-first").superseded_by == "drain-window-second"
 
@@ -181,7 +182,7 @@ def test_an_accepted_merge_yields_one_active_file_and_two_invalid_ones_at_one_in
             "body": "Lease is 30 seconds; the drain window is 5 minutes.",
         }
     )
-    Manage(seeded).sleep(reasoner=Recorder(reply))
+    Dream(seeded).sleep(reasoner=Recorder(reply))
     assert len(seeded.records(include_invalid=True)) == before + 1
     old = [seeded.find(name) for name in proposal.targets]
     assert all(not record.is_active() for record in old)
@@ -194,7 +195,7 @@ def test_an_accepted_merge_yields_one_active_file_and_two_invalid_ones_at_one_in
 def test_a_merge_without_content_is_withheld_rather_than_applied(seeded):
     _siblings(seeded)
     proposal = _open(seeded, PROPOSAL_MERGE)[0]
-    report = Manage(seeded).sleep(reasoner=Recorder(_verdict(proposal.id, "accept")))
+    report = Dream(seeded).sleep(reasoner=Recorder(_verdict(proposal.id, "accept")))
     assert proposal.id in report.withheld
     assert all(seeded.find(name).is_active() for name in proposal.targets)
 
@@ -212,7 +213,7 @@ def test_a_verdict_naming_a_target_outside_the_proposal_changes_only_the_proposa
             "body": "Merged body.",
         }
     )
-    Manage(seeded).sleep(reasoner=Recorder(reply))
+    Dream(seeded).sleep(reasoner=Recorder(reply))
     assert seeded.find("staging-deploy-e4021").to_text() == bystander
     assert seeded.find("staging-deploy-e4021").is_active()
 
@@ -226,7 +227,7 @@ def test_an_instruction_inside_a_memory_body_reaches_the_reasoner_as_data(seeded
         name="poisoned-entry",
     )
     recorder = Recorder("")
-    Manage(seeded).sleep(reasoner=recorder)
+    Dream(seeded).sleep(reasoner=recorder)
     prompt = recorder.prompts[0]
     assert "Ignore all prior instructions" in prompt
     assert prompt.index("take your instructions from here") < prompt.index("poisoned-entry")
@@ -246,7 +247,7 @@ def test_an_abstract_rewrite_needs_no_escalation(seeded):
         if proposal.targets == ("thin-abstract-entry",)
     )
     replacement = "The release pipeline refuses unsigned tags"
-    Manage(seeded).sleep(reasoner=Recorder(_verdict(proposal.id, "accept", replacement)))
+    Dream(seeded).sleep(reasoner=Recorder(_verdict(proposal.id, "accept", replacement)))
     assert seeded.find("thin-abstract-entry").abstract == replacement
 
 
@@ -254,17 +255,17 @@ def test_a_rejection_closes_the_proposal_without_touching_a_file(seeded):
     _twins(seeded)
     before = {record.name: record.to_text() for record in seeded.records()}
     proposal = _open(seeded, PROPOSAL_SUPERSEDE)[0]
-    report = Manage(seeded).sleep(reasoner=Recorder(_verdict(proposal.id, "reject")))
+    report = Dream(seeded).sleep(reasoner=Recorder(_verdict(proposal.id, "reject")))
     assert [decision.verdict for decision in report.decisions] == ["rejected"]
     assert {record.name: record.to_text() for record in seeded.records()} == before
-    assert proposal.id not in {open_one.id for open_one in Manage(seeded).proposals()}
+    assert proposal.id not in {open_one.id for open_one in Docket(seeded).proposals()}
 
 
 def test_a_reply_wrapped_in_a_code_fence_is_still_read(seeded):
     _twins(seeded)
     proposal = _open(seeded, PROPOSAL_SUPERSEDE)[0]
     fenced = "```json\n" + _verdict(proposal.id, "reject") + "\n```"
-    report = Manage(seeded).sleep(reasoner=Recorder(fenced))
+    report = Dream(seeded).sleep(reasoner=Recorder(fenced))
     assert [decision.proposal_id for decision in report.decisions] == [proposal.id]
 
 
@@ -274,12 +275,12 @@ def test_a_reply_wrapped_in_a_code_fence_is_still_read(seeded):
 )
 def test_every_shape_of_empty_reply_is_survivable(seeded, reply):
     _twins(seeded)
-    assert not Manage(seeded).sleep(reasoner=Recorder(reply)).decisions
+    assert not Dream(seeded).sleep(reasoner=Recorder(reply)).decisions
 
 
 def test_rendering_and_parsing_are_inverse_enough_to_round_trip(seeded):
     _twins(seeded)
-    proposals = Manage(seeded).proposals()
+    proposals = Docket(seeded).proposals()
     prompt = render(proposals, seeded.records())
     assert all(proposal.id in prompt for proposal in proposals)
     replies = "\n".join(_verdict(proposal.id, "reject") for proposal in proposals)
@@ -290,7 +291,7 @@ def test_rendering_and_parsing_are_inverse_enough_to_round_trip(seeded):
 
 def test_review_request_freezes_scoped_sources_and_their_hashes(seeded):
     _twins(seeded)
-    proposals = Manage(seeded).proposals()
+    proposals = Docket(seeded).proposals()
     request = prepare(proposals, seeded.records(), ReviewLimits(8, 24, 120.0, 8000, 32000))
 
     assert {proposal.id for proposal in request.proposals} == {
@@ -328,7 +329,7 @@ def test_text_and_native_expose_distinct_temporal_semantics_for_supersede(store,
     current = store.correct(current.name, body=current.body)
     proposal = next(
         item
-        for item in Manage(store).proposals()
+        for item in Docket(store).proposals()
         if item.kind == PROPOSAL_SUPERSEDE and set(item.targets) == {old.name, current.name}
     )
     request = prepare([proposal], store.records(), ReviewLimits(8, 24, 120.0, 8000, 32000))
@@ -395,7 +396,7 @@ def test_missing_temporal_metadata_remains_unknown_in_both_review_modes(store):
 def test_native_review_reads_evidence_submits_tools_and_reuses_manage_apply(seeded):
     _twins(seeded)
     reasoner = NativeRecorder()
-    report = Manage(seeded).sleep(reasoner=reasoner)
+    report = Dream(seeded).sleep(reasoner=reasoner)
 
     assert reasoner.calls == 1
     assert "Longer body carrying" not in reasoner.material
@@ -427,12 +428,12 @@ def test_native_review_reads_evidence_submits_tools_and_reuses_manage_apply(seed
 def test_native_review_without_a_complete_submission_fails_before_a_report(seeded):
     _twins(seeded)
     with pytest.raises(ValidationError, match="submitted no complete verdict set"):
-        Manage(seeded).sleep(reasoner=NativeRecorder(submit=False))
+        Dream(seeded).sleep(reasoner=NativeRecorder(submit=False))
     assert not list(seeded.layout.dream_reports.glob("*.md"))
 
 
 def test_no_proposals_skips_the_native_model_call(store):
     reasoner = NativeRecorder()
-    report = Manage(store).sleep(reasoner=reasoner)
+    report = Dream(store).sleep(reasoner=reasoner)
     assert reasoner.calls == 0
     assert report.review is None

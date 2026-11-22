@@ -18,7 +18,7 @@ from .paths import StoreLayout
 from .slug import is_valid_slug
 
 SOURCE_SYSTEM = "system"
-SOURCE_MENU = "menu"
+SOURCE_MENU = "docket"
 SOURCE_FIELD = "field"
 SOURCES = (SOURCE_SYSTEM, SOURCE_MENU, SOURCE_FIELD)
 

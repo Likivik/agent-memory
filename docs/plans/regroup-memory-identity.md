@@ -1,6 +1,6 @@
 # Preserve memory identity during regrouping
 
-Menu-based add-only memories currently re-enter creation when Manage moves them.
+Docket-based add-only memories currently re-enter creation when Manage moves them.
 The resulting record can lose its name, creation time and provenance.
 
 1. Define regrouping's preservation and failure boundaries in the management design.
@@ -8,7 +8,7 @@ The resulting record can lose its name, creation time and provenance.
    occupied destinations and projection rollback.
 3. Add a failing CLI Sleep regression for identity, evidence and index rebuilds.
 4. Route regrouping through Store's locked rewrite path, preserving the existing
-   record while changing its menu group and path.
+   record while changing its docket group and path.
 5. Run focused tests, the full CI checks and an isolated CLI smoke test; remove the
    completed TODO and review the design index before committing.
 
