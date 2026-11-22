@@ -72,11 +72,12 @@ def replay(
             session = _slug_session(str(getattr(turn, "session_id", "")).strip() or "anon")
             name = f"turn-{session}-{report.written + index:06d}"
             names.append(name)
+            abstract_source = " ".join(user.split()) or " ".join(assistant.split())
             specs.append(
                 {
                     "type": "event",
                     "name": name,
-                    "abstract": user[:max_abstract] or assistant[:max_abstract],
+                    "abstract": abstract_source[:max_abstract],
                     "body": f"USER: {user}\nASSISTANT: {assistant}",
                     "author": "import",
                     "standing": standing_policy,
