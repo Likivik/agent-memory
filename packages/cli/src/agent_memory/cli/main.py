@@ -293,6 +293,19 @@ def _parser() -> argparse.ArgumentParser:
     importer.add_argument("source")
     importer.set_defaults(handler=_import)
 
+    replayer = subcommand("replay", help="replay historical Hermes session logs into the store (P9)")
+    replayer.add_argument("--state-db", required=True, help="path to a Hermes state.db")
+    replayer.add_argument(
+        "--standing-policy",
+        choices=["accepted", "proposed"],
+        default="accepted",
+        help="standing for imported records (D3: accepted is the default)",
+    )
+    replayer.add_argument("--batch-id", default="", help="provenance marker suffix (default: clock stamp)")
+    replayer.add_argument("--batch-records", type=int, default=2000)
+    replayer.add_argument("--no-dream", action="store_true", help="skip the deterministic dream pass")
+    replayer.set_defaults(handler=_replay)
+
     sleeper = subcommand("sleep", help="run the sleep-time Manage pass")
     sleep_due = sleeper.add_mutually_exclusive_group()
     sleep_due.add_argument("--sessions-since", type=int, default=None)
@@ -737,6 +750,26 @@ def _export(store: Store, args: argparse.Namespace) -> dict[str, object]:
 def _import(store: Store, args: argparse.Namespace) -> dict[str, object]:
     written = portability.read_import(store, pathlib.Path(args.source))
     return {"imported": written}
+
+
+def _replay(store: Store, args: argparse.Namespace) -> dict[str, object]:
+    from agent_memory.adapters.import_source import HermesSource
+    from agent_memory.adapters.replay import replay as run_replay
+
+    report = run_replay(
+        store,
+        HermesSource(args.state_db),
+        standing_policy=args.standing_policy,
+        batch_id=args.batch_id,
+        batch_records=args.batch_records,
+        run_dream=not args.no_dream,
+    )
+    return {
+        "written": report.written,
+        "batches": report.batches,
+        "rejected": len(report.rejected),
+        "dream_actions": report.dream_actions,
+    }
 
 
 def _sleep(store: Store, args: argparse.Namespace) -> dict[str, object]:
