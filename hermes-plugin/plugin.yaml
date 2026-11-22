@@ -1,3 +1,3 @@
 name: mnemobun
 description: File-backed bi-temporal memory store with a five-state standing machine, answer-audit verification and a deterministic dream cycle
-version: 0.1.0
+version: 0.2.0
