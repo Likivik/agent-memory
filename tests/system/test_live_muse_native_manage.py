@@ -1,4 +1,4 @@
-"""Authenticated Muse coverage for the complete native Manage review path."""
+"""Authenticated Muse coverage for the complete native Dream review path."""
 
 import json
 import os
@@ -17,7 +17,7 @@ MODEL = os.environ.get("AGENT_MEMORY_LIVE_MUSE_MODEL", "")
 
 pytestmark = pytest.mark.skipif(
     not LIVE,
-    reason="set AGENT_MEMORY_LIVE_MUSE_MANAGE=1 for authenticated Muse Manage coverage",
+    reason="set AGENT_MEMORY_LIVE_MUSE_MANAGE=1 for authenticated Muse Dream coverage",
 )
 
 

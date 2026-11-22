@@ -3,7 +3,7 @@
 import json
 
 from mnemobun.core import reasoning, sessions
-from mnemobun.core.manage import Manage, Proposal
+from mnemobun.core.docket import Docket, Proposal
 from mnemobun.core.manage_toolkit import (
     ARG_NAME,
     ARG_OFFSET,
@@ -30,7 +30,7 @@ def _kit(store, *, max_calls=24, result_chars=8000, evidence_chars=32000):
         abstract="Queue drain timeout expires before the worker lease completes on staging",
         body="The staging drain is 20 seconds and the worker lease is 30 seconds.",
     )
-    proposals = Manage(store).proposals()
+    proposals = Docket(store).proposals()
     request = reasoning.prepare(
         proposals,
         store.records(),
@@ -343,7 +343,7 @@ def test_submit_accepts_one_complete_set_but_never_mutates_or_decides(store):
     assert kit.outcome().complete
     assert kit.submission and kit.submission[0].proposal_id == proposal.id
     assert {record.name: record.to_text() for record in store.records()} == before
-    assert Manage(store).proposals()[0].id == proposal.id
+    assert Docket(store).proposals()[0].id == proposal.id
 
     repeated = kit.call(TOOL_SUBMIT, {ARG_VERDICTS: [_reject(proposal.id)]})
     assert repeated.is_error

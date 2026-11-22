@@ -93,10 +93,10 @@ def resolve(
     if operation == MANAGE and chosen.tool_mode == TOOL_MODE_NATIVE:
         if chosen.reasoner != REASONER_HOST:
             raise ReasonerUnavailableError(
-                "native Manage review currently requires a host reasoner"
+                "native Dream review currently requires a host reasoner"
             )
         if chosen.host not in NATIVE_MANAGE_HOSTS:
             raise ReasonerUnavailableError(
-                "native Manage review currently supports only " + ", ".join(NATIVE_MANAGE_HOSTS)
+                "native Dream review currently supports only " + ", ".join(NATIVE_MANAGE_HOSTS)
             )
     return chosen

@@ -32,11 +32,11 @@ merge, split, supersede, and deletion decisions. File scope, links, provenance, 
 validation, and projection remain Core responsibilities.
 
 Automatic directory clustering, spelling-based group merging, and empty-group cleanup
-apply only to schema group fields whose configured source is menu. System-sourced
+apply only to schema group fields whose configured source is docket. System-sourced
 groups preserve their values and paths, maintaining project ownership and event date
 boundaries. Custom schemas and field-source overrides follow the same rule.
 Regrouping preserves memory identity, content, provenance, relationships, creation
-time and validity, including for add-only schemas. It changes only the menu group,
+time and validity, including for add-only schemas. It changes only the docket group,
 path and update time. Store validates the source and destination under its writer
 lock; stale sources, occupied destinations and projection failures leave truth intact.
 

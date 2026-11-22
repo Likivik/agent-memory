@@ -17,8 +17,9 @@ import tempfile
 
 from . import timestamp
 from .config import DREAM_CLAIM_ID_LENGTH, DREAM_ERROR_MAX_CHARS, STATE_JSON_INDENT
+from .docket import Docket
+from .dream import Dream
 from .locking import file_lock, lock_is_held
-from .manage import Manage
 from .pending import Pending
 from .store import Store
 from .watermark import Mark, Watermark
@@ -101,8 +102,8 @@ def claim_due(
             state["last_error"] = "claim lease expired before completion"
 
         complete = completed_sessions(store)
-        if not existed and Manage(store).last_sleep() is not None:
-            last = Manage(store).last_sleep()
+        if not existed and Docket(store).last_sleep() is not None:
+            last = Docket(store).last_sleep()
             assert last is not None
             state["covered_sessions"] = sorted(
                 session
@@ -114,11 +115,11 @@ def claim_due(
         if not write_is_settled(store):
             _save(store, state)
             return ClaimResult(None, "write pipeline not settled", len(sessions))
-        if not Manage(store).due(len(sessions)):
+        if not Dream(store).due(len(sessions)):
             _save(store, state)
             return ClaimResult(None, "trigger conditions not met", len(sessions))
 
-        claim_id = _claim_id(Manage(store).last_sleep(), sessions)
+        claim_id = _claim_id(Docket(store).last_sleep(), sessions)
         previous_id = str(state.get("claim_id") or "")
         attempt = _integer(state.get("attempt"), 0) + 1 if previous_id == claim_id else 1
         state.update(

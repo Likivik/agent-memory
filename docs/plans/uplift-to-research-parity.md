@@ -6,7 +6,7 @@ Memory — Design v1.0/1.1*, and the five source reviews (tigerless, Mnemosyne, 
 Kyros) in the same folder.
 
 Goal: keep upstream's architecture (Markdown files = source of truth, SQLite = deletable cache,
-zero-LLM core, menu-capped Manage reasoner) and add the three things our research says are missing:
+zero-LLM core, docket-capped Manage reasoner) and add the three things our research says are missing:
 a five-state standing machine, an answer-audit read track, and in-process Hermes integration.
 
 Every section ends with the source facts it rests on (verified 2026-11-16, main @ 2648ba02).
@@ -41,9 +41,9 @@ New module `packages/core/src/mnemobun/core/standing.py`:
 - **Propagation is DRed-style** (lemmalog): retraction of an antecedent retracts dependents;
   *restoring* the antecedent restores them — unless user-rejected. Contest never propagates.
   `links` already exist as a frontmatter field; propagation walks the link graph via the index.
-- **The Manage reasoner may only draft standing proposals** into the existing menu flow — it can never
+- **The Manage reasoner may only draft standing proposals** into the existing docket flow — it can never
   set standing directly. Upstream already caps and menus the judged half (`manage.py` docstring); we add
-  standing proposals to that menu and keep the deterministic `_apply` path.
+  standing proposals to that docket and keep the deterministic `_apply` path.
 
 Tests: `tests/unit/test_standing.py` (transitions, propagation, restore-with-override), differential
 test in the style of `tests/differential_test.rs` (upstream lemmalog analogy): random link graphs,
@@ -107,7 +107,7 @@ the minimal set; map ours onto theirs (`memory_save`→record, `memory_revise`�
 ## P6 — Consolidation config (Dream)
 
 - Reasoner: `HOST_HERMES` dialect (upstream default table sets a flash-tier model per host — we pin
-  ours in config), caps per kind per sleep already enforced by the Manage menu; keep.
+  ours in config), caps per kind per sleep already enforced by the Manage docket; keep.
 - Verify auto-dream concurrency tests still pass with the standing machine present
   (`tests/unit/test_auto_dream.py`, `test_correction_concurrency.py`).
 
@@ -151,7 +151,7 @@ directly (their raw-evidence read track) or the index; sleep-reasoner model choi
 | 1 | Claim format | Their typed-file system; one new `claim` TOML schema, key = (`subject`), group = `subject`. Atomic claims stay single-subject. |
 | 2 | Standing storage | `standing` in file frontmatter (source of truth); `standing_history` in the SQLite index + a `state/standing-journal.jsonl` side file so history survives an index wipe (cache is deletable by design — history must not live only there). |
 | 3 | Who creates conflicts_with links | The agent in-turn (`memory_revise`/`memory_record` with an explicit `conflicts` argument) — never auto-detected in v1. NLI auto-detection is deferred; false conflicts are worse than missed ones at our scale. |
-| 4 | When proposed → accepted fires | On the next Manage/Dream sleep whose reasoner passes a menu item `accept(claim_id)`; plus immediate accept if a user message confirms it. No silent auto-accept. |
+| 4 | When proposed → accepted fires | On the next Manage/Dream sleep whose reasoner passes a docket item `accept(claim_id)`; plus immediate accept if a user message confirms it. No silent auto-accept. |
 | 5 | Sleep reasoner model + caps | Reasoner = Hermes host dialect (our own model routing), cap = 10 proposals per sleep per kind (matches upstream's cap style), auto_dream on. |
 | 6 | `memory_search` raw vs index | Raw file-tree grep (their raw-evidence read track) for L1; index for claims. Index is a cache — raw must never depend on it. |
 | 7 | Prefetch budget | 1,500 bytes injection floor (their injection_budget default style) + recall top-5 for provider prefetch; tune after MemUse probe. |

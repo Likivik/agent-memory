@@ -11,7 +11,7 @@ Semantics fixed by the design:
   never overflow (decision 7).
 - sync_turn: appends the raw turn as an `event` with provenance; NOTHING else. Claims are
   written by the agent's explicit `memory_record` calls (no separate extraction pipeline,
-  constraint 1) and enter as `proposed` — acceptance stays with the Manage menu or the
+  constraint 1) and enter as `proposed` — acceptance stays with the Dream docket or the
   user (decision 4, already enforced by the store's `_spec_standing`).
 - verify: binds the host reasoner (a str->str callable) as the audit labeler (decision 8);
   core stays reasoner-free.
@@ -62,6 +62,7 @@ class HermesMemoryProvider:
         available, base = _base_class()
         self._is_available = available or True  # usable standalone; Hermes just gets richer
         self._base = base
+        self.last_recall_count = 0  # lines the last prefetch injected (recall indicator)
 
     # -- lifecycle ---------------------------------------------------------
     @property
@@ -102,6 +103,7 @@ class HermesMemoryProvider:
                 break
             out.append(line)
             used += len(encoded) + 1
+        self.last_recall_count = len(out)
         return "\n".join(out)
 
     def _claims_block(self, top_k: int) -> list[tuple[str, str]]:
@@ -147,19 +149,19 @@ class HermesMemoryProvider:
 
     # -- sleep / dream wiring (P6) ------------------------------------------
     def sleep_due(self, sessions_since: int) -> bool:
-        from mnemobun.core.manage import Manage
+        from mnemobun.core.dream import Dream
 
-        return Manage(self.store).due(sessions_since)
+        return Dream(self.store).due(sessions_since)
 
     def run_sleep(self, sessions_since: int, *, dream_id: str = "") -> dict[str, Any]:
-        """Run a Manage sleep with the bound reasoner (decision 5: menu-capped).
+        """Run a Dream sleep with the bound reasoner (decision 5: docket-capped).
 
-        The reasoner only rules on the drafted menu; deterministic code applies.
+        The reasoner only rules on the drafted docket; deterministic code applies.
         With no reasoner bound, the deterministic half still runs and proposals
         stay open for the next ruling (never auto-accepted)."""
-        from mnemobun.core.manage import Manage
+        from mnemobun.core.dream import Dream
 
-        manage = Manage(self.store)
+        manage = Dream(self.store)
         if not manage.due(sessions_since) and not dream_id:
             return {"skipped": "not due"}
         reasoner = self.reasoner

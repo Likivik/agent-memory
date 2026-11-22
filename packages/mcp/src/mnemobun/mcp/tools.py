@@ -1,14 +1,7 @@
 """The MCP tools. Each one collapses onto the same core call the CLI makes.
 
-Tool-surface mapping onto the Hermes design-doc names (P4) — same call, no renames:
-    memory_save    -> memory_record    (claims enter `proposed`)
-    memory_revise  -> memory_supersede (or memory_correct for in-place edits)
-    memory_search  -> memory_recall    (raw session traces: memory_trace)
-    memory_forget  -> memory_delete    (retract: standing -> retracted via record)
-    memory_timeline: proof tree for a claim
-    memory_verify:  answer-audit (supported / conflicting / unsupported / abstain)
-    memory_stats:   store health (P4 addition — was missing upstream)
-    memory_forget_session: forget-by-session (design doc: provenance-scoped removal)
+The tool-surface mapping onto the design-doc names lives in docs/ (single
+source of truth); this module owns the catalogue and dispatch only.
 """
 
 from __future__ import annotations

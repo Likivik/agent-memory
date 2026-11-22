@@ -1,7 +1,7 @@
 """Aggregation. Attribution is licensed only when every arm shares one recall fingerprint.
 
 A row is one write option under one sleep. Two runs that replayed the same stores through
-different Manage settings are the same W arm and different rows, which is what asking what a
+different Dream settings are the same W arm and different rows, which is what asking what a
 sleep was worth requires.
 """
 

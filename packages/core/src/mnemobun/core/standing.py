@@ -7,7 +7,7 @@ and design-doc decisions 1–5:
   `standing` is the source of truth; the SQLite `standing_history` table and the
   `state/standing-journal.jsonl` side file record every transition (the index is a deletable
   cache, so the journal lives outside it).
-- Transitions are computed here, never by a reasoner. The Manage menu may only *propose*
+- Transitions are computed here, never by a reasoner. The Dream docket may only *propose*
   accept/contest items (see `manage.py`); users may confirm or reject.
 - Support: a claim is supported while every plain link target is active (not retracted or
   superseded). Contest never propagates — a claim citing a contested claim keeps its own
@@ -112,7 +112,7 @@ def set_standing(store: Store, name: str, to_standing: str, cause: str, at: str 
     """Set one claim's standing directly (user confirm/reject, supersede side-effect).
 
     `force` bypasses the transition table for callers that already validated the move
-    (the Manage apply path and the supersede side-effect inside store.supersede).
+    (the Dream apply path and the supersede side-effect inside store.supersede).
     """
     if to_standing not in STANDING_STATES:
         raise ValidationError([FieldError("standing", f"unknown standing: {to_standing}")])

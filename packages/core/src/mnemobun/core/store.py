@@ -1,4 +1,4 @@
-"""The single write path (Invariant 2). Every adapter, and Manage itself, enters here.
+"""The single write path (Invariant 2). Every adapter, and Dream itself, enters here.
 
 A write names a type and fills that type's fields; the store derives the path (ADR-008),
 decides update versus replacement (ADR-009), and reprojects. Nothing here deletes a file.
@@ -524,7 +524,7 @@ class Store:
         """Invalidate ``duplicate`` into ``keeper`` under one writer lock, after
         revalidating the keeper against the live store.
 
-        Manage picks the keeper from a snapshot taken before any lock. If the
+        Dream picks the keeper from a snapshot taken before any lock. If the
         keeper was deleted, superseded or otherwise invalidated between that
         snapshot and this write, invalidating the duplicate anyway would orphan
         its content into a dead name — both records gone while each looked
@@ -611,7 +611,7 @@ class Store:
             )
 
     def gc(self) -> list[str]:
-        """Physically removes invalid files. A human runs this; Manage cannot reach it."""
+        """Physically removes invalid files. A human runs this; Dream cannot reach it."""
         removed: list[str] = []
         with store_lock(self.layout):
             for record in self.records(include_invalid=True):
@@ -623,7 +623,7 @@ class Store:
         return removed
 
     def write(self, record: MemoryRecord) -> MemoryRecord:
-        """Validate, persist, reproject. Agent writes and Manage rewrites share this path."""
+        """Validate, persist, reproject. Agent writes and Dream rewrites share this path."""
         with store_lock(self.layout):
             return self._write_locked(record)
 
@@ -672,7 +672,7 @@ class Store:
             self._require_source_hash(current, expected_source_hash)
             schema = self.schemas.require(current.type)
             if not schema.group or source_of(schema.group, self.config) != SOURCE_MENU:
-                raise ValidationError([FieldError("group", "regrouping requires a menu group")])
+                raise ValidationError([FieldError("group", "regrouping requires a docket group")])
             now = self.clock.timestamp()
             placed = placement.resolve(
                 schema,
@@ -873,7 +873,7 @@ def _known_fields(spec: object, extra: frozenset[str] = frozenset()) -> dict[str
 
 def _spec_standing(spec: dict[str, object], existing: MemoryRecord | None) -> str:
     """New claims enter the standing machine as `proposed` (design decision 4): acceptance
-    is a menu ruling or a user confirmation, never a write side-effect. Explicit writes
+    is a docket ruling or a user confirmation, never a write side-effect. Explicit writes
     keep their value; legacy non-claim writes keep `accepted`."""
     raw = str(spec.get("standing") or "").strip()
     if raw in STANDING_STATES:

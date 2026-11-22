@@ -28,9 +28,10 @@ from mnemobun.core import (
 )
 from mnemobun.core import migrate as migrate_module
 from mnemobun.core.config import REASONER_ENDPOINT, REASONER_HOST, ExecutorConfig
+from mnemobun.core.docket import Docket
+from mnemobun.core.dream import Dream
 from mnemobun.core.errors import FieldError, MemoryStoreError, ValidationError
 from mnemobun.core.locking import file_lock
-from mnemobun.core.manage import Manage
 from mnemobun.core.observation import invoke as observe_invocation
 from mnemobun.core.reasoning import Reasoner
 from mnemobun.core.recall import Recall
@@ -312,13 +313,13 @@ def _parser() -> argparse.ArgumentParser:
     )
     replayer.set_defaults(handler=_replay)
 
-    sleeper = subcommand("sleep", help="run the sleep-time Manage pass")
+    sleeper = subcommand("sleep", help="run the sleep-time Dream pass")
     sleep_due = sleeper.add_mutually_exclusive_group()
     sleep_due.add_argument("--sessions-since", type=int, default=None)
     sleep_due.add_argument(
         "--if-due",
         action="store_true",
-        help="run only when persisted, settled session progress satisfies Manage.due()",
+        help="run only when persisted, settled session progress satisfies Dream.due()",
     )
     sleeper.add_argument(
         "--trigger-source",
@@ -779,7 +780,7 @@ def _replay(store: Store, args: argparse.Namespace) -> dict[str, object]:
 
 
 def _sleep(store: Store, args: argparse.Namespace) -> dict[str, object]:
-    manage = Manage(store)
+    manage = Dream(store)
     if args.if_due:
         from mnemobun.adapters import auto_dream
 
@@ -861,7 +862,7 @@ def _gc(store: Store, args: argparse.Namespace) -> dict[str, object]:
 
 
 def _proposals(store: Store, args: argparse.Namespace) -> dict[str, object]:
-    return {"proposals": [proposal.as_dict() for proposal in Manage(store).proposals()]}
+    return {"proposals": [proposal.as_dict() for proposal in Docket(store).proposals()]}
 
 
 def _decide(store: Store, args: argparse.Namespace) -> dict[str, object]:
@@ -878,7 +879,7 @@ def _decide(store: Store, args: argparse.Namespace) -> dict[str, object]:
             }
         )
     )[0]
-    decision = Manage(store).decide(args.proposal, accept=args.accept, verdict=verdict)
+    decision = Docket(store).decide(args.proposal, accept=args.accept, verdict=verdict)
     return dict(decision.as_dict())
 
 

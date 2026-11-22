@@ -1,4 +1,4 @@
-"""Authenticated Claude Code coverage for the complete native Manage review path."""
+"""Authenticated Claude Code coverage for the complete native Dream review path."""
 
 from __future__ import annotations
 
@@ -7,9 +7,10 @@ import pathlib
 import pytest
 from claude_live import Recording, case, describe, model, requires_live_claude
 from mnemobun.core.config import OperationExecutorConfig
+from mnemobun.core.docket import Docket
+from mnemobun.core.dream import Dream
 from mnemobun.core.errors import ValidationError
 from mnemobun.core.ledger import LEDGER_FILENAME
-from mnemobun.core.manage import Manage
 from mnemobun.core.manage_toolkit import TOOL_LIST, TOOL_READ, TOOL_SUBMIT
 from mnemobun.core.store import Store
 from mnemobun.executor import distiller as executor_distiller
@@ -85,12 +86,12 @@ def _distinct_services(store: Store) -> None:
 
 
 def _review(store: Store, reasoner: Recording, entry: dict[str, object]):
-    proposals = Manage(store).proposals()
+    proposals = Docket(store).proposals()
     assert proposals, "the fixture must yield a T1 proposal"
     targets = {proposal.id: set(proposal.targets) for proposal in proposals}
     entry["proposals"] = [proposal.as_dict() for proposal in proposals]
     try:
-        report = Manage(store).sleep(reasoner=reasoner)
+        report = Dream(store).sleep(reasoner=reasoner)
     finally:
         entry.update(describe(reasoner))
     review = report.review
@@ -137,7 +138,7 @@ def _assert_state_follows_verdicts(store: Store, report, targets) -> None:
 
 
 def test_live_claude_reviews_a_supersede_and_the_store_follows_its_verdict(tmp_path):
-    with case("manage-review", "list, read evidence, submit; Manage applies") as entry:
+    with case("manage-review", "list, read evidence, submit; Dream applies") as entry:
         store = _store(tmp_path)
         _queue_window(store)
         report, targets = _review(store, _reasoner(store), entry)
@@ -185,7 +186,7 @@ def test_live_claude_without_a_submission_leaves_store_ledger_and_report_untouch
         )
         with pytest.raises(ValidationError, match="submitted no complete verdict set"):
             try:
-                Manage(store).sleep(reasoner=reasoner)
+                Dream(store).sleep(reasoner=reasoner)
             finally:
                 entry.update(describe(reasoner))
         assert TOOL_SUBMIT not in reasoner.tool_names()

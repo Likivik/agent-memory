@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import os
 import pathlib
@@ -39,9 +40,9 @@ class StorageConfig:
             "project": "system",
             "user": "system",
             "date": "system",
-            "topic": "menu",
-            "category": "menu",
-            "source": "menu",
+            "topic": "docket",
+            "category": "docket",
+            "source": "docket",
         }
     )
     default_group: str = "general"
@@ -301,17 +302,11 @@ class Config:
         return path
 
     def fingerprint(self) -> str:
-        import hashlib
-        import json
-
         payload = json.dumps(dataclasses.asdict(self), sort_keys=True, default=str)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()[: self.index.hash_prefix_length]
 
     def recall_fingerprint(self) -> str:
         """Hash of only the knobs that shape retrieval — the Invariant 9 drift guard."""
-        import hashlib
-        import json
-
         payload = json.dumps(
             {
                 "index": self._index_knobs_shaping_recall(),

@@ -10,11 +10,11 @@ memory under its original project or date.
 ## Contract
 
 - Automatic directory regrouping is eligible only when the schema's group field has
-  the configured source `menu`.
+  the configured source `docket`.
 - System fields retain their values and canonical paths during both T0 directory
   operations, including custom schemas and field-source overrides. Empty-group
-  cleanup is also restricted to menu fields.
-- Existing menu clustering and spelling-based merging remain available.
+  cleanup is also restricted to docket fields.
+- Existing docket clustering and spelling-based merging remain available.
 - Explicit Store operations, T1 decisions, and date timestamp normalization retain
   their current behavior. This change does not infer or restore already moved files.
 
@@ -22,7 +22,7 @@ memory under its original project or date.
 
 1. Update the management design boundary and its design index entry.
 2. Add failing unit regressions for project/date/custom system groups, spelling
-   variants, configuration overrides, and positive menu behavior.
+   variants, configuration overrides, and positive docket behavior.
 3. Add failing rule-only CLI Sleep regressions proving scoped recall, canonical
    paths, rebuilds, and repeated Sleep preserve the protected group boundaries.
 4. Restrict both automatic directory operations using the existing field-source
@@ -35,9 +35,9 @@ memory under its original project or date.
 - A crowded project or event directory retains its fields and paths after Sleep.
 - Distinct system groups with spelling-normalized equivalents remain separate.
 - Scoped recall returns the same matching records after Sleep and index rebuild.
-- Custom system groups are protected; menu eligibility follows configuration rather
+- Custom system groups are protected; docket eligibility follows configuration rather
   than hardcoded field names or memory types.
-- Existing upsert menu schemas still preserve bodies, evidence, and recallability
+- Existing upsert docket schemas still preserve bodies, evidence, and recallability
   when regrouped. The add-only regrouping follow-up is tracked separately.
 
 ## Verification
@@ -49,7 +49,7 @@ memory under its original project or date.
 - Full suite: 588 passed; coverage 93.07%, above the 85% gate.
 - Ruff passed; mypy passed for 69 source files; diff whitespace checks passed.
 - Independent CLI subprocess run against a temporary synthetic store preserved
-  12 records across four protected scopes, while 5 menu records still clustered.
+  12 records across four protected scopes, while 5 docket records still clustered.
   Scoped recall, rebuild, repeated rule-only Sleep, and evidence checks passed.
 - Read-only review found no blocking issues. No model endpoint or real user memory
   store was involved. No latency or throughput improvement is claimed.

@@ -1,4 +1,4 @@
-"""Authenticated Hermes/OpenRouter coverage for the native Manage review path."""
+"""Authenticated Hermes/OpenRouter coverage for the native Dream review path."""
 
 from __future__ import annotations
 

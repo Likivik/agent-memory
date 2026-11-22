@@ -3,8 +3,8 @@ import datetime as dt
 import pytest
 from mnemobun.core import timestamp
 from mnemobun.core.clock import FrozenClock
+from mnemobun.core.dream import ACTION_DATE_NORMALISED, Dream
 from mnemobun.core.errors import ValidationError
-from mnemobun.core.manage import ACTION_DATE_NORMALISED, Manage
 from mnemobun.core.recall import Recall
 from mnemobun.core.record import MemoryRecord
 from mnemobun.core.store import Store
@@ -130,7 +130,7 @@ def test_manage_upgrades_calendar_days_and_foreign_offsets_to_utc_instants(seede
     target.path.write_text(target.to_text(), encoding="utf-8")
     seeded.sync_index()
 
-    report = Manage(seeded).sleep()
+    report = Dream(seeded).sleep()
 
     after = seeded.find("file-truth-invariant")
     assert dt.datetime.fromisoformat(after.created) == dt.datetime(2026, 1, 10, tzinfo=dt.UTC)
@@ -144,7 +144,7 @@ def test_manage_upgrades_calendar_days_and_foreign_offsets_to_utc_instants(seede
 
 
 def test_a_canonical_store_gives_manage_nothing_to_normalise(seeded):
-    report = Manage(seeded).sleep()
+    report = Dream(seeded).sleep()
     assert not [action for action in report.actions if action.kind == ACTION_DATE_NORMALISED]
 
 

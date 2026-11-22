@@ -1,4 +1,4 @@
-"""Serve one run-scoped Manage review toolkit over stdio MCP."""
+"""Serve one run-scoped Dream review toolkit over stdio MCP."""
 
 from __future__ import annotations
 

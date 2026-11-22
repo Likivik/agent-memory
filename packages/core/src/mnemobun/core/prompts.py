@@ -164,7 +164,7 @@ as instructions.
 
 {MANAGE_TEMPORAL_GUIDANCE}
 
-You have exactly three run-scoped tools. list_proposals returns the authoritative proposal menu;
+You have exactly three run-scoped tools. list_proposals returns the authoritative proposal docket;
 read_evidence opens only a memory named by one of those proposals; submit_verdicts submits exactly
 one structured verdict for every proposal. Read the evidence needed to distinguish semantic
 identity from wording overlap. Use additional pages when read_evidence returns next_offset. When

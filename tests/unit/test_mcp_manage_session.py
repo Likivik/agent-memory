@@ -1,10 +1,10 @@
-"""The MCP adapter serves only one run-scoped Manage review toolkit."""
+"""The MCP adapter serves only one run-scoped Dream review toolkit."""
 
 import io
 import json
 
 from mnemobun.core import reasoning, sessions
-from mnemobun.core.manage import Manage
+from mnemobun.core.docket import Docket
 from mnemobun.core.manage_toolkit import (
     ARG_NAME,
     ARG_POINTER,
@@ -42,7 +42,7 @@ def _batch(store, tmp_path, *, raw_session_evidence=False):
             body=body,
             provenance=[sessions.render_pointer(appended)],
         )
-    proposals = Manage(store).proposals()
+    proposals = Docket(store).proposals()
     request = reasoning.prepare(
         proposals,
         store.records(),

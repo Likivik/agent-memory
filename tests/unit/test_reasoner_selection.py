@@ -135,7 +135,7 @@ def test_resolved_host_and_endpoint_policies_build_only_the_selected_transport()
 
     assert isinstance(write, ToolReasoner)
     assert write.host.spec.name == "muse-code"
-    # Manage defaults to the text (line) protocol, so an endpoint manage reasoner
+    # Dream defaults to the text (line) protocol, so an endpoint manage reasoner
     # is the text-only view that the core parses line by line.
     assert isinstance(manage, EndpointTextReasoner)
     assert manage.inner.base_url == "https://manage.example/v1"

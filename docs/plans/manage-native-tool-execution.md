@@ -27,8 +27,8 @@ membership, caps, stale-target checks, the Decision Ledger, and report accountin
 
 `ManageReviewToolkit` exposes only:
 
-- `list_proposals`: the authoritative menu for this run.
-- `read_evidence`: bounded, pageable reads of targets named by one menu item.
+- `list_proposals`: the authoritative docket for this run.
+- `read_evidence`: bounded, pageable reads of targets named by one docket item.
 - `submit_verdicts`: one complete judgement set under the existing verdict schema.
 
 `Manage._review()` retains ownership of cap enforcement and calls the existing `decide()` path for

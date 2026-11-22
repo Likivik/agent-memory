@@ -16,7 +16,7 @@ from collections.abc import Sequence
 
 from mnemobun.core.clock import Clock, FrozenClock
 from mnemobun.core.config import Config
-from mnemobun.core.manage import Manage
+from mnemobun.core.dream import Dream
 from mnemobun.core.reasoning import Reasoner
 from mnemobun.core.store import Store
 from mnemobun.executor import reasoners
@@ -187,7 +187,7 @@ def _parser() -> argparse.ArgumentParser:
     interoperator.set_defaults(handler=_interop)
 
     sleeper = subparsers.add_parser(
-        "sleep-stores", help="copy a store tree and run sleep-time Manage over every store"
+        "sleep-stores", help="copy a store tree and run sleep-time Dream over every store"
     )
     sleeper.add_argument("--stores", required=True)
     sleeper.add_argument("--target", required=True)
@@ -625,7 +625,7 @@ def _sleep_stores(args: argparse.Namespace) -> int:
     tally = {"stores": 0, "actions": 0, "proposals": 0, "decisions": 0, "withheld": 0}
     for root in sorted(path for path in target.rglob("MEMORY.md")):
         store = Store(root.parent, config=_configured(args.set), clock=clock, agent="sleep")
-        report = Manage(store, clock).sleep(reasoner=reasoner)
+        report = Dream(store, clock).sleep(reasoner=reasoner)
         tally["stores"] += 1
         tally["actions"] += len(report.actions)
         tally["proposals"] += len(report.proposals)

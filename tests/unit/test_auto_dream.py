@@ -10,9 +10,10 @@ from mnemobun.adapters import auto_dream, capture, detached, hook_entry, moments
 from mnemobun.cli.main import main as cli_main
 from mnemobun.core import dreaming
 from mnemobun.core.config import OperationExecutorConfig
+from mnemobun.core.docket import Docket
+from mnemobun.core.dream import Dream
 from mnemobun.core.errors import ReasonerUnavailableError
 from mnemobun.core.locking import file_lock
-from mnemobun.core.manage import Manage
 from mnemobun.core.watermark import Watermark
 
 
@@ -125,7 +126,7 @@ def test_report_recovers_success_if_worker_died_before_state_write(store):
     _enough(store)
     claim = dreaming.claim_due(store, moments.HOST_CODEX).claim
     assert claim is not None
-    report = Manage(store).sleep(dream_id=claim.id)
+    report = Dream(store).sleep(dream_id=claim.id)
     assert pathlib.Path(report.path).is_file()
 
     result = dreaming.claim_due(store, moments.HOST_CODEX)
@@ -260,7 +261,7 @@ def test_detached_launcher_does_not_fallback_from_explicit_endpoint(store, monke
 
 def test_manual_sleep_covers_completed_sessions_for_automatic_counting(store):
     _enough(store)
-    report = Manage(store).sleep()
+    report = Dream(store).sleep()
     dreaming.record_manual_success(store, report.path)
 
     assert dreaming.claim_due(store, moments.HOST_CODEX).sessions_since == 0
@@ -317,7 +318,7 @@ def test_sleep_if_due_runs_t0_t1_and_records_the_actual_manage_reasoner(
     store.config.save(store.root)
     proposal = next(
         item
-        for item in Manage(store).proposals()
+        for item in Docket(store).proposals()
         if set(item.targets) == {"drain-first", "drain-second"}
     )
     selected = []
