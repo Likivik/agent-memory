@@ -175,7 +175,7 @@ run only. **Plugin-first:** the brain config lives in `mnemobun-plugin.json`
 and is settable/verifiable from chat via MCP tools `memory_setup` /
 `memory_doctor`; the CLI `mnemobun setup`/`doctor` are the terminal twins.
 
-Auth verdict: "do nothing, just verify" — credentials are profile-aware and
+Auth verdict RESOLVED 2026-11-23 (auth smoke passed): credentials do NOT
 global-root in Hermes (evidence from source); run the spawn smoke test to
 prove it; copy the credential subset into the sandbox profile only if it
 fails. Verify fixes "can we call"; brain config fixes "who answers".

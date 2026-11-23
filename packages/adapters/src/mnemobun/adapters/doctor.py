@@ -54,6 +54,32 @@ class Report:
         }
 
 
+def smoke(store: Store, host: str = "", model: str = "") -> dict[str, object]:
+    """One trivial spawn through the production reasoner path: the auth gate.
+
+    Proves LLM credentials reach the isolated sandbox profile (P13.4 blocker).
+    Exactly one model call; exposed as `doctor --smoke` and the live system
+    suite's test_auth_smoke.
+    """
+    import os
+
+    from mnemobun.adapters import openrouter
+    from mnemobun.executor import distiller as distiller_module
+    from mnemobun.executor import selection
+
+    # The production spawn inherits provider keys from the gateway environment.
+    # Standalone runs (CLI, tests) carry none: detect the stored credential and
+    # inject it the same way the live system suite does.
+    credential = openrouter.detect_credential()
+    if credential is not None and not os.environ.get("OPENROUTER_API_KEY"):
+        os.environ["OPENROUTER_API_KEY"] = credential.value
+
+    config = selection.resolve(store.config.executor, "write", host=host, model=model)
+    reasoner = distiller_module.distiller(config)
+    answer = reasoner("Reply with exactly the two letters: OK")
+    return {"answered": bool(answer and answer.strip()), "answer": answer[:200]}
+
+
 def run(
     store: Store,
     host: str,

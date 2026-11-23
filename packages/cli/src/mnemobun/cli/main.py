@@ -480,6 +480,9 @@ def _parser() -> argparse.ArgumentParser:
     doctor.add_argument(
         "--no-live", action="store_true", help="skip live reasoner checks (never reports READY)"
     )
+    doctor.add_argument(
+        "--smoke", action="store_true", help="one live spawn to prove sandbox auth works"
+    )
     doctor.set_defaults(handler=_doctor)
 
     return parser
@@ -1009,6 +1012,8 @@ def _setup(store: Store, args: argparse.Namespace) -> dict[str, object]:
 def _doctor(store: Store, args: argparse.Namespace) -> dict[str, object]:
     from mnemobun.adapters import doctor
 
+    if getattr(args, "smoke", False):
+        return {"smoke": doctor.smoke(store, host=getattr(args, "host", "") or "")}
     return doctor.run(
         store,
         args.host,
