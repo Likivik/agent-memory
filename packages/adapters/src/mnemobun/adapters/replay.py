@@ -54,10 +54,26 @@ def _slug_session(session_id: str, *, max_len: int) -> str:
 
 
 def _source_key(source: object) -> str:
-    """A stable identity for the source, so a rerun resumes the same watermark."""
-    raw = str(getattr(source, "_path", "") or getattr(source, "name", "") or "source")
-    slug = _slug_session(pathlib.Path(raw).name or "source", max_len=40)
-    return slug or "source"
+    """A stable identity for the source, so a rerun resumes the same watermark.
+
+    A name alone is not an identity: a different database behind the same file
+    name would resume another source's position. The key therefore includes a
+    fingerprint of the file's first pages (stable under appends) — a different
+    file gets its own watermark instead of a wrong resume. Files without a
+    readable path fall back to the name alone.
+    """
+    path = str(getattr(source, "_path", "") or "")
+    raw = str(path or getattr(source, "name", "") or "source")
+    slug = _slug_session(pathlib.Path(raw).name or "source", max_len=40) or "source"
+    fingerprint = ""
+    if path:
+        try:
+            with open(path, "rb") as handle:
+                head = handle.read(65536)
+            fingerprint = hashlib.sha256(head).hexdigest()[:DIGEST_LENGTH]
+        except OSError:
+            fingerprint = ""
+    return f"{slug}-{fingerprint}" if fingerprint else slug
 
 
 def _turn_name(store: Store, session: str, at: str, user: str, assistant: str) -> str:

@@ -293,7 +293,7 @@ def _parser() -> argparse.ArgumentParser:
     rebuilder = subcommand("rebuild", help="deprecated: use index rebuild")
     rebuilder.set_defaults(handler=_rebuild)
 
-    inspector = subcommand("inspect", help="store health")
+    inspector = subcommand("inspect", help="deprecated: store health — use doctor")
     inspector.set_defaults(handler=_inspect)
 
     dream_status = subcommand(
@@ -306,8 +306,20 @@ def _parser() -> argparse.ArgumentParser:
     exporter.add_argument("--no-archive", action="store_true")
     exporter.set_defaults(handler=_export)
 
-    importer = subcommand("import", help="import an export into this store")
-    importer.add_argument("source")
+    importer = subcommand(
+        "import", help="import memories: a mnemobun JSON export or a hermes state.db"
+    )
+    importer.add_argument("format", choices=["mnemobun", "hermes"], help="who we import from")
+    importer.add_argument("source", help="path to the export file or state.db")
+    importer.add_argument("--batch-id", default="", help="label recorded in provenance")
+    importer.add_argument("--batch-records", type=int, default=2000)
+    importer.add_argument("--no-dream", action="store_true")
+    importer.add_argument(
+        "--standing-policy", choices=["accepted", "proposed"], default="accepted"
+    )
+    importer.add_argument(
+        "--force", action="store_true", help="ignore the resume watermark and start over"
+    )
     importer.set_defaults(handler=_import)
 
     replayer = subcommand(
@@ -399,6 +411,9 @@ def _parser() -> argparse.ArgumentParser:
 
     collector = subcommand(
         "gc", help="physically remove invalid files; the only deletion entry, human-run"
+    )
+    collector.add_argument(
+        "--yes", action="store_true", help="actually delete; without this flag gc only reports"
     )
     collector.set_defaults(handler=_gc)
 
@@ -811,6 +826,9 @@ def _export(store: Store, args: argparse.Namespace) -> dict[str, object]:
 
 
 def _import(store: Store, args: argparse.Namespace) -> dict[str, object]:
+    if args.format == "hermes":
+        args.state_db = args.source
+        return _replay(store, args)
     written = portability.read_import(store, pathlib.Path(args.source))
     return {"imported": written}
 
@@ -916,6 +934,8 @@ def _executor(
 
 
 def _gc(store: Store, args: argparse.Namespace) -> dict[str, object]:
+    if not getattr(args, "yes", False):
+        return {"dry_run": True, "would_remove": store.gc(dry_run=True)}
     return {"removed": store.gc()}
 
 

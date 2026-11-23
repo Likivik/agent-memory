@@ -265,7 +265,7 @@ backlog at read time (crash-safe, no separate accumulator to reset).
 
 ## Phases (when executed)
 
-- P13.0: backup both store dirs, then drop them (store reset).
+- P13.0: DONE 2026-11-23 (backups in ~/.hermes/backups/).
 - P13.1: command regroup + renames (docket/case/decide, index, setup, jobs,
   search) + deprecated aliases + help rewrite. hosts/ → agents/ rename.
   SHIP AS ITS OWN PR (independent of P13.4/P13.5).

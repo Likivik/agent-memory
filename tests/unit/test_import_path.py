@@ -300,3 +300,34 @@ def test_replay_force_restarts_but_stays_clean(store):
     assert report.skipped == 2  # reprocessed from turn 0, already-written skipped
     assert report.written == 2
     assert len(store.records()) == 4
+
+
+def test_source_key_fingerprints_content_not_just_name(tmp_path):
+    from mnemobun.adapters.replay import _source_key
+
+    first_dir = tmp_path / "one"
+    second_dir = tmp_path / "two"
+    first_dir.mkdir()
+    second_dir.mkdir()
+    first = first_dir / "state.db"
+    second = second_dir / "state.db"
+    first.write_bytes(b"first database")
+    second.write_bytes(b"second database")
+
+    class Source:
+        def __init__(self, path):
+            self._path = str(path)
+
+    # same file name, different database: different watermarks
+    assert _source_key(Source(first)) != _source_key(Source(second))
+    assert _source_key(Source(first)) == _source_key(Source(first))
+    # appends do not change the identity (the first pages are stable)
+    with first.open("ab") as handle:
+        handle.write(b"more rows")
+    assert _source_key(Source(first)) == _source_key(Source(first))
+
+    class Named:
+        name = "state.db"
+
+    # sources without a path fall back to the name alone
+    assert _source_key(Named()) == "state-db"
