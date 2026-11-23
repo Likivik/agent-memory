@@ -16,6 +16,14 @@ def test_provider_allowlist_crosses_but_plugins_do_not(tmp_path):
     assert merged["mcp_servers"] == {"sandbox": True}
 
 
+def test_allowlist_never_crosses_into_sandbox_privacy():
+    """plugins/skills/sessions/memory must never cross into the sandbox."""
+    from mnemobun.executor.agents.base import PROVIDER_CONFIG_ALLOWLIST
+
+    for forbidden in ("plugins", "skills", "sessions", "memory", "hooks"):
+        assert forbidden not in PROVIDER_CONFIG_ALLOWLIST
+
+
 def test_allowlist_without_real_config_is_noop(tmp_path):
     assert _merge_provider_settings({"a": 1}, str(tmp_path)) == {"a": 1}
     assert _merge_provider_settings({"a": 1}, "") == {"a": 1}
