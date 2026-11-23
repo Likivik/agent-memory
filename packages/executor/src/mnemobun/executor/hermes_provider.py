@@ -87,6 +87,21 @@ class HermesMemoryProvider:
             " only after a ruling)."
         )
 
+    def feed_tick(self, *args: object, **kwargs: object) -> dict[str, object]:
+        """Idle task (feed): score the backlog, extract when the trigger fires."""
+        from mnemobun.adapters import feed
+        from mnemobun.executor import distiller as distiller_module
+        from mnemobun.executor import selection
+
+        ask = None
+        try:
+            ask = distiller_module.distiller(
+                selection.resolve(self.store.config.executor, "write")
+            )
+        except Exception:
+            ask = None  # decision-only report instead of a dead idle task
+        return feed.run(self.store, ask=ask).as_dict()
+
     def prefetch(self, query: str, *, session_id: str = "") -> str:
         settings = self.store.config.provider
         budget = settings.prefetch_budget_bytes or INJECTION_FLOOR_BYTES
