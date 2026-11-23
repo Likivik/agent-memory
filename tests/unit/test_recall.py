@@ -136,7 +136,7 @@ def test_scope_applies_to_historical_candidates(store, clock):
 def test_l0_entries_carry_the_full_contract(seeded):
     hit = Recall(seeded).recall("E4021")[0]
     payload = hit.as_dict()
-    for key in ("name", "path", "abstract", "anchor", "score", "weight", "relevance", "recency"):
+    for key in ("name", "path", "abstract", "anchor", "score", "usage", "relevance", "recency"):
         assert key in payload
     assert hit.score > 0
 
@@ -153,13 +153,13 @@ def test_weight_reorders_two_otherwise_comparable_hits(seeded):
         name="drain-notes-a",
     )
     baseline = _names(Recall(seeded).recall("deploy notes drain window"))
-    before = seeded.find("drain-notes-b").weight
-    seeded.feedback("drain-notes-b", seeded.config.weight.boost_step)
+    before = seeded.find("drain-notes-b").usage
+    seeded.feedback("drain-notes-b", seeded.config.usage.boost_step)
     reopened = Store(seeded.root, config=seeded.config, clock=seeded.clock)
     boosted = _names(Recall(reopened).recall("deploy notes drain window"))
     assert baseline.index("drain-notes-a") < baseline.index("drain-notes-b")
     assert boosted.index("drain-notes-b") < boosted.index("drain-notes-a")
-    assert reopened.find("drain-notes-b").weight == before + seeded.config.weight.boost_step
+    assert reopened.find("drain-notes-b").usage == before + seeded.config.usage.boost_step
 
 
 def test_recall_writes_the_access_log_and_leaves_truth_bytes_untouched(seeded):

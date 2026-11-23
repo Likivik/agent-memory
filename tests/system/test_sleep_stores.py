@@ -57,13 +57,13 @@ def test_sleeping_an_existing_target_refuses_rather_than_mixing_arms(tmp_path):
 def test_advancing_the_clock_is_what_lets_forgetting_happen_at_all(tmp_path, capsys):
     source = tmp_path / "stores" / "W2"
     store = _seed(source / "q1", "q1")
-    threshold = store.config.weight.decay_after_days
-    initial = store.config.weight.initial
+    threshold = store.config.usage.decay_after_days
+    initial = store.config.usage.initial
 
     same_day = tmp_path / "same-day" / "W2"
     assert exp_main(["sleep-stores", "--stores", str(source), "--target", str(same_day)]) == 0
     capsys.readouterr()
-    assert all(r.weight >= initial for r in Store(same_day / "q1").records())
+    assert all(r.usage >= initial for r in Store(same_day / "q1").records())
 
     much_later = tmp_path / "later" / "W2"
     assert (
@@ -81,7 +81,7 @@ def test_advancing_the_clock_is_what_lets_forgetting_happen_at_all(tmp_path, cap
         == 0
     )
     capsys.readouterr()
-    assert all(r.weight < initial for r in Store(much_later / "q1").records())
+    assert all(r.usage < initial for r in Store(much_later / "q1").records())
 
 
 def _twins(root):

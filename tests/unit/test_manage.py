@@ -47,26 +47,26 @@ def test_sleep_is_idempotent(seeded):
 
 
 def test_reading_a_memory_raises_its_weight_at_the_next_sleep(seeded):
-    before = seeded.find("staging-deploy-e4021").weight
+    before = seeded.find("staging-deploy-e4021").usage
     seeded.read("staging-deploy-e4021")
     report = Dream(seeded).sleep()
     assert ACTION_WEIGHT_SETTLED in _kinds(report)
-    assert seeded.find("staging-deploy-e4021").weight > before
+    assert seeded.find("staging-deploy-e4021").usage > before
 
 
 def test_an_untouched_memory_decays_but_never_below_the_floor(seeded, clock):
-    clock.advance(days=seeded.config.weight.decay_after_days * 2)
-    for _ in range(int(seeded.config.weight.ceiling / seeded.config.weight.decay_step) + 1):
+    clock.advance(days=seeded.config.usage.decay_after_days * 2)
+    for _ in range(int(seeded.config.usage.ceiling / seeded.config.usage.decay_step) + 1):
         Dream(seeded).sleep()
-    assert all(record.weight >= seeded.config.weight.floor for record in seeded.records())
+    assert all(record.usage >= seeded.config.usage.floor for record in seeded.records())
 
 
 def test_decay_is_reversible_by_an_explicit_boost(seeded, clock):
-    clock.advance(days=seeded.config.weight.decay_after_days * 2)
+    clock.advance(days=seeded.config.usage.decay_after_days * 2)
     Dream(seeded).sleep()
-    decayed = seeded.find("file-truth-invariant").weight
-    restored = seeded.feedback("file-truth-invariant", seeded.config.weight.boost_step)
-    assert restored.weight > decayed
+    decayed = seeded.find("file-truth-invariant").usage
+    restored = seeded.feedback("file-truth-invariant", seeded.config.usage.boost_step)
+    assert restored.usage > decayed
 
 
 def test_exact_duplicates_are_merged_by_supersede_not_by_deletion(seeded):
@@ -172,7 +172,7 @@ def test_t0_exact_duplicates_keep_the_oldest_copy_and_are_idempotent(store, cloc
         valid_from=original.valid_from,
         links=original.links,
         provenance=original.provenance,
-        weight=store.config.weight.ceiling,
+        usage=store.config.usage.ceiling,
     )
 
     report = Dream(store).sleep()
@@ -394,7 +394,7 @@ def test_a_memory_at_the_floor_that_nobody_recalled_becomes_a_delete_proposal(st
         type="fact",
         fields={"subject": "forgotten"},
         abstract="Nobody asks about this",
-        weight=store.config.weight.floor,
+        usage=store.config.usage.floor,
     )
     proposals = Docket(store).proposals()
     assert [p.kind for p in proposals if p.targets == ("forgotten",)] == [PROPOSAL_DELETE]
@@ -542,20 +542,20 @@ def test_the_decision_ledger_survives_an_index_rebuild(seeded):
 def test_one_read_is_settled_once_however_many_sleeps_follow(seeded):
     seeded.read("staging-deploy-e4021")
     Dream(seeded).sleep()
-    settled = seeded.find("staging-deploy-e4021").weight
+    settled = seeded.find("staging-deploy-e4021").usage
     Dream(seeded).sleep()
     Dream(seeded).sleep()
-    assert seeded.find("staging-deploy-e4021").weight == settled
+    assert seeded.find("staging-deploy-e4021").usage == settled
 
 
 def test_a_read_between_two_sleeps_raises_the_weight_again(seeded, clock):
     seeded.read("staging-deploy-e4021")
     Dream(seeded).sleep()
-    settled = seeded.find("staging-deploy-e4021").weight
+    settled = seeded.find("staging-deploy-e4021").usage
     clock.advance(hours=1)
     seeded.read("staging-deploy-e4021")
     Dream(seeded).sleep()
-    assert seeded.find("staging-deploy-e4021").weight > settled
+    assert seeded.find("staging-deploy-e4021").usage > settled
 
 
 def test_a_sleep_with_no_new_reads_settles_no_weight(seeded):

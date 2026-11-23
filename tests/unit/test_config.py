@@ -22,9 +22,9 @@ def test_defaults_are_complete_and_self_consistent():
     assert config.manage.trigger_min_hours > 0
     assert config.manage.cluster_min_files > 1
     assert config.memory_md.budget_bytes > 0
-    assert config.weight.floor < config.weight.initial < config.weight.ceiling
-    assert config.weight.decay_step > 0
-    assert config.weight.boost_step > 0
+    assert config.usage.floor < config.usage.initial < config.usage.ceiling
+    assert config.usage.decay_step > 0
+    assert config.usage.boost_step > 0
     assert config.manage.max_merges_per_sleep >= 0
     assert config.manage.review_max_steps > 0
     assert config.manage.review_max_tool_calls >= config.manage.review_max_steps

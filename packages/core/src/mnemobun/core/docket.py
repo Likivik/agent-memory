@@ -308,7 +308,7 @@ class Docket:
                 abstract=part.abstract.strip(),
                 body=part.body.strip(),
                 links=list(original.links),
-                weight=original.weight,
+                usage=original.usage,
                 valid_from=original.valid_from,
                 provenance=provenance,
                 create_group=True,
@@ -424,13 +424,13 @@ class Docket:
             Proposal(
                 kind=PROPOSAL_DELETE,
                 targets=(record.name,),
-                reason="never recalled and already at the weight floor",
-                evidence=f"weight={record.weight:.2f}",
+                reason="never recalled and already at the usage floor",
+                evidence=f"usage={record.usage:.2f}",
             )
             for record in records
             if record.is_active()
             and hits.get(record.name, 0) == 0
-            and record.weight <= self._config.weight.floor
+            and record.usage <= self._config.usage.floor
         ]
 
     def _propose_standing_accepts(self, records: list[MemoryRecord]) -> list[Proposal]:

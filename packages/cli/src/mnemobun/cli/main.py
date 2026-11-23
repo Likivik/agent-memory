@@ -769,10 +769,10 @@ def _fields(pairs: list[str]) -> dict[str, str]:
 
 
 def _feedback(store: Store, args: argparse.Namespace) -> dict[str, object]:
-    step = store.config.weight.boost_step
+    step = store.config.usage.boost_step
     delta = (step if args.boost else 0.0) - (step if args.penalize else 0.0)
     updated = store.feedback(args.name, delta)
-    return {"name": updated.name, "weight": updated.weight}
+    return {"name": updated.name, "usage": updated.usage}
 
 
 def _rebuild(store: Store, args: argparse.Namespace) -> dict[str, object]:

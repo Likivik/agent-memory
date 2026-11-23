@@ -1,7 +1,7 @@
 """The dream: sleep-time consolidation run.
 
 A Dream is one night of the store's life: the deterministic half (date
-normalisation, weight settling, co-occurrence links, duplicate and cluster
+normalisation, usage settling, co-occurrence links, duplicate and cluster
 merges) runs unconditionally; the judged half is drafted as a docket
 (`mnemobun.core.docket.Docket`) and handed to the reasoner, which can only
 choose from what was drafted. Every dream leaves a report, and a git commit
@@ -133,7 +133,7 @@ PROPOSAL_ABSTRACT_REVIEW = reasoning.PROPOSAL_ABSTRACT_REVIEW
 ACTION_DATE_NORMALISED = "date-normalised"
 ACTION_DUPLICATE_MERGED = "duplicate-merged"
 ACTION_LINK_ADDED = "link-added"
-ACTION_WEIGHT_SETTLED = "weight-settled"
+ACTION_WEIGHT_SETTLED = "usage-settled"
 ACTION_CLUSTERED = "clustered"
 ACTION_GROUP_MERGED = "group-merged"
 
@@ -240,7 +240,7 @@ class Dream:
 
         actions: list[Action] = []
         actions.extend(self._normalise_dates(records))
-        actions.extend(self._settle_weights(records, reads, last_access))
+        actions.extend(self._settle_usages(records, reads, last_access))
         actions.extend(self._add_cooccurrence_links(records))
         actions.extend(self._merge_exact_duplicates(records))
         actions.extend(self._merge_near_duplicate_groups())
@@ -265,7 +265,7 @@ class Dream:
         return dataclasses.replace(report, committed=self._docket.commit(report))
 
     def _usage(self) -> tuple[dict[str, int], dict[str, int], dict[str, str]]:
-        """Lifetime counts decide what was never useful; only new reads earn weight, so one
+        """Lifetime counts decide what was never useful; only new reads earn usage, so one
         read is settled once however many sleeps follow it."""
         since = self._docket.last_sleep()
         with self._database.connect() as connection:
@@ -300,22 +300,22 @@ class Dream:
             actions.append(Action(ACTION_DATE_NORMALISED, record.name, ", ".join(sorted(changed))))
         return actions
 
-    def _settle_weights(
+    def _settle_usages(
         self, records: list[MemoryRecord], reads: dict[str, int], last_access: dict[str, str]
     ) -> list[Action]:
         actions: list[Action] = []
         now = self._clock.now()
         for record in records:
-            before = record.weight
-            after = before + self._config.weight.boost_step * min(
+            before = record.usage
+            after = before + self._config.usage.boost_step * min(
                 reads.get(record.name, 0), self._config.manage.max_boosts_per_sleep
             )
-            if self._idle_days(record, last_access, now) >= self._config.weight.decay_after_days:
-                after -= self._config.weight.decay_step
-            after = min(self._config.weight.ceiling, max(self._config.weight.floor, after))
+            if self._idle_days(record, last_access, now) >= self._config.usage.decay_after_days:
+                after -= self._config.usage.decay_step
+            after = min(self._config.usage.ceiling, max(self._config.usage.floor, after))
             if after == before:
                 continue
-            record.weight = after
+            record.usage = after
             self._rewrite(record)
             actions.append(
                 Action(ACTION_WEIGHT_SETTLED, record.name, f"{before:.2f} -> {after:.2f}")

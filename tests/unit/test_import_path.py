@@ -1,4 +1,4 @@
-"""P9: import/replay path — stamps, weight protection, source adapter, driver."""
+"""P9: import/replay path — stamps, usage protection, source adapter, driver."""
 
 from __future__ import annotations
 
@@ -92,7 +92,7 @@ def test_invalid_import_stamp_is_rejected(store):
     assert result.written == []
 
 
-# -- P9.2: weight protection ---------------------------------------------------
+# -- P9.2: usage protection ---------------------------------------------------
 
 
 def test_imported_record_weight_survives_a_decay_pass(store, monkeypatch):
@@ -105,10 +105,10 @@ def test_imported_record_weight_survives_a_decay_pass(store, monkeypatch):
         lambda self, record, last_access, now: 999.0,  # far past the decay threshold
     )
     manage = manage_mod.Dream(store)
-    before = {r.name: r.weight for r in store.records()}
-    manage._settle_weights(store.records(), {}, {})
-    after = {r.name: r.weight for r in store.records()}
-    assert after["old-fact"] >= before["old-fact"] - store.config.weight.decay_step
+    before = {r.name: r.usage for r in store.records()}
+    manage._settle_usages(store.records(), {}, {})
+    after = {r.name: r.usage for r in store.records()}
+    assert after["old-fact"] >= before["old-fact"] - store.config.usage.decay_step
 
 
 # -- P9.3: HermesSource ---------------------------------------------------------

@@ -78,7 +78,7 @@ class MemoryMdConfig:
 
 
 @dataclasses.dataclass
-class WeightConfig:
+class UsageConfig:
     initial: float = 1.0
     floor: float = 0.05
     ceiling: float = 5.0
@@ -229,7 +229,7 @@ class Config:
     storage: StorageConfig = dataclasses.field(default_factory=StorageConfig)
     index: IndexConfig = dataclasses.field(default_factory=IndexConfig)
     memory_md: MemoryMdConfig = dataclasses.field(default_factory=MemoryMdConfig)
-    weight: WeightConfig = dataclasses.field(default_factory=WeightConfig)
+    usage: UsageConfig = dataclasses.field(default_factory=UsageConfig)
     recall: RecallConfig = dataclasses.field(default_factory=RecallConfig)
     manage: ManageConfig = dataclasses.field(default_factory=ManageConfig)
     write: WriteConfig = dataclasses.field(default_factory=WriteConfig)

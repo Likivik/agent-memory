@@ -6,7 +6,7 @@ from mnemobun.core import memory_md
 def test_one_oversized_entry_does_not_hide_every_remaining_memory(store):
     first = store.record(abstract="A" * 180, type="fact", body="long", name="long")
     second = store.record(abstract="short fact", type="fact", body="short", name="short")
-    first.weight, second.weight = 5.0, 1.0
+    first.usage, second.usage = 5.0, 1.0
     config = dataclasses.replace(
         store.config, memory_md=dataclasses.replace(store.config.memory_md, budget_bytes=100)
     )

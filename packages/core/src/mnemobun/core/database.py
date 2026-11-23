@@ -37,7 +37,7 @@ SCHEMA = (
         invalid_at TEXT,
         superseded_by TEXT,
         standing TEXT NOT NULL,
-        weight REAL NOT NULL,
+        usage REAL NOT NULL,
         author TEXT NOT NULL,
         links TEXT NOT NULL,
         provenance TEXT NOT NULL

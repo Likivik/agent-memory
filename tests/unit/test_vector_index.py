@@ -235,7 +235,7 @@ def test_vector_candidates_still_use_recency_and_weight(tmp_path, clock):
     assert recency_ranked.index("z-newer") < recency_ranked.index("a-older")
     older = store.find("a-older")
     older.updated = clock.timestamp()
-    older.weight = store.config.weight.ceiling
+    older.usage = store.config.usage.ceiling
     older.path.write_text(older.to_text(), encoding="utf-8")
     store.sync_index()
     weight_ranked = [hit.name for hit in Recall(store).recall("lifecycle query")]

@@ -99,7 +99,7 @@ def _seed_every_kind(store):
         name="unused-memory",
         abstract="Epsilon obsolete setting is no longer consulted",
         body="This setting has never been recalled.",
-        weight=store.config.weight.floor,
+        usage=store.config.usage.floor,
     )
 
 

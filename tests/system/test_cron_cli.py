@@ -154,7 +154,7 @@ def test_generated_cron_command_completes_endpoint_dream_in_an_independent_proce
             type="fact",
             fields={"subject": "cron acceptance"},
             abstract="Nobody asks about this",
-            weight=store.config.weight.floor,
+            usage=store.config.usage.floor,
         )
         capture.capture(
             store,

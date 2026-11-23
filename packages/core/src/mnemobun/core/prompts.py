@@ -222,7 +222,7 @@ DISTILL_INSTRUCTIONS = """You are filling in a long-term memory store from one c
 
 {slot_instruction}
 
-Each memory is two parts, and both carry weight. The **abstract** is the one line someone
+Each memory is two parts, and both matter. The **abstract** is the one line someone
 would search for months later, stating the fact itself. The **body** is what that person
 needs once they have found it: the specifics in full sentences, with every name, number,
 price, date, time, title, model name and URL written exactly as it appeared in the
