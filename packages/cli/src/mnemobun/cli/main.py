@@ -462,6 +462,9 @@ def _parser() -> argparse.ArgumentParser:
     installer.add_argument("--settings", default=None)
     installer.add_argument("--provider", default=None)
     installer.add_argument("--model", default=None)
+    installer.add_argument(
+        "--endpoint", default=None, help="model endpoint/base URL for the reasoner"
+    )
     installer.add_argument("--mcp", action="store_true", help="also configure the stdio MCP server")
     installer.add_argument(
         "--no-live", action="store_true", help="skip live reasoner checks (never reports READY)"
@@ -985,6 +988,17 @@ def _setup(store: Store, args: argparse.Namespace) -> dict[str, object]:
         )
         for host in hosts
     }
+    brain = store.config.executor
+    if len(hosts) == 1:
+        brain.host = hosts[0]
+    if args.provider:
+        brain.host_provider = args.provider
+    if args.model:
+        brain.host_model = args.model
+    if getattr(args, "endpoint", None):
+        brain.endpoint = args.endpoint
+    store.config.save(store.root)
+
     if len(reports) == 1:
         return next(iter(reports.values()))
     failed = any(report["status"] == "FAILED" for report in reports.values())

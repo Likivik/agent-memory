@@ -218,6 +218,52 @@ class Dialect:
         return [payload if part == PROMPT_PLACEHOLDER else part for part in command], ""
 
 
+PROVIDER_CONFIG_ALLOWLIST = (
+    "model_providers",
+    "providers",
+    "custom_endpoints",
+    "default_model",
+)
+
+
+def _load_real_config(real_home: str) -> dict[str, object]:
+    """The user's real Hermes config, parsed leniently (their YAML, our JSON)."""
+    if not real_home:
+        return {}
+    try:
+        text = (pathlib.Path(real_home) / "config.yaml").read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    try:
+        loaded: object = json.loads(text)
+    except ValueError:
+        try:
+            import yaml
+        except ImportError:
+            return {}
+        try:
+            loaded = yaml.safe_load(text)
+        except Exception:
+            return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def _merge_provider_settings(
+    configured: dict[str, object], real_home: str
+) -> dict[str, object]:
+    """Seed provider-relevant settings from the real profile (settings-drift fix).
+
+    Only an explicit allowlist crosses into the sandbox: custom endpoints and
+    model routing must survive isolation. Nothing else does — no plugins, no
+    skills, no sessions; the sandbox must never run its own memory plugin.
+    """
+    real = _load_real_config(real_home)
+    for key in PROVIDER_CONFIG_ALLOWLIST:
+        if key in real and key not in configured:
+            configured[key] = real[key]
+    return configured
+
+
 class Host:
     def __init__(self, spec: HostSpec):
         self.spec = spec
@@ -386,6 +432,9 @@ class Host:
             }
         if allow_data_training:
             configured["security"] = {"allow_data_training_tiers_noninteractive": True}
+        configured = _merge_provider_settings(
+            configured, str(source.get("HERMES_HOME") or root)
+        )
         try:
             target = home / "config.yaml"
             target.write_text(
