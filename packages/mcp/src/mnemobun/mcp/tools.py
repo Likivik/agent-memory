@@ -14,6 +14,8 @@ from mnemobun.core.store import LEVEL_FULL, LEVELS, Store
 TOOL_RECALL = "memory_recall"
 TOOL_READ = "memory_read"
 TOOL_RECORD = "memory_record"
+TOOL_SETUP = "memory_setup"
+TOOL_DOCTOR = "memory_doctor"
 TOOL_CORRECT = "memory_correct"
 TOOL_SUPERSEDE = "memory_supersede"
 TOOL_DELETE = "memory_delete"
@@ -44,6 +46,23 @@ SCHEMAS: dict[str, dict[str, object]] = {
             "level": {"type": "string", "enum": list(LEVELS)},
         },
         "required": ["name"],
+    },
+    TOOL_SETUP: {
+        "type": "object",
+        "properties": {
+            "host": {"type": "string"},
+            "model": {"type": "string"},
+            "provider": {"type": "string"},
+            "endpoint": {"type": "string"},
+        },
+        "required": [],
+    },
+    TOOL_DOCTOR: {
+        "type": "object",
+        "properties": {
+            "smoke": {"type": "boolean"},
+        },
+        "required": [],
     },
     TOOL_RECORD: {
         "type": "object",
@@ -130,6 +149,14 @@ SCHEMAS: dict[str, dict[str, object]] = {
 DESCRIPTIONS = {
     TOOL_RECALL: "Search the memory store and return an L0 list of candidates.",
     TOOL_READ: "Read one memory at a chosen level of detail.",
+    TOOL_SETUP: (
+        "Record the brain config (host/model/provider/endpoint) that feed, "
+        "review and jobs use for their LLM calls."
+    ),
+    TOOL_DOCTOR: (
+        "Check store and provider setup. smoke=true runs one live spawn to "
+        "prove the sandbox can authenticate and call the model."
+    ),
     TOOL_RECORD: "Write one memory into the store.",
     TOOL_CORRECT: "Update a memory in place, or supersede it with a newer one.",
     TOOL_SUPERSEDE: "End an old memory's validity in favor of an existing active memory.",
@@ -389,7 +416,51 @@ def _verify(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     )
 
 
+def _setup(store: Store, arguments: dict[str, object]) -> dict[str, object]:
+    brain = store.config.executor
+    host = _optional(arguments, "host")
+    if host:
+        brain.host = str(host)
+    for field, key in (
+        ("host_model", "model"),
+        ("host_provider", "provider"),
+        ("endpoint", "endpoint"),
+    ):
+        value = _optional(arguments, key)
+        if value:
+            setattr(brain, field, str(value))
+    store.config.save(store.root)
+    return {
+        "host": brain.host,
+        "model": brain.host_model,
+        "provider": brain.host_provider,
+        "endpoint": brain.endpoint,
+    }
+
+
+def _doctor(store: Store, arguments: dict[str, object]) -> dict[str, object]:
+    result: dict[str, object] = {
+        "store": str(store.root),
+        "records": len(store.records()),
+        "brain": {
+            "host": store.config.executor.host,
+            "model": store.config.executor.host_model,
+            "provider": store.config.executor.host_provider,
+            "endpoint": store.config.executor.endpoint,
+        },
+    }
+    if bool(arguments.get("smoke")):
+        from mnemobun.adapters import doctor as doctor_module
+
+        result["smoke"] = doctor_module.smoke(
+            store, host=store.config.executor.host
+        )
+    return result
+
+
 _HANDLERS = {
+    TOOL_SETUP: _setup,
+    TOOL_DOCTOR: _doctor,
     TOOL_RECALL: _recall,
     TOOL_READ: _read,
     TOOL_RECORD: _record,

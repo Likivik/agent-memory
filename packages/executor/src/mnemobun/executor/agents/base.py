@@ -218,6 +218,85 @@ class Dialect:
         return [payload if part == PROMPT_PLACEHOLDER else part for part in command], ""
 
 
+PROVIDER_CONFIG_ALLOWLIST = (
+    "model",  # model routing: base_url, defaults, provider endpoints
+    "model_providers",
+    "providers",
+    "custom_providers",
+    "fallback_providers",
+    "custom_endpoints",
+    "default_model",
+)
+
+
+def _load_real_config(real_home: str) -> dict[str, object]:
+    """The user's real Hermes config, parsed leniently (their YAML, our JSON)."""
+    if not real_home:
+        return {}
+    try:
+        text = (pathlib.Path(real_home) / "config.yaml").read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    try:
+        loaded: object = json.loads(text)
+    except ValueError:
+        try:
+            import yaml
+        except ImportError:
+            return {}
+        try:
+            loaded = yaml.safe_load(text)
+        except Exception:
+            return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def _merge_provider_settings(
+    configured: dict[str, object], real_home: str
+) -> dict[str, object]:
+    """Seed provider-relevant settings from the real profile (settings-drift fix).
+
+    Only an explicit allowlist crosses into the sandbox: custom endpoints and
+    model routing must survive isolation. Nothing else does — no plugins, no
+    skills, no sessions; the sandbox must never run its own memory plugin.
+    """
+    real = _load_real_config(real_home)
+    for key in PROVIDER_CONFIG_ALLOWLIST:
+        if key in real and key not in configured:
+            configured[key] = real[key]
+    return configured
+
+
+    # relative paths: the provider credential store lives under muse/, and the
+    # Hermes provider check reads the .env file at the Hermes home.
+CREDENTIAL_FILES = ("auth.json", ".anthropic_oauth.json", "muse/auth.json", ".env")
+
+
+def _copy_credentials(real_home: str, sandbox_home: pathlib.Path) -> list[str]:
+    """Copy the credential subset into the sandbox (P13.4 auth fallback).
+
+    Hermes credentials do NOT resolve from the data root into a sandbox profile
+    (proved by the auth smoke test: "no API keys or providers found"). Only the
+    credential files cross; they live in the temp profile for the run's duration
+    and are removed with it.
+    """
+    copied: list[str] = []
+    if not real_home:
+        return copied
+    root_path = pathlib.Path(real_home)
+    for name in CREDENTIAL_FILES:
+        source = root_path / name
+        try:
+            if source.exists():
+                target = sandbox_home / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+                copied.append(name)
+        except OSError:
+            continue
+    return copied
+
+
 class Host:
     def __init__(self, spec: HostSpec):
         self.spec = spec
@@ -386,6 +465,9 @@ class Host:
             }
         if allow_data_training:
             configured["security"] = {"allow_data_training_tiers_noninteractive": True}
+        real_home = str(source.get("HERMES_HOME") or root)
+        configured = _merge_provider_settings(configured, real_home)
+        _copy_credentials(real_home, home)
         try:
             target = home / "config.yaml"
             target.write_text(
