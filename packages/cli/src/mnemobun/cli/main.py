@@ -93,7 +93,22 @@ def _global_options(parser: argparse.ArgumentParser) -> None:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="mnemobun", description="mnemobun")
+    parser = argparse.ArgumentParser(
+        prog="mnemobun",
+        description="mnemobun",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "command groups:\n"
+            "  records  record · read · correct · supersede · merge · delete\n"
+            "           trace · feedback · recall|search\n"
+            "  data     import <format> <path> · export · migrate\n"
+            "  index    index sync · index rebuild\n"
+            "  court    docket · case show · case decide · dream run/status/worker\n"
+            "           distill · jobs\n"
+            "  brain    setup · doctor\n"
+            "  meta     gc · cron · skill · sleep · replay"
+        ),
+    )
     _global_options(parser)
     # A subparser would overwrite values parsed before the subcommand with its own
     # defaults, so the shared options suppress theirs and the main parser sets them.
@@ -134,19 +149,13 @@ def _parser() -> argparse.ArgumentParser:
     writer.add_argument("--supersedes", default=None)
     writer.set_defaults(handler=_record)
 
-    reader = subcommand("recall", help="retrieve an L0 list")
+    reader = subcommand("recall", help="retrieve an L0 list", aliases=["search"])
     reader.add_argument("query")
     reader.add_argument("--scope", default=None)
     reader.add_argument("--as-of", default=None)
     reader.add_argument("--limit", type=int, default=None)
     reader.set_defaults(handler=_recall)
 
-    contexter = subcommand("context", help="recall and open the top entries in one call")
-    contexter.add_argument("query")
-    contexter.add_argument("--scope", default=None)
-    contexter.add_argument("--as-of", default=None)
-    contexter.add_argument("--limit", type=int, default=None)
-    contexter.set_defaults(handler=_context)
 
     opener = subcommand("read", help="read one memory")
     opener.add_argument("name")
@@ -274,7 +283,14 @@ def _parser() -> argparse.ArgumentParser:
     voter.add_argument("--penalize", action="store_true")
     voter.set_defaults(handler=_feedback)
 
-    rebuilder = subcommand("rebuild", help="drop and rebuild the index")
+    index = subcommand("index", help="the retrieval index")
+    index_actions = index.add_subparsers(dest="index_action", required=True)
+    index_sync = index_actions.add_parser("sync", help="incremental catch-up")
+    index_sync.set_defaults(handler=_index_sync)
+    index_rebuild = index_actions.add_parser("rebuild", help="drop and rebuild the index")
+    index_rebuild.set_defaults(handler=_rebuild)
+
+    rebuilder = subcommand("rebuild", help="deprecated: use index rebuild")
     rebuilder.set_defaults(handler=_rebuild)
 
     inspector = subcommand("inspect", help="store health")
@@ -376,8 +392,10 @@ def _parser() -> argparse.ArgumentParser:
     _global_options(cron_remove)
     cron_remove.set_defaults(handler=_cron)
 
-    proposer = subcommand("proposals", help="list proposals awaiting confirmation")
-    proposer.set_defaults(handler=_proposals)
+    docket = subcommand(
+        "docket", help="list cases awaiting a ruling", aliases=["proposals"]
+    )
+    docket.set_defaults(handler=_proposals)
 
     collector = subcommand(
         "gc", help="physically remove invalid files; the only deletion entry, human-run"
@@ -398,6 +416,28 @@ def _parser() -> argparse.ArgumentParser:
         help="JSON file listing the parts of a split (abstract, body, provenance)",
     )
     decider.set_defaults(handler=_decide)
+
+    case = subcommand("case", help="one case awaiting a ruling")
+    case_actions = case.add_subparsers(dest="case_action", required=True)
+    case_show = case_actions.add_parser("show", help="show one case")
+    case_show.add_argument("proposal")
+    case_show.set_defaults(handler=_case_show)
+    case_decide = case_actions.add_parser("decide", help="sign the ruling on one case")
+    case_decide.add_argument("proposal")
+    case_verdict = case_decide.add_mutually_exclusive_group(required=True)
+    case_verdict.add_argument("--accept", action="store_true")
+    case_verdict.add_argument("--reject", action="store_true")
+    case_decide.add_argument(
+        "--text", default="", help="replacement abstract, for an abstract review"
+    )
+    case_decide.add_argument("--abstract", default="", help="merged abstract, for a merge")
+    case_decide.add_argument("--body", default="", help="merged body, for a merge")
+    case_decide.add_argument(
+        "--parts",
+        default=None,
+        help="JSON file listing the parts of a split (abstract, body, provenance)",
+    )
+    case_decide.set_defaults(handler=_decide)
 
     skiller = subcommand("skill", help="print the agent skill text")
     skiller.set_defaults(handler=_skill)
@@ -717,6 +757,17 @@ def _feedback(store: Store, args: argparse.Namespace) -> dict[str, object]:
 def _rebuild(store: Store, args: argparse.Namespace) -> dict[str, object]:
     report = store.rebuild_index()
     return {"reindexed": len(report.reindexed), "dangling_links": len(report.dangling_links)}
+
+
+def _index_sync(store: Store, args: argparse.Namespace) -> dict[str, object]:
+    report = store.sync_index()
+    return {"reindexed": len(report.reindexed), "dangling_links": len(report.dangling_links)}
+
+
+def _case_show(store: Store, args: argparse.Namespace) -> dict[str, object]:
+    proposals = [proposal.as_dict() for proposal in Docket(store).proposals()]
+    matches = [item for item in proposals if item.get("name") == args.proposal]
+    return {"case": matches[0] if matches else None}
 
 
 def _inspect(store: Store, args: argparse.Namespace) -> dict[str, object]:
