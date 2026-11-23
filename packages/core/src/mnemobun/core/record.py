@@ -135,8 +135,12 @@ class MemoryRecord:
             ),
             superseded_by=_optional_str(raw.get("superseded_by")),
             standing=_standing(raw.get("standing")),
-            usage=_as_float(raw.get("usage")),
-            importance=_as_float(raw.get("importance")),
+            usage=_as_float(raw.get("usage", raw.get("weight"))),  # pre-rename exports
+            importance=(
+                _as_float(raw.get("importance"))
+                if raw.get("importance") is not None
+                else 0.0
+            ),
             links=_as_list(raw.get("links")),
             provenance=_as_list(raw.get("provenance")),
             fields=extra,

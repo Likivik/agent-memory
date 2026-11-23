@@ -126,6 +126,18 @@ class Database:
                     "ALTER TABLE records ADD COLUMN standing TEXT NOT NULL"
                     " DEFAULT 'accepted'"
                 )
+            if columns and not any(column["name"] == "usage" for column in columns):
+                connection.execute(
+                    "ALTER TABLE records ADD COLUMN usage REAL NOT NULL"
+                    " DEFAULT 1.0"
+                )
+            if columns and not any(column["name"] == "importance" for column in columns):
+                connection.execute(
+                    "ALTER TABLE records ADD COLUMN importance REAL NOT NULL"
+                    " DEFAULT 0.0"
+                )
+            if columns and any(column["name"] == "weight" for column in columns):
+                connection.execute("ALTER TABLE records DROP COLUMN weight")
             connection.execute("DROP TABLE IF EXISTS raw_chunks")
             for statement in SCHEMA:
                 connection.execute(statement)
