@@ -24,7 +24,8 @@ FIELD_ORDER = (
     "invalid_at",
     "superseded_by",
     "standing",
-    "weight",
+    "usage",
+    "importance",
     "author",
     "links",
     "provenance",
@@ -68,7 +69,8 @@ class MemoryRecord:
     invalid_at: str | None = None
     superseded_by: str | None = None
     standing: str = STANDING_DEFAULT
-    weight: float = 1.0
+    usage: float = 1.0
+    importance: float = 0.0  # 1-10, judged at write time; 0 = unrated (neutral)
     links: list[str] = dataclasses.field(default_factory=list)
     provenance: list[str] = dataclasses.field(default_factory=list)
     fields: dict[str, str] = dataclasses.field(default_factory=dict)
@@ -86,7 +88,8 @@ class MemoryRecord:
             "invalid_at": self.invalid_at,
             "superseded_by": self.superseded_by,
             "standing": self.standing,
-            "weight": float(self.weight),
+            "usage": float(self.usage),
+            "importance": float(self.importance),
             "author": self.author,
             "links": list(self.links),
             "provenance": list(self.provenance),
@@ -132,7 +135,8 @@ class MemoryRecord:
             ),
             superseded_by=_optional_str(raw.get("superseded_by")),
             standing=_standing(raw.get("standing")),
-            weight=_as_float(raw.get("weight")),
+            usage=_as_float(raw.get("usage")),
+            importance=_as_float(raw.get("importance")),
             links=_as_list(raw.get("links")),
             provenance=_as_list(raw.get("provenance")),
             fields=extra,
@@ -199,8 +203,10 @@ def validate(record: MemoryRecord, config: Config, schema: MemorySchema | None =
         errors.append(FieldError("superseded_by", "must be a slug"))
     if record.superseded_by == record.name and record.name:
         errors.append(FieldError("superseded_by", "cannot supersede itself"))
-    if not config.weight.floor <= record.weight <= config.weight.ceiling:
-        errors.append(FieldError("weight", "outside the configured weight range"))
+    if not config.usage.floor <= record.usage <= config.usage.ceiling:
+        errors.append(FieldError("usage", "outside the configured usage range"))
+    if not config.usage.importance_floor <= record.importance <= config.usage.importance_ceiling:
+        errors.append(FieldError("importance", "outside the configured importance range"))
     for link in record.links:
         target = str(link)
         if target.startswith(CONFLICT_PREFIX):
@@ -239,7 +245,7 @@ def _as_float(value: object) -> float:
     try:
         return float(str(value))
     except (TypeError, ValueError):
-        return Config.default().weight.initial
+        return Config.default().usage.initial
 
 
 def _as_list(value: object) -> list[str]:

@@ -11,10 +11,10 @@ def render(records: list[MemoryRecord], config: Config, root: str = "") -> str:
     eligible = [
         record
         for record in records
-        if record.is_active() and record.weight >= config.recall.memory_md_weight_floor
+        if record.is_active() and record.usage >= config.recall.memory_md_weight_floor
     ]
-    eligible.sort(key=lambda record: (-record.weight, record.updated, record.name), reverse=False)
-    eligible.sort(key=lambda record: record.weight, reverse=True)
+    eligible.sort(key=lambda record: (-record.usage, record.updated, record.name), reverse=False)
+    eligible.sort(key=lambda record: record.usage, reverse=True)
 
     header = config.memory_md.header + "\n\n"
     lines: list[str] = []

@@ -78,13 +78,28 @@ class MemoryMdConfig:
 
 
 @dataclasses.dataclass
-class WeightConfig:
+class UsageConfig:
     initial: float = 1.0
     floor: float = 0.05
     ceiling: float = 5.0
     boost_step: float = 0.5
     decay_step: float = 0.1
     decay_after_days: float = 30.0
+    # Feed trigger: perception signal + token budget + quiet (P13.5c).
+    perception_user_text_weight: float = 2.0
+    perception_tool_noise_weight: float = 0.1
+    perception_length_saturation_chars: float = 400.0
+    perception_novelty_weight: float = 1.5
+    perception_repetition_penalty: float = 0.5
+    signal_threshold: float = 30.0
+    quiet_seconds: float = 1800.0
+    token_budget: float = 80000.0
+    backstop_turns: float = 50.0
+    # Write-time importance (Park's 1-10 poignancy scale; 0 = unrated, neutral).
+    importance_initial: float = 0.0
+    importance_floor: float = 0.0
+    importance_ceiling: float = 10.0
+    importance_score_scale: float = 10.0
 
 
 @dataclasses.dataclass
@@ -229,7 +244,7 @@ class Config:
     storage: StorageConfig = dataclasses.field(default_factory=StorageConfig)
     index: IndexConfig = dataclasses.field(default_factory=IndexConfig)
     memory_md: MemoryMdConfig = dataclasses.field(default_factory=MemoryMdConfig)
-    weight: WeightConfig = dataclasses.field(default_factory=WeightConfig)
+    usage: UsageConfig = dataclasses.field(default_factory=UsageConfig)
     recall: RecallConfig = dataclasses.field(default_factory=RecallConfig)
     manage: ManageConfig = dataclasses.field(default_factory=ManageConfig)
     write: WriteConfig = dataclasses.field(default_factory=WriteConfig)

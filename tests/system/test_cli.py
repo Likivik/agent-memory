@@ -180,8 +180,8 @@ def test_a_batch_of_memories_is_written_in_one_call(cli, tmp_path):
     ("invalid", "field"),
     [
         (
-            {"type": "fact", "abstract": "Batch recovery invalid weight", "weight": "oops"},
-            "weight",
+            {"type": "fact", "abstract": "Batch recovery invalid usage", "usage": "oops"},
+            "usage",
         ),
         (
             {
@@ -196,7 +196,7 @@ def test_a_batch_of_memories_is_written_in_one_call(cli, tmp_path):
         ("not an object", "spec"),
         (42, "spec"),
     ],
-    ids=["weight", "event-date", "null", "array", "string", "number"],
+    ids=["usage", "event-date", "null", "array", "string", "number"],
 )
 def test_batch_input_rejections_keep_valid_siblings_projected(cli, tmp_path, invalid, field):
     names = ["batch-first", "batch-last"]

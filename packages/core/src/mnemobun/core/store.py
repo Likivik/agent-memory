@@ -54,13 +54,14 @@ RECORD_FIELDS = frozenset(
         "links",
         "valid_from",
         "provenance",
-        "weight",
+        "usage",
+        "importance",
         "standing",
         "supersedes",
         "create_group",
     }
 )
-UPDATABLE_IN_PLACE = ("abstract", "links", "weight", "provenance")
+UPDATABLE_IN_PLACE = ("abstract", "links", "usage", "provenance")
 # Import-only spec fields (P9 D1): historical stamps accepted solely on the import path.
 IMPORT_FIELDS = frozenset({"created", "updated"})
 
@@ -294,11 +295,20 @@ class Store:
                 [FieldError("name", f"{existing.name} is invalid; supersede it instead")]
             )
 
-        weight = spec.get("weight")
+        usage = spec.get("usage")
         try:
-            parsed_weight = float(str(weight)) if weight is not None else self.config.weight.initial
+            parsed_weight = float(str(usage)) if usage is not None else self.config.usage.initial
         except ValueError as error:
-            raise ValidationError([FieldError("weight", "must be a number")]) from error
+            raise ValidationError([FieldError("usage", "must be a number")]) from error
+        importance = spec.get("importance")
+        try:
+            parsed_importance = (
+                float(str(importance))
+                if importance is not None
+                else self.config.usage.importance_initial
+            )
+        except ValueError as error:
+            raise ValidationError([FieldError("importance", "must be a number")]) from error
         candidate = MemoryRecord(
             name=placed.name,
             abstract=str(spec.get("abstract") or "").strip(),
@@ -308,7 +318,8 @@ class Store:
             updated=import_updated,
             body=str(spec.get("body") or ""),
             valid_from=valid_from or (existing.valid_from if existing else import_updated),
-            weight=parsed_weight,
+            usage=parsed_weight,
+            importance=parsed_importance,
             links=[str(link) for link in _as_sequence(spec.get("links"))],
             provenance=list(existing.provenance) if existing else [],
             standing=_spec_standing(spec, existing),
@@ -576,7 +587,8 @@ class Store:
                         "abstract": abstract,
                         "body": body,
                         "links": links,
-                        "weight": max(source.weight for source in active),
+                        "usage": max(source.usage for source in active),
+                        "importance": max(source.importance for source in active),
                         "create_group": True,
                     }
                 )
@@ -789,8 +801,8 @@ class Store:
             current = self.find(name)
             if current is None or current.path is None:
                 raise NotFoundError(f"no memory named {name}")
-            current.weight = min(
-                self.config.weight.ceiling, max(self.config.weight.floor, current.weight + delta)
+            current.usage = min(
+                self.config.usage.ceiling, max(self.config.usage.floor, current.usage + delta)
             )
             return self._write_locked(current)
 

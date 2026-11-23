@@ -253,3 +253,17 @@ def register(ctx) -> None:
         logging.getLogger(__name__).warning(
             "mnemobun: idle-task dream registration unavailable: %s", error
         )
+    try:
+        ctx.register_idle_task(
+            "feed",
+            provider.feed_tick,
+            interval_hours=1.25,
+            min_idle_hours=0.5,
+            first_run="defer",
+        )
+    except Exception as error:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "mnemobun: idle-task feed registration unavailable: %s", error
+        )

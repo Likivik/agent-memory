@@ -1,4 +1,4 @@
-"""Eligibility before relevance, then relevance × weight × recency. Zero LLM (ADR-002).
+"""Eligibility before relevance, then relevance × usage × recency. Zero LLM (ADR-002).
 
 The default surface holds active files only. `--as-of` is the one reader of the history
 surface, and it judges a file by its validity interval, never by its text alone.
@@ -61,10 +61,11 @@ class Hit:
     updated: str
     status: str
     standing: str
-    weight: float
+    usage: float
     relevance: float
     recency: float
     score: float
+    importance: float = 0.0
     source: str = "memory"
     provenance: tuple[str, ...] = ()
     cited_by: tuple[str, ...] = ()
@@ -186,7 +187,8 @@ class Recall:
         for name, (relevance, anchor, heading) in best.items():
             row = eligible[name]
             recency = self._recency(str(row["updated"]), reference)
-            weight = float(row["weight"])
+            usage = float(row["usage"])
+            importance = float(row["importance"])
             standing = str(row["standing"])
             hits.append(
                 Hit(
@@ -199,10 +201,17 @@ class Recall:
                     updated=str(row["updated"]),
                     status="invalid" if row["invalid_at"] else "active",
                     standing=standing,
-                    weight=weight,
+                    usage=usage,
+                    importance=importance,
                     relevance=relevance,
                     recency=recency,
-                    score=relevance * weight * recency
+                    score=relevance
+                    * usage
+                    * recency
+                    * (
+                        (self._config.usage.importance_score_scale + importance)
+                        / self._config.usage.importance_score_scale
+                    )
                     * self._standing_multiplier(standing),
                     provenance=tuple(
                         item for item in str(row["provenance"]).split(LINK_SEPARATOR) if item
@@ -214,7 +223,7 @@ class Recall:
 
     def _standing_multiplier(self, standing: str) -> float:
         """Contested/proposed claims stay visible but rank below accepted ones
-        (cortex §10.3: standing is a *weight*, not a filter)."""
+        (cortex §10.3: standing is a *usage*, not a filter)."""
         penalties = {
             STANDING_CONTESTED: self._config.standing.penalty_contested,
             STANDING_PROPOSED: self._config.standing.penalty_proposed,

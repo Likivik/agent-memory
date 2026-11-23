@@ -68,6 +68,7 @@ SCHEMAS: dict[str, dict[str, object]] = {
         "type": "object",
         "properties": {
             "abstract": {"type": "string"},
+            "importance": {"type": "number"},
             "type": {"type": "string"},
             "fields": {"type": "object", "additionalProperties": {"type": "string"}},
             "body": {"type": "string"},
@@ -163,7 +164,7 @@ DESCRIPTIONS = {
     TOOL_DELETE: "End a named memory's validity while retaining historical evidence.",
     TOOL_TRACE: "Read only the archived messages cited by a named memory.",
     TOOL_MERGE: "Combine named active memories atomically and retain their history.",
-    TOOL_FEEDBACK: "Raise or lower a memory's weight explicitly.",
+    TOOL_FEEDBACK: "Raise or lower a memory's usage explicitly.",
     TOOL_TIMELINE: (
         "Show a claim's proof tree: antecedents, conflicts, provenance, standing history."
     ),
@@ -299,6 +300,7 @@ def _record(store: Store, arguments: dict[str, object]) -> dict[str, object]:
         create_group=bool(arguments.get("create_group")),
         links=_string_list(arguments.get("links")),
         provenance=_string_list(arguments.get("provenance")),
+        importance=float(str(arguments.get("importance") or 0)),
         supersedes=_optional(arguments, "supersedes"),
     )
     # Decision 3: conflicts are agent-declared, never auto-detected.
@@ -326,10 +328,10 @@ def _correct(store: Store, arguments: dict[str, object]) -> dict[str, object]:
 
 
 def _feedback(store: Store, arguments: dict[str, object]) -> dict[str, object]:
-    step = store.config.weight.boost_step
+    step = store.config.usage.boost_step
     delta = step if arguments["direction"] == "boost" else -step
     updated = store.feedback(str(arguments["name"]), delta)
-    return {"name": updated.name, "weight": updated.weight}
+    return {"name": updated.name, "usage": updated.usage}
 
 
 def _supersede(store: Store, arguments: dict[str, object]) -> dict[str, object]:

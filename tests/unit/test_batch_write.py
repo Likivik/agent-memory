@@ -142,27 +142,27 @@ def test_one_stray_key_costs_its_own_memory_and_not_the_batch(store):
     assert "group" in str(result.rejected[0].errors)
 
 
-@pytest.mark.parametrize("weight", ["oops", "", [], {}, True, "nan", "inf", "-inf"])
-def test_invalid_weights_reject_only_their_own_item(store, weight):
-    result = store.record_many([SPECS[0], {**SPECS[2], "weight": weight}, SPECS[1]])
+@pytest.mark.parametrize("usage", ["oops", "", [], {}, True, "nan", "inf", "-inf"])
+def test_invalid_weights_reject_only_their_own_item(store, usage):
+    result = store.record_many([SPECS[0], {**SPECS[2], "usage": usage}, SPECS[1]])
 
     assert [record.name for record in result.written] == [SPECS[0]["name"], SPECS[1]["name"]]
     assert [item.index for item in result.rejected] == [1]
-    assert {error.field for error in result.rejected[0].errors} == {"weight"}
+    assert {error.field for error in result.rejected[0].errors} == {"usage"}
     assert {hit.name for hit in Recall(store).recall("snake plant basil")} == {
         record.name for record in result.written
     }
 
 
 def test_a_numeric_weight_string_keeps_its_value(store):
-    written = store.record(**SPECS[0], weight=str(store.config.weight.initial))
-    assert written.weight == store.config.weight.initial
+    written = store.record(**SPECS[0], usage=str(store.config.usage.initial))
+    assert written.usage == store.config.usage.initial
 
 
 def test_a_single_invalid_weight_uses_the_same_validation_boundary(store):
     with pytest.raises(ValidationError) as failure:
-        store.record(**SPECS[0], weight="oops")
-    assert {error.field for error in failure.value.errors} == {"weight"}
+        store.record(**SPECS[0], usage="oops")
+    assert {error.field for error in failure.value.errors} == {"usage"}
     assert not store.records()
 
 

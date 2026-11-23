@@ -17,11 +17,11 @@ def test_parse_returns_empty_dict_when_no_frontmatter():
 
 
 def test_parse_round_trip_preserves_scalar_fields():
-    fields = {"name": "test-entry", "status": "active", "weight": 1.5}
+    fields = {"name": "test-entry", "status": "active", "usage": 1.5}
     parsed, _ = _round_trip(fields, "body content")
     assert parsed["name"] == "test-entry"
     assert parsed["status"] == "active"
-    assert parsed["weight"] == 1.5
+    assert parsed["usage"] == 1.5
 
 
 def test_inline_array_of_quoted_strings_round_trips():
