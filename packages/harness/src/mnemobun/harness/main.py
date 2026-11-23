@@ -20,7 +20,7 @@ from mnemobun.core.dream import Dream
 from mnemobun.core.reasoning import Reasoner
 from mnemobun.core.store import Store
 from mnemobun.executor import reasoners
-from mnemobun.executor.hosts import (
+from mnemobun.executor.agents import (
     BINARIES,
     DIALECTS,
     HOST_CLAUDE_CODE,

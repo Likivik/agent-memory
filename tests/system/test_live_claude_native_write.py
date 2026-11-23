@@ -13,7 +13,7 @@ from mnemobun.core.errors import ReasonerUnavailableError, ValidationError
 from mnemobun.core.store import Store
 from mnemobun.core.watermark import Watermark
 from mnemobun.executor import distiller as executor_distiller
-from mnemobun.executor.hosts import HOST_CLAUDE_CODE
+from mnemobun.executor.agents import HOST_CLAUDE_CODE
 from mnemobun.executor.reasoners import ToolHostReasoner
 
 pytestmark = requires_live_claude

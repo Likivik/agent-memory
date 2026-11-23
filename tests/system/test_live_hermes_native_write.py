@@ -14,7 +14,7 @@ from mnemobun.core.config import TOOL_MODE_TEXT, Config, ExecutorConfig
 from mnemobun.core.store import Store
 from mnemobun.core.watermark import Watermark
 from mnemobun.executor import distiller as executor_distiller
-from mnemobun.executor.hosts import HOST_HERMES
+from mnemobun.executor.agents import HOST_HERMES
 from mnemobun.executor.reasoners import HostReasoner, ToolHostReasoner
 
 MODEL = "meta/muse-spark-1.3-contributor"

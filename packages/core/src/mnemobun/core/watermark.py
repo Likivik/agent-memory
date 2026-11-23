@@ -73,6 +73,18 @@ class Watermark:
             dataclasses.replace(current, distilled=max(current.distilled, distilled))
         )
 
+    def reset(self, session: str) -> Mark:
+        """Return to the start of the source (forced re-runs)."""
+        current = self.read(session)
+        return self._write(
+            dataclasses.replace(
+                current,
+                consumed=0,
+                distilled=0,
+                updated_at=self._clock.now().isoformat(),
+            )
+        )
+
     def _write(self, mark: Mark) -> Mark:
         session = mark.session
         path = self._path(session)

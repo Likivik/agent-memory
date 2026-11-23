@@ -9,7 +9,7 @@ import pytest
 from mnemobun.core.config import Config
 from mnemobun.core.recall import Recall
 from mnemobun.core.store import Store
-from mnemobun.executor.hosts import Host, HostResult, HostSpec
+from mnemobun.executor.agents import Host, HostResult, HostSpec
 from mnemobun.harness import arms, dataset, framing, report, sampling, systems
 from mnemobun.harness.driver import Driver, IsolationBreach
 from mnemobun.harness.judge import Judge

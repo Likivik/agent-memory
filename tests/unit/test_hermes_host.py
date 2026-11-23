@@ -6,13 +6,13 @@ import json
 import pathlib
 import subprocess
 
-from mnemobun.executor import hosts
+from mnemobun.executor import agents
 
 
 def _host(*, timeout_seconds=5.0):
-    return hosts.Host(
-        hosts.HostSpec(
-            name=hosts.HOST_HERMES,
+    return agents.Host(
+        agents.HostSpec(
+            name=agents.HOST_HERMES,
             binary="hermes",
             model="meta/muse-spark-1.3-contributor",
             provider="openrouter",
@@ -24,7 +24,7 @@ def _host(*, timeout_seconds=5.0):
 
 
 def _server(tmp_path):
-    return hosts.ToolServer(
+    return agents.ToolServer(
         name="memory",
         command="/venv/bin/python",
         args=("-m", "mnemobun.mcp.write_session", str(tmp_path / "batch")),
@@ -33,7 +33,7 @@ def _server(tmp_path):
 
 
 def _manage_server(tmp_path):
-    return hosts.ToolServer(
+    return agents.ToolServer(
         name="memory_review",
         command="/venv/bin/python",
         args=("-m", "mnemobun.mcp.manage_session", str(tmp_path / "review")),
@@ -59,7 +59,7 @@ def test_hermes_native_write_stages_only_the_batch_server(monkeypatch, tmp_path)
         )
         return subprocess.CompletedProcess(command, 0, stdout="done\n", stderr="")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
+    monkeypatch.setattr(agents.subprocess, "run", run)
     result = _host().converse(
         "session evidence",
         system_prompt="distill with submit_operations",
@@ -77,8 +77,8 @@ def test_hermes_native_write_stages_only_the_batch_server(monkeypatch, tmp_path)
     assert observed["prompt"] == "distill with submit_operations\n\nsession evidence"
     assert set(observed["config"]) == {"mcp_servers", "security"}
     assert observed["config"]["security"] == {"allow_data_training_tiers_noninteractive": True}
-    assert set(observed["config"]["mcp_servers"]) == {hosts.HERMES_WRITE_SERVER_NAME}
-    configured = observed["config"]["mcp_servers"][hosts.HERMES_WRITE_SERVER_NAME]
+    assert set(observed["config"]["mcp_servers"]) == {agents.HERMES_WRITE_SERVER_NAME}
+    configured = observed["config"]["mcp_servers"][agents.HERMES_WRITE_SERVER_NAME]
     assert configured["command"] == "/venv/bin/python"
     assert configured["tools"] == {
         "include": ["recall", "read", "submit_operations"],
@@ -98,7 +98,7 @@ def test_hermes_native_manage_stages_only_the_review_server(monkeypatch, tmp_pat
         observed["config"] = json.loads((home / "config.yaml").read_text(encoding="utf-8"))
         return subprocess.CompletedProcess(command, 0, stdout="review submitted\n", stderr="")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
+    monkeypatch.setattr(agents.subprocess, "run", run)
     result = _host().converse(
         "proposal summaries",
         system_prompt="review with submit_verdicts",
@@ -107,11 +107,11 @@ def test_hermes_native_manage_stages_only_the_review_server(monkeypatch, tmp_pat
 
     assert result.ok
     assert observed["command"][observed["command"].index("--toolsets") + 1] == (
-        hosts.HERMES_MANAGE_SERVER_NAME
+        agents.HERMES_MANAGE_SERVER_NAME
     )
     assert "terminal" not in observed["command"]
-    assert set(observed["config"]["mcp_servers"]) == {hosts.HERMES_MANAGE_SERVER_NAME}
-    configured = observed["config"]["mcp_servers"][hosts.HERMES_MANAGE_SERVER_NAME]
+    assert set(observed["config"]["mcp_servers"]) == {agents.HERMES_MANAGE_SERVER_NAME}
+    configured = observed["config"]["mcp_servers"][agents.HERMES_MANAGE_SERVER_NAME]
     assert configured["args"][:2] == ["-m", "mnemobun.mcp.manage_session"]
     assert configured["tools"] == {
         "include": ["list_proposals", "read_evidence", "submit_verdicts"],
@@ -127,7 +127,7 @@ def test_hermes_native_write_timeout_is_terminal(monkeypatch, tmp_path):
     def timeout(*_args, **_kwargs):
         raise subprocess.TimeoutExpired("hermes", 0.01)
 
-    monkeypatch.setattr(hosts.subprocess, "run", timeout)
+    monkeypatch.setattr(agents.subprocess, "run", timeout)
     result = _host(timeout_seconds=0.01).converse(
         "material", system_prompt="instructions", server=_server(tmp_path)
     )
@@ -148,7 +148,7 @@ def test_hermes_text_fallback_uses_the_same_isolated_profile(monkeypatch, tmp_pa
         observed["command"] = command
         return subprocess.CompletedProcess(command, 0, stdout="answer\n", stderr="")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
+    monkeypatch.setattr(agents.subprocess, "run", run)
     result = _host().run("prompt")
 
     assert result.ok
@@ -162,7 +162,7 @@ def test_hermes_text_fallback_uses_the_same_isolated_profile(monkeypatch, tmp_pa
 def test_old_hermes_native_cli_fails_explicitly_without_text_fallback(monkeypatch, tmp_path):
     monkeypatch.setenv("HERMES_HOME", str(tmp_path / "hermes-root"))
     monkeypatch.setattr(
-        hosts.subprocess,
+        agents.subprocess,
         "run",
         lambda command, **kwargs: subprocess.CompletedProcess(
             command, 2, stdout="", stderr="error: unrecognized arguments: --query-file"
@@ -172,4 +172,4 @@ def test_old_hermes_native_cli_fails_explicitly_without_text_fallback(monkeypatc
     result = _host().converse("material", system_prompt="instructions", server=_server(tmp_path))
 
     assert not result.ok
-    assert result.error == hosts.HERMES_NATIVE_TOOL_REQUIREMENT
+    assert result.error == agents.HERMES_NATIVE_TOOL_REQUIREMENT

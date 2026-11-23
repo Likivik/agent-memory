@@ -9,7 +9,7 @@ from pathlib import Path
 
 from mnemobun.core import observation
 from mnemobun.core.store import Store
-from mnemobun.executor.hosts import Host, HostResult, HostSpec
+from mnemobun.executor.agents import Host, HostResult, HostSpec
 from mnemobun.harness.arms import BY_NAME
 from mnemobun.harness.dataset import Episode
 from mnemobun.harness.driver import Driver
@@ -120,7 +120,7 @@ def test_zero_hit_recall_and_read_levels(tmp_path):
 
 
 def test_host_transcript_limits_and_failure(tmp_path, monkeypatch):
-    from mnemobun.executor.hosts import Host
+    from mnemobun.executor.agents import Host
 
     host = Host(HostSpec(name="codex", binary="unused", attempts=2, retry_backoff_seconds=0))
 

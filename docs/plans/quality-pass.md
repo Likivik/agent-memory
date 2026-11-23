@@ -34,7 +34,7 @@ Mechanical rename: `docket`/`_docket_group_fields`/docstrings/tests → `docket`
 
 ### Q-4 — hosts package split
 
-`executor/hosts.py` → `executor/hosts/{__init__,base,claude_code,codex,hermes,muse}.py`; `hosts.py` becomes a re-export shim (D5). Per-dialect constants travel with their dialect (e.g. `MEM_TOOL_PATTERN` → the files that use it).
+`executor/agents.py` → `executor/agents/{__init__,base,claude_code,codex,hermes,muse}.py`; `hosts.py` becomes a re-export shim (D5). Per-dialect constants travel with their dialect (e.g. `MEM_TOOL_PATTERN` → the files that use it).
 **Accept:** suite green; `grep "from .hosts import"` call sites unchanged; each dialect file <400 lines.
 
 ### Q-5 — plugin de-duplication

@@ -12,7 +12,7 @@ from mnemobun.core.config import Config, ExecutorConfig
 from mnemobun.core.store import Store
 from mnemobun.core.watermark import Watermark
 from mnemobun.executor import distiller as executor_distiller
-from mnemobun.executor.hosts import HOST_MUSE_CODE
+from mnemobun.executor.agents import HOST_MUSE_CODE
 from mnemobun.executor.reasoners import ToolHostReasoner
 
 

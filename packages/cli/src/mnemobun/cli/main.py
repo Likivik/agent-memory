@@ -93,7 +93,22 @@ def _global_options(parser: argparse.ArgumentParser) -> None:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="mnemobun", description="mnemobun")
+    parser = argparse.ArgumentParser(
+        prog="mnemobun",
+        description="mnemobun",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "command groups:\n"
+            "  records  record · read · correct · supersede · merge · delete\n"
+            "           trace · feedback · recall|search\n"
+            "  data     import <format> <path> · export · migrate\n"
+            "  index    index sync · index rebuild\n"
+            "  court    docket · case show · case decide · dream run/status/worker\n"
+            "           distill · jobs\n"
+            "  brain    setup · doctor\n"
+            "  meta     gc · cron · skill · sleep · replay"
+        ),
+    )
     _global_options(parser)
     # A subparser would overwrite values parsed before the subcommand with its own
     # defaults, so the shared options suppress theirs and the main parser sets them.
@@ -134,19 +149,13 @@ def _parser() -> argparse.ArgumentParser:
     writer.add_argument("--supersedes", default=None)
     writer.set_defaults(handler=_record)
 
-    reader = subcommand("recall", help="retrieve an L0 list")
+    reader = subcommand("recall", help="retrieve an L0 list", aliases=["search"])
     reader.add_argument("query")
     reader.add_argument("--scope", default=None)
     reader.add_argument("--as-of", default=None)
     reader.add_argument("--limit", type=int, default=None)
     reader.set_defaults(handler=_recall)
 
-    contexter = subcommand("context", help="recall and open the top entries in one call")
-    contexter.add_argument("query")
-    contexter.add_argument("--scope", default=None)
-    contexter.add_argument("--as-of", default=None)
-    contexter.add_argument("--limit", type=int, default=None)
-    contexter.set_defaults(handler=_context)
 
     opener = subcommand("read", help="read one memory")
     opener.add_argument("name")
@@ -274,10 +283,17 @@ def _parser() -> argparse.ArgumentParser:
     voter.add_argument("--penalize", action="store_true")
     voter.set_defaults(handler=_feedback)
 
-    rebuilder = subcommand("rebuild", help="drop and rebuild the index")
+    index = subcommand("index", help="the retrieval index")
+    index_actions = index.add_subparsers(dest="index_action", required=True)
+    index_sync = index_actions.add_parser("sync", help="incremental catch-up")
+    index_sync.set_defaults(handler=_index_sync)
+    index_rebuild = index_actions.add_parser("rebuild", help="drop and rebuild the index")
+    index_rebuild.set_defaults(handler=_rebuild)
+
+    rebuilder = subcommand("rebuild", help="deprecated: use index rebuild")
     rebuilder.set_defaults(handler=_rebuild)
 
-    inspector = subcommand("inspect", help="store health")
+    inspector = subcommand("inspect", help="deprecated: store health — use doctor")
     inspector.set_defaults(handler=_inspect)
 
     dream_status = subcommand(
@@ -290,8 +306,20 @@ def _parser() -> argparse.ArgumentParser:
     exporter.add_argument("--no-archive", action="store_true")
     exporter.set_defaults(handler=_export)
 
-    importer = subcommand("import", help="import an export into this store")
-    importer.add_argument("source")
+    importer = subcommand(
+        "import", help="import memories: a mnemobun JSON export or a hermes state.db"
+    )
+    importer.add_argument("format", choices=["mnemobun", "hermes"], help="who we import from")
+    importer.add_argument("source", help="path to the export file or state.db")
+    importer.add_argument("--batch-id", default="", help="label recorded in provenance")
+    importer.add_argument("--batch-records", type=int, default=2000)
+    importer.add_argument("--no-dream", action="store_true")
+    importer.add_argument(
+        "--standing-policy", choices=["accepted", "proposed"], default="accepted"
+    )
+    importer.add_argument(
+        "--force", action="store_true", help="ignore the resume watermark and start over"
+    )
     importer.set_defaults(handler=_import)
 
     replayer = subcommand(
@@ -305,11 +333,16 @@ def _parser() -> argparse.ArgumentParser:
         help="standing for imported records (D3: accepted is the default)",
     )
     replayer.add_argument(
-        "--batch-id", default="", help="provenance marker suffix (default: clock stamp)"
+        "--batch-id", default="", help="provenance marker suffix (default: source identity)"
     )
     replayer.add_argument("--batch-records", type=int, default=2000)
     replayer.add_argument(
         "--no-dream", action="store_true", help="skip the deterministic dream pass"
+    )
+    replayer.add_argument(
+        "--force",
+        action="store_true",
+        help="ignore the resume watermark and reprocess from the first turn",
     )
     replayer.set_defaults(handler=_replay)
 
@@ -371,11 +404,16 @@ def _parser() -> argparse.ArgumentParser:
     _global_options(cron_remove)
     cron_remove.set_defaults(handler=_cron)
 
-    proposer = subcommand("proposals", help="list proposals awaiting confirmation")
-    proposer.set_defaults(handler=_proposals)
+    docket = subcommand(
+        "docket", help="list cases awaiting a ruling", aliases=["proposals"]
+    )
+    docket.set_defaults(handler=_proposals)
 
     collector = subcommand(
         "gc", help="physically remove invalid files; the only deletion entry, human-run"
+    )
+    collector.add_argument(
+        "--yes", action="store_true", help="actually delete; without this flag gc only reports"
     )
     collector.set_defaults(handler=_gc)
 
@@ -393,6 +431,28 @@ def _parser() -> argparse.ArgumentParser:
         help="JSON file listing the parts of a split (abstract, body, provenance)",
     )
     decider.set_defaults(handler=_decide)
+
+    case = subcommand("case", help="one case awaiting a ruling")
+    case_actions = case.add_subparsers(dest="case_action", required=True)
+    case_show = case_actions.add_parser("show", help="show one case")
+    case_show.add_argument("proposal")
+    case_show.set_defaults(handler=_case_show)
+    case_decide = case_actions.add_parser("decide", help="sign the ruling on one case")
+    case_decide.add_argument("proposal")
+    case_verdict = case_decide.add_mutually_exclusive_group(required=True)
+    case_verdict.add_argument("--accept", action="store_true")
+    case_verdict.add_argument("--reject", action="store_true")
+    case_decide.add_argument(
+        "--text", default="", help="replacement abstract, for an abstract review"
+    )
+    case_decide.add_argument("--abstract", default="", help="merged abstract, for a merge")
+    case_decide.add_argument("--body", default="", help="merged body, for a merge")
+    case_decide.add_argument(
+        "--parts",
+        default=None,
+        help="JSON file listing the parts of a split (abstract, body, provenance)",
+    )
+    case_decide.set_defaults(handler=_decide)
 
     skiller = subcommand("skill", help="print the agent skill text")
     skiller.set_defaults(handler=_skill)
@@ -714,6 +774,17 @@ def _rebuild(store: Store, args: argparse.Namespace) -> dict[str, object]:
     return {"reindexed": len(report.reindexed), "dangling_links": len(report.dangling_links)}
 
 
+def _index_sync(store: Store, args: argparse.Namespace) -> dict[str, object]:
+    report = store.sync_index()
+    return {"reindexed": len(report.reindexed), "dangling_links": len(report.dangling_links)}
+
+
+def _case_show(store: Store, args: argparse.Namespace) -> dict[str, object]:
+    proposals = [proposal.as_dict() for proposal in Docket(store).proposals()]
+    matches = [item for item in proposals if item.get("name") == args.proposal]
+    return {"case": matches[0] if matches else None}
+
+
 def _inspect(store: Store, args: argparse.Namespace) -> dict[str, object]:
     report = store.sync_index()
     records = store.records()
@@ -755,6 +826,9 @@ def _export(store: Store, args: argparse.Namespace) -> dict[str, object]:
 
 
 def _import(store: Store, args: argparse.Namespace) -> dict[str, object]:
+    if args.format == "hermes":
+        args.state_db = args.source
+        return _replay(store, args)
     written = portability.read_import(store, pathlib.Path(args.source))
     return {"imported": written}
 
@@ -770,11 +844,13 @@ def _replay(store: Store, args: argparse.Namespace) -> dict[str, object]:
         batch_id=args.batch_id,
         batch_records=args.batch_records,
         run_dream=not args.no_dream,
+        force=args.force,
     )
     return {
         "written": report.written,
         "batches": report.batches,
         "rejected": len(report.rejected),
+        "skipped": report.skipped,
         "dream_actions": report.dream_actions,
     }
 
@@ -858,6 +934,8 @@ def _executor(
 
 
 def _gc(store: Store, args: argparse.Namespace) -> dict[str, object]:
+    if not getattr(args, "yes", False):
+        return {"dry_run": True, "would_remove": store.gc(dry_run=True)}
     return {"removed": store.gc()}
 
 

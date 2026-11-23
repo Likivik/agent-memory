@@ -8,7 +8,7 @@ import subprocess
 
 import pytest
 from mnemobun.core.errors import ReasonerUnavailableError
-from mnemobun.executor.hosts import HostResult
+from mnemobun.executor.agents import HostResult
 from mnemobun.executor.reasoners import EndpointReasoner, HostReasoner
 
 
@@ -101,7 +101,7 @@ def test_an_endpoint_that_refuses_the_connection_is_reported_without_the_key(mon
 
 
 def test_a_host_reasoner_is_named_by_dialect_and_runs_that_dialect_s_binary():
-    from mnemobun.executor.hosts import BINARIES, HOST_CLAUDE_CODE
+    from mnemobun.executor.agents import BINARIES, HOST_CLAUDE_CODE
     from mnemobun.executor.reasoners import HostReasoner
 
     reasoner = HostReasoner.for_host(HOST_CLAUDE_CODE)
@@ -116,7 +116,7 @@ def test_an_unknown_host_reasoner_fails_closed_instead_of_using_another_dialect(
 
 
 def test_codex_jsonl_usage_is_retained_for_native_review_metrics(tmp_path, monkeypatch):
-    from mnemobun.executor import hosts
+    from mnemobun.executor import agents
 
     def run(command, **kwargs):
         pathlib.Path(command[command.index("--output-last-message") + 1]).write_text("done")
@@ -132,8 +132,8 @@ def test_codex_jsonl_usage_is_retained_for_native_review_metrics(tmp_path, monke
         )
         return subprocess.CompletedProcess(command, 0, stdout, "")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(hosts.HostSpec(name="codex", binary="codex", attempts=1))
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(agents.HostSpec(name="codex", binary="codex", attempts=1))
     result = host.run("review", workdir=tmp_path)
 
     assert result.ok and result.usage is not None
@@ -144,7 +144,7 @@ def test_codex_jsonl_usage_is_retained_for_native_review_metrics(tmp_path, monke
 
 
 def test_claude_structured_result_supplies_the_answer_and_review_usage(monkeypatch):
-    from mnemobun.executor import hosts
+    from mnemobun.executor import agents
 
     reported = {
         "input_tokens": 40,
@@ -167,9 +167,9 @@ def test_claude_structured_result_supplies_the_answer_and_review_usage(monkeypat
         )
         return subprocess.CompletedProcess(command, 0, stdout, "")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(hosts.HostSpec(name="claude-code", binary="claude", attempts=1))
-    server = hosts.ToolServer(name="memory_review", command="python", args=(), tools=("t",))
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(agents.HostSpec(name="claude-code", binary="claude", attempts=1))
+    server = agents.ToolServer(name="memory_review", command="python", args=(), tools=("t",))
     result = host.converse("material", system_prompt="review", server=server)
 
     assert result.ok and result.usage is not None
@@ -185,13 +185,13 @@ def test_claude_structured_result_supplies_the_answer_and_review_usage(monkeypat
 
 
 def test_claude_plain_output_keeps_its_text_and_reports_no_usage(monkeypatch):
-    from mnemobun.executor import hosts
+    from mnemobun.executor import agents
 
     def run(command, **kwargs):
         return subprocess.CompletedProcess(command, 0, "  a plain answer  ", "")
 
-    monkeypatch.setattr(hosts.subprocess, "run", run)
-    host = hosts.Host(hosts.HostSpec(name="claude-code", binary="claude", attempts=1))
+    monkeypatch.setattr(agents.subprocess, "run", run)
+    host = agents.Host(agents.HostSpec(name="claude-code", binary="claude", attempts=1))
     result = host.run("question")
 
     assert result.ok
@@ -200,7 +200,7 @@ def test_claude_plain_output_keeps_its_text_and_reports_no_usage(monkeypatch):
 
 
 def test_codex_jsonl_trace_separates_startup_model_mcp_and_shutdown():
-    from mnemobun.executor.hosts import _CodexTrace
+    from mnemobun.executor.agents import _CodexTrace
 
     trace = _CodexTrace(started=10.0)
     trace.observe(json.dumps({"type": "thread.started"}), 11.0)
@@ -255,7 +255,7 @@ def test_hosts_with_a_default_mcp_posture_negotiate_with_tools_and_the_rest_keep
     from mnemobun.core.config import ExecutorConfig
     from mnemobun.core.reasoning import ToolReasoner
     from mnemobun.executor import distiller
-    from mnemobun.executor.hosts import BINARIES, DIALECTS
+    from mnemobun.executor.agents import BINARIES, DIALECTS
 
     for name in BINARIES:
         chosen = distiller.distiller(ExecutorConfig(host=name))
@@ -289,7 +289,7 @@ def test_native_write_tools_fail_closed_for_an_unknown_host():
 def test_hermes_openrouter_does_not_construct_vertex_credentials():
     from mnemobun.core.config import ExecutorConfig
     from mnemobun.executor import distiller
-    from mnemobun.executor.hosts import HERMES_DATA_TRAINING_REQUIREMENT
+    from mnemobun.executor.agents import HERMES_DATA_TRAINING_REQUIREMENT
 
     with pytest.raises(ReasonerUnavailableError, match=HERMES_DATA_TRAINING_REQUIREMENT):
         distiller.distiller(

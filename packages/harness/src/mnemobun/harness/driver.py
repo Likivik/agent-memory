@@ -16,7 +16,7 @@ from mnemobun.core import observation
 from mnemobun.core.config import REASONER_ENDPOINT, Config
 from mnemobun.core.distill import Ask
 from mnemobun.executor import distiller
-from mnemobun.executor.hosts import Host
+from mnemobun.executor.agents import Host
 
 from . import exam as exam_module
 from . import framing

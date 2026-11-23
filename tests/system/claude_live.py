@@ -12,7 +12,7 @@ import subprocess
 import time
 
 import pytest
-from mnemobun.executor.hosts import BINARIES, DEFAULT_MODEL, HOST_CLAUDE_CODE, HostResult
+from mnemobun.executor.agents import BINARIES, DEFAULT_MODEL, HOST_CLAUDE_CODE, HostResult
 from mnemobun.executor.reasoners import CLAUDE_BUNDLED_ENV, ToolHostReasoner
 
 LIVE_ENV = "AGENT_MEMORY_LIVE_CLAUDE_NATIVE"

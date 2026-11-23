@@ -1,16 +1,16 @@
 """P1 — a host is a dialect, not a branch. Adding one must not touch the driver."""
 
 import pytest
-from mnemobun.executor import hosts
+from mnemobun.executor import agents
 
 
 def _spec(name):
-    return hosts.HostSpec(name=name, binary=name, model="a-model")
+    return agents.HostSpec(name=name, binary=name, model="a-model")
 
 
-@pytest.mark.parametrize("name", hosts.DIALECTS)
+@pytest.mark.parametrize("name", agents.DIALECTS)
 def test_every_dialect_builds_a_command_that_starts_with_its_binary(name, tmp_path):
-    dialect = hosts.DIALECTS[name]
+    dialect = agents.DIALECTS[name]
     command = dialect.command(
         _spec(name),
         tools_enabled=True,
@@ -23,9 +23,9 @@ def test_every_dialect_builds_a_command_that_starts_with_its_binary(name, tmp_pa
     assert "a-model" in command
 
 
-@pytest.mark.parametrize("name", hosts.DIALECTS)
+@pytest.mark.parametrize("name", agents.DIALECTS)
 def test_the_system_prompt_reaches_the_host_one_way_or_the_other(name, tmp_path):
-    dialect = hosts.DIALECTS[name]
+    dialect = agents.DIALECTS[name]
     system = "you are a memory keeper"
     command = dialect.command(
         _spec(name),
@@ -39,10 +39,10 @@ def test_the_system_prompt_reaches_the_host_one_way_or_the_other(name, tmp_path)
     assert system in " ".join(command) or system in (delivered or "")
 
 
-@pytest.mark.parametrize("name", hosts.DIALECTS)
+@pytest.mark.parametrize("name", agents.DIALECTS)
 def test_no_dialect_leaves_its_own_memory_layer_running(name, tmp_path):
     """Two memory systems in one run make the score unattributable."""
-    dialect = hosts.DIALECTS[name]
+    dialect = agents.DIALECTS[name]
     command = " ".join(
         dialect.command(
             _spec(name),
@@ -57,8 +57,8 @@ def test_no_dialect_leaves_its_own_memory_layer_running(name, tmp_path):
 
 
 def test_claude_code_delivers_the_system_prompt_by_flag(tmp_path):
-    command = hosts.DIALECTS[hosts.HOST_CLAUDE_CODE].command(
-        _spec(hosts.HOST_CLAUDE_CODE),
+    command = agents.DIALECTS[agents.HOST_CLAUDE_CODE].command(
+        _spec(agents.HOST_CLAUDE_CODE),
         tools_enabled=True,
         system_prompt="keeper",
         max_turns=7,
@@ -71,8 +71,8 @@ def test_claude_code_delivers_the_system_prompt_by_flag(tmp_path):
 
 def test_claude_code_without_tools_loads_none_of_the_user_s_mcp_servers(tmp_path):
     """Observed live: user MCP tool definitions alone overflowed Haiku's context window."""
-    command = hosts.DIALECTS[hosts.HOST_CLAUDE_CODE].command(
-        _spec(hosts.HOST_CLAUDE_CODE),
+    command = agents.DIALECTS[agents.HOST_CLAUDE_CODE].command(
+        _spec(agents.HOST_CLAUDE_CODE),
         tools_enabled=False,
         system_prompt="reviewer",
         max_turns=1,
@@ -85,8 +85,8 @@ def test_claude_code_without_tools_loads_none_of_the_user_s_mcp_servers(tmp_path
 
 def test_codex_is_given_write_access_to_the_store_it_must_reach(tmp_path):
     store = tmp_path / "store"
-    command = hosts.DIALECTS[hosts.HOST_CODEX].command(
-        _spec(hosts.HOST_CODEX),
+    command = agents.DIALECTS[agents.HOST_CODEX].command(
+        _spec(agents.HOST_CODEX),
         tools_enabled=True,
         system_prompt="keeper",
         max_turns=7,
@@ -99,8 +99,8 @@ def test_codex_is_given_write_access_to_the_store_it_must_reach(tmp_path):
 
 
 def test_codex_without_tools_stays_read_only(tmp_path):
-    command = hosts.DIALECTS[hosts.HOST_CODEX].command(
-        _spec(hosts.HOST_CODEX),
+    command = agents.DIALECTS[agents.HOST_CODEX].command(
+        _spec(agents.HOST_CODEX),
         tools_enabled=False,
         system_prompt="",
         max_turns=7,
@@ -112,8 +112,8 @@ def test_codex_without_tools_stays_read_only(tmp_path):
 
 
 def test_hermes_enables_only_the_toolset_that_reaches_the_mem_cli(tmp_path):
-    command = hosts.DIALECTS[hosts.HOST_HERMES].command(
-        _spec(hosts.HOST_HERMES),
+    command = agents.DIALECTS[agents.HOST_HERMES].command(
+        _spec(agents.HOST_HERMES),
         tools_enabled=True,
         system_prompt="keeper",
         max_turns=7,
@@ -131,29 +131,29 @@ def test_codex_reads_its_answer_from_the_file_not_the_transcript(tmp_path):
     noisy = (
         "sandbox: read-only\nsession id: abc\nuser\nquestion\ncodex\nthe final answer\ntokens used"
     )
-    assert hosts.DIALECTS[hosts.HOST_CODEX].answer(noisy, answer_file) == "the final answer"
+    assert agents.DIALECTS[agents.HOST_CODEX].answer(noisy, answer_file) == "the final answer"
 
 
 def test_stdout_hosts_return_stdout(tmp_path):
-    for name in (hosts.HOST_CLAUDE_CODE, hosts.HOST_HERMES):
-        dialect = hosts.DIALECTS[name]
+    for name in (agents.HOST_CLAUDE_CODE, agents.HOST_HERMES):
+        dialect = agents.DIALECTS[name]
         assert dialect.answer("  the answer  ", tmp_path / "missing.txt") == "the answer"
 
 
 def test_an_unavailable_host_is_reported_rather_than_silently_skipped():
-    spec = hosts.HostSpec(name="nope", binary="definitely-not-installed", model="m")
+    spec = agents.HostSpec(name="nope", binary="definitely-not-installed", model="m")
     assert not spec.available()
 
 
 def test_hermes_re_adds_the_prefix_it_is_about_to_strip(tmp_path):
     """It consumes one provider prefix as routing; a publisher-qualified backend needs it back."""
-    spec = hosts.HostSpec(
-        name=hosts.HOST_HERMES,
+    spec = agents.HostSpec(
+        name=agents.HOST_HERMES,
         binary="hermes",
         model="google/gemini-3.7-flash",
         provider="gemini",
     )
-    command = hosts.DIALECTS[hosts.HOST_HERMES].command(
+    command = agents.DIALECTS[agents.HOST_HERMES].command(
         spec,
         tools_enabled=True,
         system_prompt="k",
@@ -165,8 +165,8 @@ def test_hermes_re_adds_the_prefix_it_is_about_to_strip(tmp_path):
 
 
 def test_hermes_leaves_the_model_alone_when_no_provider_is_pinned(tmp_path):
-    spec = hosts.HostSpec(name=hosts.HOST_HERMES, binary="hermes", model="some-model")
-    command = hosts.DIALECTS[hosts.HOST_HERMES].command(
+    spec = agents.HostSpec(name=agents.HOST_HERMES, binary="hermes", model="some-model")
+    command = agents.DIALECTS[agents.HOST_HERMES].command(
         spec,
         tools_enabled=True,
         system_prompt="k",
@@ -195,7 +195,7 @@ def test_the_expensive_tier_has_to_be_asked_for_out_loud(monkeypatch):
 
 
 def test_the_shipped_defaults_are_all_affordable(monkeypatch):
-    from mnemobun.executor.hosts import BINARIES
+    from mnemobun.executor.agents import BINARIES
     from mnemobun.harness.main import ALLOW_COSTLY_ENV, JUDGE_MODEL, _affordable
 
     monkeypatch.delenv(ALLOW_COSTLY_ENV, raising=False)

@@ -610,16 +610,21 @@ class Store:
                 [FieldError("updated", f"memory {record.name} changed since proposal generation")]
             )
 
-    def gc(self) -> list[str]:
-        """Physically removes invalid files. A human runs this; Dream cannot reach it."""
+    def gc(self, *, dry_run: bool = False) -> list[str]:
+        """Physically removes invalid files. A human runs this; Dream cannot reach it.
+
+        dry_run=True only reports what would be removed; nothing is touched.
+        """
         removed: list[str] = []
         with store_lock(self.layout):
             for record in self.records(include_invalid=True):
                 if record.is_active() or record.path is None:
                     continue
-                record.path.unlink(missing_ok=True)
+                if not dry_run:
+                    record.path.unlink(missing_ok=True)
                 removed.append(record.name)
-            self._project()
+            if not dry_run:
+                self._project()
         return removed
 
     def write(self, record: MemoryRecord) -> MemoryRecord:
