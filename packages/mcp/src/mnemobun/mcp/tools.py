@@ -68,6 +68,7 @@ SCHEMAS: dict[str, dict[str, object]] = {
         "type": "object",
         "properties": {
             "abstract": {"type": "string"},
+            "importance": {"type": "number"},
             "type": {"type": "string"},
             "fields": {"type": "object", "additionalProperties": {"type": "string"}},
             "body": {"type": "string"},
@@ -299,6 +300,7 @@ def _record(store: Store, arguments: dict[str, object]) -> dict[str, object]:
         create_group=bool(arguments.get("create_group")),
         links=_string_list(arguments.get("links")),
         provenance=_string_list(arguments.get("provenance")),
+        importance=float(str(arguments.get("importance") or 0)),
         supersedes=_optional(arguments, "supersedes"),
     )
     # Decision 3: conflicts are agent-declared, never auto-detected.

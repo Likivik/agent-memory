@@ -40,6 +40,10 @@ OPERATION_SCHEMA: dict[str, object] = {
         "fields": {"type": "object", "additionalProperties": {"type": "string"}},
         "abstract": {"type": "string", "description": "The one line that states the fact."},
         "body": {"type": "string", "description": "Markdown with the specifics in full."},
+        "importance": {
+            "type": "number",
+            "description": "How much remembering or forgetting this matters, 1-10.",
+        },
         "handle": {"type": "string", "description": "The memory an update or supersede names."},
         "valid_from": {"type": "string", "description": "When the fact starts to hold."},
         "create_group": {"type": "boolean"},

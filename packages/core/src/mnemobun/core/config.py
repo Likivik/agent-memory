@@ -85,6 +85,11 @@ class UsageConfig:
     boost_step: float = 0.5
     decay_step: float = 0.1
     decay_after_days: float = 30.0
+    # Write-time importance (Park's 1-10 poignancy scale; 0 = unrated, neutral).
+    importance_initial: float = 0.0
+    importance_floor: float = 0.0
+    importance_ceiling: float = 10.0
+    importance_score_scale: float = 10.0
 
 
 @dataclasses.dataclass

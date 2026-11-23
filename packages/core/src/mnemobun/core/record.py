@@ -25,6 +25,7 @@ FIELD_ORDER = (
     "superseded_by",
     "standing",
     "usage",
+    "importance",
     "author",
     "links",
     "provenance",
@@ -69,6 +70,7 @@ class MemoryRecord:
     superseded_by: str | None = None
     standing: str = STANDING_DEFAULT
     usage: float = 1.0
+    importance: float = 0.0  # 1-10, judged at write time; 0 = unrated (neutral)
     links: list[str] = dataclasses.field(default_factory=list)
     provenance: list[str] = dataclasses.field(default_factory=list)
     fields: dict[str, str] = dataclasses.field(default_factory=dict)
@@ -87,6 +89,7 @@ class MemoryRecord:
             "superseded_by": self.superseded_by,
             "standing": self.standing,
             "usage": float(self.usage),
+            "importance": float(self.importance),
             "author": self.author,
             "links": list(self.links),
             "provenance": list(self.provenance),
@@ -133,6 +136,7 @@ class MemoryRecord:
             superseded_by=_optional_str(raw.get("superseded_by")),
             standing=_standing(raw.get("standing")),
             usage=_as_float(raw.get("usage")),
+            importance=_as_float(raw.get("importance")),
             links=_as_list(raw.get("links")),
             provenance=_as_list(raw.get("provenance")),
             fields=extra,
@@ -201,6 +205,8 @@ def validate(record: MemoryRecord, config: Config, schema: MemorySchema | None =
         errors.append(FieldError("superseded_by", "cannot supersede itself"))
     if not config.usage.floor <= record.usage <= config.usage.ceiling:
         errors.append(FieldError("usage", "outside the configured usage range"))
+    if not config.usage.importance_floor <= record.importance <= config.usage.importance_ceiling:
+        errors.append(FieldError("importance", "outside the configured importance range"))
     for link in record.links:
         target = str(link)
         if target.startswith(CONFLICT_PREFIX):

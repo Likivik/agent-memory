@@ -309,6 +309,7 @@ class Docket:
                 body=part.body.strip(),
                 links=list(original.links),
                 usage=original.usage,
+                importance=original.importance,
                 valid_from=original.valid_from,
                 provenance=provenance,
                 create_group=True,

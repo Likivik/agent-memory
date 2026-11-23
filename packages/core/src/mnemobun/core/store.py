@@ -55,6 +55,7 @@ RECORD_FIELDS = frozenset(
         "valid_from",
         "provenance",
         "usage",
+        "importance",
         "standing",
         "supersedes",
         "create_group",
@@ -299,6 +300,15 @@ class Store:
             parsed_weight = float(str(usage)) if usage is not None else self.config.usage.initial
         except ValueError as error:
             raise ValidationError([FieldError("usage", "must be a number")]) from error
+        importance = spec.get("importance")
+        try:
+            parsed_importance = (
+                float(str(importance))
+                if importance is not None
+                else self.config.usage.importance_initial
+            )
+        except ValueError as error:
+            raise ValidationError([FieldError("importance", "must be a number")]) from error
         candidate = MemoryRecord(
             name=placed.name,
             abstract=str(spec.get("abstract") or "").strip(),
@@ -309,6 +319,7 @@ class Store:
             body=str(spec.get("body") or ""),
             valid_from=valid_from or (existing.valid_from if existing else import_updated),
             usage=parsed_weight,
+            importance=parsed_importance,
             links=[str(link) for link in _as_sequence(spec.get("links"))],
             provenance=list(existing.provenance) if existing else [],
             standing=_spec_standing(spec, existing),
@@ -577,6 +588,7 @@ class Store:
                         "body": body,
                         "links": links,
                         "usage": max(source.usage for source in active),
+                        "importance": max(source.importance for source in active),
                         "create_group": True,
                     }
                 )

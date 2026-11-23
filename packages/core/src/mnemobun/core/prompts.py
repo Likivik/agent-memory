@@ -222,6 +222,9 @@ DISTILL_INSTRUCTIONS = """You are filling in a long-term memory store from one c
 
 {slot_instruction}
 
+Rate each memory's `importance` from 1 to 10: how much remembering or forgetting it
+matters. Leave 0 when unsure.
+
 Each memory is two parts, and both matter. The **abstract** is the one line someone
 would search for months later, stating the fact itself. The **body** is what that person
 needs once they have found it: the specifics in full sentences, with every name, number,

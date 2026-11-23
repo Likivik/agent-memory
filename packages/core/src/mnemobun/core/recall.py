@@ -65,6 +65,7 @@ class Hit:
     relevance: float
     recency: float
     score: float
+    importance: float = 0.0
     source: str = "memory"
     provenance: tuple[str, ...] = ()
     cited_by: tuple[str, ...] = ()
@@ -187,6 +188,7 @@ class Recall:
             row = eligible[name]
             recency = self._recency(str(row["updated"]), reference)
             usage = float(row["usage"])
+            importance = float(row["importance"])
             standing = str(row["standing"])
             hits.append(
                 Hit(
@@ -200,9 +202,16 @@ class Recall:
                     status="invalid" if row["invalid_at"] else "active",
                     standing=standing,
                     usage=usage,
+                    importance=importance,
                     relevance=relevance,
                     recency=recency,
-                    score=relevance * usage * recency
+                    score=relevance
+                    * usage
+                    * recency
+                    * (
+                        (self._config.usage.importance_score_scale + importance)
+                        / self._config.usage.importance_score_scale
+                    )
                     * self._standing_multiplier(standing),
                     provenance=tuple(
                         item for item in str(row["provenance"]).split(LINK_SEPARATOR) if item
