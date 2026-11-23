@@ -997,6 +997,8 @@ def _setup(store: Store, args: argparse.Namespace) -> dict[str, object]:
     if args.provider:
         brain.host_provider = args.provider
     if args.model:
+        brain.model_source = "cli"
+    if args.model:
         brain.host_model = args.model
     if getattr(args, "endpoint", None):
         brain.endpoint = args.endpoint

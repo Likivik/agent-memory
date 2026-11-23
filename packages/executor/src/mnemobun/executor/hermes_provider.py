@@ -91,8 +91,14 @@ class HermesMemoryProvider:
         """Idle task (feed): score the backlog, extract when the trigger fires."""
         from mnemobun.adapters import feed
         from mnemobun.executor import distiller as distiller_module
-        from mnemobun.executor import selection
+        from mnemobun.executor import model_resolution, selection
 
+        route = model_resolution.route_for(self.store)
+        if route is None:
+            result = feed.run(self.store, ask=None).as_dict()
+            result["needs_model"] = True
+            result["reason"] = model_resolution.NEEDS_MODEL
+            return result
         ask = None
         try:
             ask = distiller_module.distiller(
@@ -100,7 +106,9 @@ class HermesMemoryProvider:
             )
         except Exception:
             ask = None  # decision-only report instead of a dead idle task
-        return feed.run(self.store, ask=ask).as_dict()
+        result = feed.run(self.store, ask=ask).as_dict()
+        result["model"] = route.label()
+        return result
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
         settings = self.store.config.provider

@@ -431,10 +431,13 @@ def _setup(store: Store, arguments: dict[str, object]) -> dict[str, object]:
         value = _optional(arguments, key)
         if value:
             setattr(brain, field, str(value))
+    if _optional(arguments, "model"):
+        brain.model_source = "chat"
     store.config.save(store.root)
     return {
         "host": brain.host,
         "model": brain.host_model,
+        "model_source": brain.model_source,
         "provider": brain.host_provider,
         "endpoint": brain.endpoint,
     }
@@ -447,6 +450,13 @@ def _doctor(store: Store, arguments: dict[str, object]) -> dict[str, object]:
         "brain": {
             "host": store.config.executor.host,
             "model": store.config.executor.host_model,
+            "model_source": store.config.executor.model_source,
+            "model_route": (
+                f"{store.config.executor.host_model or store.config.executor.model}"
+                f" (source: {store.config.executor.model_source})"
+                if (store.config.executor.host_model or store.config.executor.model)
+                else "needs_model"
+            ),
             "provider": store.config.executor.host_provider,
             "endpoint": store.config.executor.endpoint,
         },

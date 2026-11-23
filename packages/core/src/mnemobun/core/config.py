@@ -207,7 +207,8 @@ class ExecutorConfig:
     host_provider: str = ""
     host_allow_data_training: bool = False
     host_model: str = ""
-    model: str = "google/gemini-3.7-flash"
+    model: str = ""  # no silent default (user ruling 2026-11-24)
+    model_source: str = "unset"  # chat | cli | gui | unset
     endpoint: str = ""
     project: str = ""
     location: str = "global"
