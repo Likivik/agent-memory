@@ -988,45 +988,23 @@ def _skill(store: Store, args: argparse.Namespace) -> str:
 
 
 def _setup(store: Store, args: argparse.Namespace) -> dict[str, object]:
-    from mnemobun.adapters import host_setup
-    from mnemobun.adapters import setup as setup_module
+    from mnemobun.core.settings import apply_settings, effective_settings
 
-    hosts = [setup_module.canonical_host(args.host)] if args.host else setup_module.detect()
-    settings = pathlib.Path(args.settings) if args.settings else None
-    if not hosts:
-        raise ValidationError([FieldError("host", "no host detected; pass --host")])
-    reports = {
-        host: host_setup.run(
-            store,
-            host,
-            settings_path=settings,
-            provider=args.provider,
-            model=args.model,
-            mcp=args.mcp,
-            live=not args.no_live,
-        )
-        for host in hosts
-    }
-    brain = store.config.executor
-    if len(hosts) == 1:
-        brain.host = hosts[0]
-    if args.provider:
-        brain.host_provider = args.provider
-    if args.model:
-        from mnemobun.core.settings import apply_settings
-
-        apply_settings(store, {"model": args.model}, actor="cli")
-    if args.model:
-        brain.host_model = args.model
+    payload: dict[str, object] = {}
+    if getattr(args, "model", None):
+        payload["model"] = args.model
     if getattr(args, "endpoint", None):
+        brain = store.config.executor
+        brain.reasoner = "endpoint"
         brain.endpoint = args.endpoint
-    store.config.save(store.root)
-
-    if len(reports) == 1:
-        return next(iter(reports.values()))
-    failed = any(report["status"] == "FAILED" for report in reports.values())
-    status = "FAILED" if failed else "READY"
-    return {"status": status, "store": str(store.root), "hosts": reports}
+        store.config.save(store.root)
+    settings = apply_settings(store, payload, actor="cli") if payload else effective_settings(store)
+    return {
+        "status": "READY",
+        "store": str(store.root),
+        "settings": settings,
+        "note": "host wizards were removed (2026-11-24): memory jobs use direct endpoints",
+    }
 
 
 def _doctor(store: Store, args: argparse.Namespace) -> dict[str, object]:

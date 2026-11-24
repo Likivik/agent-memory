@@ -283,7 +283,6 @@ def _reasoner_checks(
     store: Store, host: str, environment: dict[str, str] | None = None
 ) -> list[Check]:
     from mnemobun.executor import selection
-    from mnemobun.executor.reasoners import HostReasoner
 
     available = os.environ if environment is None else environment
     checks = []
@@ -310,9 +309,11 @@ def _reasoner_checks(
                         "API key or a Google Cloud project"
                     )
             else:
-                reasoner = HostReasoner.for_host(executor.host, model=executor.host_model)
-                ok = bool(reasoner.host.spec.binary)
-                detail = f"{operation} uses host {executor.host}"
+                ok = False
+                detail = (
+                    f"{operation} host reasoners were removed from memory jobs "
+                    "(2026-11-24): configure a direct endpoint"
+                )
         except Exception as error:
             ok = False
             detail = f"{operation} reasoner configuration failed: {error}"

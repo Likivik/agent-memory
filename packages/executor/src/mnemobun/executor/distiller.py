@@ -11,47 +11,24 @@ from __future__ import annotations
 from mnemobun.core.config import (
     REASONER_ENDPOINT,
     REASONER_HOST,
-    TOOL_MODE_AUTO,
-    TOOL_MODE_NATIVE,
     TOOL_MODE_TEXT,
     ExecutorConfig,
 )
 from mnemobun.core.errors import ReasonerUnavailableError
 
-from .agents import DIALECTS, HERMES_DATA_TRAINING_REQUIREMENT, HOST_HERMES
 from .credentials import VertexCredentials
-from .reasoners import EndpointReasoner, EndpointTextReasoner, HostReasoner, ToolHostReasoner
+from .reasoners import EndpointReasoner, EndpointTextReasoner
+
+HOST_REASONER_REMOVED = (
+    "host reasoners were removed from memory jobs (2026-11-24): one completion is "
+    "one call, and only a direct endpoint can be counted and bounded. configure one: "
+    "mnemobun brain config write --endpoint <url> --key-env <env> --model <m>"
+)
 
 
-def distiller(config: ExecutorConfig) -> EndpointReasoner | EndpointTextReasoner | HostReasoner:
+def distiller(config: ExecutorConfig) -> EndpointReasoner | EndpointTextReasoner:
     if config.reasoner == REASONER_HOST:
-        dialect = DIALECTS.get(config.host)
-        mode = config.tool_mode or TOOL_MODE_AUTO
-        if mode not in (TOOL_MODE_AUTO, TOOL_MODE_NATIVE, TOOL_MODE_TEXT):
-            raise ReasonerUnavailableError(f"unsupported Write tool mode {mode!r}")
-        if mode == TOOL_MODE_NATIVE and (dialect is None or not dialect.supports_tools):
-            raise ReasonerUnavailableError(
-                f"host reasoner {config.host!r} does not support native Write tools"
-            )
-        if (
-            config.host == HOST_HERMES
-            and "contributor" in config.host_model.lower().split("-")
-            and not config.host_allow_data_training
-        ):
-            raise ReasonerUnavailableError(HERMES_DATA_TRAINING_REQUIREMENT)
-        speaks_tools = mode == TOOL_MODE_NATIVE or (
-            mode == TOOL_MODE_AUTO
-            and dialect is not None
-            and dialect.supports_tools
-            and dialect.tools_by_default
-        )
-        chosen = ToolHostReasoner if speaks_tools else HostReasoner
-        return chosen.for_host(
-            config.host,
-            model=config.host_model,
-            provider=config.host_provider,
-            allow_data_training=config.host_allow_data_training,
-        )
+        raise ReasonerUnavailableError(HOST_REASONER_REMOVED)
     if config.reasoner == REASONER_ENDPOINT:
         endpoint = EndpointReasoner(
             model=config.model,

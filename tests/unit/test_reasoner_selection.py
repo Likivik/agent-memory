@@ -8,7 +8,6 @@ from mnemobun.core.config import (
     OperationExecutorConfig,
 )
 from mnemobun.core.errors import ReasonerUnavailableError
-from mnemobun.core.reasoning import ManageToolReasoner, ToolReasoner
 from mnemobun.executor import distiller, selection
 from mnemobun.executor.reasoners import EndpointTextReasoner
 
@@ -35,6 +34,27 @@ def test_operation_policies_select_independent_hosts_without_source_override():
 
     assert write.host == "muse-code"
     assert manage.host == "codex"
+
+
+def test_host_policies_are_refused_and_endpoint_policies_build():
+    import pytest
+    from mnemobun.core.config import Config
+    from mnemobun.core.errors import ReasonerUnavailableError
+    from mnemobun.executor import distiller
+
+    config = Config.default().executor
+    config.reasoner = "endpoint"
+    config.endpoint = "https://example.test/v1"
+    config.model = "m"
+    config.write.model = "m"
+    built = distiller.distiller(selection.resolve(config, selection.WRITE))
+    assert type(built).__name__ in ("EndpointReasoner", "EndpointTextReasoner")
+
+    host = Config.default().executor
+    host.reasoner = "host"
+    host.host = "hermes"
+    with pytest.raises(ReasonerUnavailableError):
+        distiller.distiller(selection.resolve(host, selection.WRITE))
 
 
 def test_operation_host_provider_overrides_the_legacy_provider():
@@ -123,56 +143,6 @@ def test_unknown_reasoner_fails_closed_instead_of_becoming_a_host():
         distiller.distiller(configured)
 
 
-def test_resolved_host_and_endpoint_policies_build_only_the_selected_transport():
-    executor = Config.default().executor
-    executor.write = OperationExecutorConfig(reasoner="host", host="muse-code")
-    executor.manage = OperationExecutorConfig(
-        reasoner="endpoint", endpoint="https://manage.example/v1"
-    )
-
-    write = distiller.distiller(selection.resolve(executor, selection.WRITE, source_host="codex"))
-    manage = distiller.distiller(selection.resolve(executor, selection.MANAGE))
-
-    assert isinstance(write, ToolReasoner)
-    assert write.host.spec.name == "muse-code"
-    # Dream defaults to the text (line) protocol, so an endpoint manage reasoner
-    # is the text-only view that the core parses line by line.
-    assert isinstance(manage, EndpointTextReasoner)
-    assert manage.inner.base_url == "https://manage.example/v1"
-
-
-def test_write_tool_mode_is_operation_scoped_and_muse_native_can_be_explicit():
-    executor = Config.default().executor
-    executor.write = OperationExecutorConfig(
-        reasoner="host", host="muse-code", tool_mode=TOOL_MODE_NATIVE
-    )
-
-    write_config = selection.resolve(executor, selection.WRITE)
-    manage_config = selection.resolve(executor, selection.MANAGE)
-
-    assert write_config.tool_mode == TOOL_MODE_NATIVE
-    assert isinstance(distiller.distiller(write_config), ToolReasoner)
-    assert manage_config.tool_mode == TOOL_MODE_TEXT
-    assert not isinstance(distiller.distiller(manage_config), ToolReasoner)
-
-
-def test_manage_native_mode_is_explicit_and_requires_a_supported_host():
-    executor = Config.default().executor
-    executor.manage = OperationExecutorConfig(tool_mode=TOOL_MODE_NATIVE)
-
-    default = selection.resolve(executor, selection.MANAGE)
-    assert default.host == "claude-code"
-    assert isinstance(distiller.distiller(default), ManageToolReasoner)
-
-    for host in ("claude-code", "codex", "hermes", "muse-code"):
-        executor.manage = OperationExecutorConfig(
-            reasoner="host", host=host, tool_mode=TOOL_MODE_NATIVE
-        )
-        configured = selection.resolve(executor, selection.MANAGE)
-        assert configured.tool_mode == TOOL_MODE_NATIVE
-        assert isinstance(distiller.distiller(configured), ToolReasoner)
-
-
 def test_manage_native_mode_rejects_endpoint_and_unverified_hosts():
     executor = Config.default().executor
     executor.manage = OperationExecutorConfig(reasoner="endpoint", tool_mode=TOOL_MODE_NATIVE)
@@ -186,34 +156,6 @@ def test_manage_native_mode_rejects_endpoint_and_unverified_hosts():
         ReasonerUnavailableError, match="supports only claude-code, codex, hermes, muse-code"
     ):
         selection.resolve(executor, selection.MANAGE)
-
-
-def test_manage_text_mode_keeps_claude_code_off_the_native_reviewer():
-    executor = Config.default().executor
-    executor.manage = OperationExecutorConfig(reasoner="host", host="claude-code")
-
-    configured = selection.resolve(executor, selection.MANAGE)
-    assert configured.tool_mode == TOOL_MODE_TEXT
-    assert not isinstance(distiller.distiller(configured), ManageToolReasoner)
-
-
-def test_hermes_manage_contributor_model_requires_operation_scoped_consent():
-    executor = Config.default().executor
-    executor.manage = OperationExecutorConfig(
-        reasoner="host",
-        host="hermes",
-        host_provider="openrouter",
-        host_model="meta/muse-spark-1.3-contributor",
-        tool_mode=TOOL_MODE_NATIVE,
-    )
-
-    configured = selection.resolve(executor, selection.MANAGE)
-    with pytest.raises(ReasonerUnavailableError, match="host_allow_data_training = true"):
-        distiller.distiller(configured)
-
-    executor.manage.host_allow_data_training = True
-    configured = selection.resolve(executor, selection.MANAGE)
-    assert isinstance(distiller.distiller(configured), ToolReasoner)
 
 
 def test_endpoint_write_text_mode_routes_through_the_line_protocol():

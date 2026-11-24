@@ -3,6 +3,7 @@
 import pathlib
 import types
 
+import pytest
 from mnemobun.core import prompts
 from mnemobun.executor.agents.hermes import HermesDialect
 
@@ -33,6 +34,21 @@ def test_extraction_profile_has_no_tools_and_keeps_rules():
         answer_file=pathlib.Path("a"),
     )
     assert "--ignore-rules" in interactive
+
+
+def test_host_reasoners_are_refused_for_memory_jobs():
+    from mnemobun.core.config import Config
+    from mnemobun.core.errors import ReasonerUnavailableError
+    from mnemobun.executor import distiller
+
+    config = Config.default().executor
+    config.reasoner = "host"
+    config.host = "hermes"
+    config.host_model = "m"
+    with pytest.raises(ReasonerUnavailableError) as excinfo:
+        distiller.distiller(config)
+    assert "host reasoners were removed from memory jobs" in str(excinfo.value)
+    assert "brain config write" in str(excinfo.value)
 
 
 def test_extraction_prompt_marks_content_as_untrusted_data():
