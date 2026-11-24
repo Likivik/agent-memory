@@ -53,7 +53,7 @@ def resolve_model(
 def brain_model(store: Store) -> str:
     """The explicitly configured model on the brain (host or endpoint form)."""
     brain = store.config.executor
-    return brain.host_model or brain.model
+    return brain.model or brain.host_model
 
 
 def route_for(store: Store, *, flag: str = "", gui_model: str = "") -> ModelRoute | None:

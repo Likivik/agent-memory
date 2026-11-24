@@ -111,6 +111,23 @@ def test_stale_reservations_are_listed_and_released_explicitly(tmp_path):
     assert spend.usage(store, day=True)["in_tokens"] == 0.0
 
 
+def test_one_counted_ask_is_one_run_for_the_call_cap(tmp_path):
+    from mnemobun.executor.distiller import CountedAsk
+
+    store = _store(tmp_path)
+    store.config.budget.max_calls_per_run = 1
+    store.config.save(store.root)
+
+    class Fake:
+        def __call__(self, prompt: str) -> str:
+            return "{}"
+
+    counted = CountedAsk(Fake(), store=store)
+    counted("first")
+    with pytest.raises(spend.SpendRefused):
+        counted("second")
+
+
 def test_estimated_calls_scales_with_backlog(tmp_path):
     store = _store(tmp_path)
     config = store.config

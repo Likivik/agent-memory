@@ -41,6 +41,7 @@ def apply_settings(store: Store, payload: dict[str, object], *, actor: str) -> d
             if brain.host_model != text:  # idempotent re-assert is a no-op
                 brain.model_source = actor
             brain.host_model = text
+            brain.model = text  # hosts are gone: the endpoint reads this
         else:
             getattr(brain, "write" if key == "distill_model" else "manage").model = text
     for key in ("endpoint", "key_env"):
@@ -76,7 +77,7 @@ def effective_settings(store: Store) -> dict[str, object]:
     """Pull the current settings from the store. Every surface reads this."""
     brain = store.config.executor
     return {
-        "model": brain.host_model or brain.model,
+        "model": brain.model or brain.host_model,
         "model_source": brain.model_source,
         "distill_model": brain.write.model,
         "dream_model": brain.manage.model,

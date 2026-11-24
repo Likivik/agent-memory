@@ -127,6 +127,11 @@ def _in_window(stamp: str, *, day: bool) -> bool:
     return (when.year, when.month) == (now.year, now.month)
 
 
+def current_run_id() -> str:
+    """The run scope this call sits inside, if any."""
+    return _CURRENT_RUN.get()
+
+
 def usage(store: Store, *, day: bool) -> dict[str, float]:
     """Signed sums over the window: reservations net out at finish."""
     calls = 0.0

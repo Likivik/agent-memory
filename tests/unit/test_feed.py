@@ -82,6 +82,33 @@ def test_plan_mode_carries_projection_and_never_calls(tmp_path):
     assert report.projection["calls"] >= 1
 
 
+def test_a_successful_feed_run_leaves_no_open_reservation(tmp_path):
+    from mnemobun.core import spend
+
+    store = _store(tmp_path)
+    db = _state_db(
+        tmp_path,
+        [("s1", "user", "remember that project aurora deploys Friday at 22:00 UTC"),
+         ("s1", "assistant", "understood")],
+    )
+    config = store.config.usage
+    object.__setattr__(config, "quiet_seconds", 0.0)
+    object.__setattr__(config, "signal_threshold", 1.0)
+
+    def reply(prompt: str) -> str:
+        return '{"type": "fact", "abstract": "aurora deploys Friday", "provenance": ["0"]}'
+
+    from mnemobun.executor.distiller import CountedAsk
+
+    ask = CountedAsk(reply, store=store)  # what production passes: the counted choke point
+    report = feed.run(store, state_db=db, ask=ask, now=dt.datetime.now(dt.UTC))
+    assert report.reason in ("fired", "")
+    assert store.config.budget.max_calls_per_run >= 1
+    assert spend.open_reservations(store) == []
+    today = spend.usage(store, day=True)
+    assert today["calls"] >= 1
+
+
 def test_spend_refusal_returns_exact_reason_and_writes_nothing(tmp_path):
     store = _store(tmp_path)
     db = _state_db(

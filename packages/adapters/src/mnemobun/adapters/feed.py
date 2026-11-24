@@ -169,19 +169,6 @@ def run(
             projection=projection.as_dict(),
         )
     run_id = f"feed-{store.clock.now().isoformat()}"
-    try:
-        spend.guard_run(store, projection, run_id=run_id, actor="feed")
-    except spend.SpendRefused as error:
-        return FeedReport(
-            fired=True,
-            signal=signal,
-            quiet_seconds=quiet,
-            backlog_turns=backlog_turns,
-            backlog_tokens=backlog_tokens,
-            sessions=tuple(pending),
-            reason=str(error),
-            projection=projection.as_dict(),
-        )
 
     written = 0
     try:

@@ -75,6 +75,41 @@ def test_endpoint_and_key_env_are_settings_not_side_channels(tmp_path):
     assert store.config.executor.reasoner == "endpoint"
 
 
+def test_the_settings_model_reaches_the_endpoint_reasoner(tmp_path):
+    from mnemobun.core.config import Config
+    from mnemobun.core.settings import apply_settings
+    from mnemobun.core.store import Store
+    from mnemobun.executor import distiller, selection
+
+    store = Store(tmp_path / "s", config=Config.default(), agent="t")
+    store.init()
+    apply_settings(
+        store,
+        {"model": "mimo", "endpoint": "https://x.test/v1", "key_env": "K"},
+        actor="gui",
+    )
+    config = selection.resolve(store.config.executor, "write")
+    built = distiller.distiller(config, store=store)
+    inner = getattr(built, "_ask", built)
+    assert inner.model == "mimo"
+    assert inner.base_url == "https://x.test/v1"
+
+
+def test_the_counted_ask_hides_converse_so_no_uncounted_loop_can_start():
+    from mnemobun.executor.distiller import CountedAsk
+
+    class Fake:
+        def __call__(self, prompt: str) -> str:
+            return "{}"
+
+        def converse(self, *args: object) -> None:
+            raise AssertionError("must never be reached through the counted ask")
+
+    counted = CountedAsk(Fake(), store=None)  # type: ignore[arg-type]
+    assert not hasattr(counted, "converse")
+    assert not hasattr(counted, "review_converse")
+
+
 def test_apply_settings_validates(tmp_path):
     store = _store(tmp_path)
     with pytest.raises(ValueError):
