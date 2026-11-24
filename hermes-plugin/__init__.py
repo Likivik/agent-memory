@@ -265,7 +265,10 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             pass
         if self._ensure_store():
             fields.update(effective_settings(self._store))
-        return fields
+        placeholders: dict = {}
+        if not fields.get("model"):
+            placeholders["model"] = "unset - deterministic-only, jobs refuse loudly"
+        return {"values": fields, "placeholders": placeholders}
 
     def write_config_fields(self, values: dict, hermes_home: str) -> None:
         self.save_config(values, hermes_home)
