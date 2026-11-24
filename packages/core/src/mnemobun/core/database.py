@@ -7,6 +7,7 @@ so supersede chains resolve without touching the tree.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -15,6 +16,11 @@ from .paths import StoreLayout
 
 SURFACE_ACTIVE = "chunks"
 SURFACE_HISTORY = "history"
+
+SCHEMA_VERSION = 3
+WRITER_VERSION = "0.3.0"
+HANDSHAKE_FILENAME = "handshake.json"
+
 
 SCHEMA = (
     """
@@ -141,6 +147,7 @@ class Database:
             connection.execute("DROP TABLE IF EXISTS raw_chunks")
             for statement in SCHEMA:
                 connection.execute(statement)
+            self._handshake(connection)
             yield connection
             connection.commit()
         except Exception:
@@ -148,6 +155,38 @@ class Database:
             raise
         finally:
             connection.close()
+
+    def _handshake(self, connection: sqlite3.Connection) -> None:
+        """Plugin<->store version handshake: drift is a named error, not a crash."""
+        from .errors import StoreVersionError
+
+        state = self._layout.root / ".state"
+        path = state / HANDSHAKE_FILENAME
+        if not path.exists():
+            state.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                json.dumps(
+                    {"schema_version": SCHEMA_VERSION, "writer_version": WRITER_VERSION}
+                ),
+                encoding="utf-8",
+            )
+            return
+        known = json.loads(path.read_text(encoding="utf-8"))
+        schema = int(known.get("schema_version", SCHEMA_VERSION))
+        if schema > SCHEMA_VERSION:
+            raise StoreVersionError(
+                f"store version {schema} written by plugin "
+                f"{known.get('writer_version', 'unknown')}; this plugin is "
+                f"{WRITER_VERSION} (schema {SCHEMA_VERSION}) — run index rebuild / "
+                "migration or start from scratch"
+            )
+        if schema < SCHEMA_VERSION or known.get("writer_version") != WRITER_VERSION:
+            path.write_text(
+                json.dumps(
+                    {"schema_version": SCHEMA_VERSION, "writer_version": WRITER_VERSION}
+                ),
+                encoding="utf-8",
+            )
 
     def drop(self) -> None:
         self._layout.index_db.unlink(missing_ok=True)

@@ -6,6 +6,8 @@ source of truth); this module owns the catalogue and dispatch only.
 
 from __future__ import annotations
 
+import json
+
 from mnemobun.core import timestamp
 from mnemobun.core.errors import FieldError, ValidationError
 from mnemobun.core.recall import Recall
@@ -444,6 +446,20 @@ def _setup(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     }
 
 
+def _versions(store: Store) -> dict[str, object]:
+    path = store.root / ".state" / "handshake.json"
+    if not path.exists():
+        return {"schema": "unknown"}
+    try:
+        known = json.loads(path.read_text(encoding="utf-8"))
+        return {
+            "schema": known.get("schema_version"),
+            "writer": known.get("writer_version"),
+        }
+    except Exception:
+        return {"schema": "unreadable"}
+
+
 def _doctor(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     from mnemobun.core import spend
 
@@ -454,6 +470,7 @@ def _doctor(store: Store, arguments: dict[str, object]) -> dict[str, object]:
             "today": spend.usage(store, day=True),
             "month": spend.usage(store, day=False),
         },
+        "versions": _versions(store),
         "brain": {
             "host": store.config.executor.host,
             "model": store.config.executor.host_model,

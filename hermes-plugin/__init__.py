@@ -110,6 +110,20 @@ class AgentMemoryHermesProvider(_HOST_BASE):
         return self.is_available()
 
     def _ensure_store(self) -> bool:
+        try:
+            return self._ensure_store_inner()
+        except Exception as error:
+            import logging
+
+            if type(error).__name__ == "StoreVersionError":
+                logging.getLogger(__name__).error(
+                    "mnemobun: VERSION MISMATCH — %s (store stays untouched)", error
+                )
+                self._unavailable = str(error)
+                return False
+            raise
+
+    def _ensure_store_inner(self) -> bool:
         if self._store is not None:
             return True
         path = self._resolve_store_path(self._hermes_home)
