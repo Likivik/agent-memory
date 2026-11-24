@@ -106,7 +106,7 @@ def _parser() -> argparse.ArgumentParser:
             "  court    docket · case show · case decide · dream run/status/worker\n"
             "           distill · jobs\n"
             "  brain    setup · doctor\n"
-            "  meta     gc · cron · skill · sleep · replay"
+            "  meta     gc · cron · skill · feed · sleep · replay"
         ),
     )
     _global_options(parser)
@@ -346,6 +346,13 @@ def _parser() -> argparse.ArgumentParser:
     )
     replayer.set_defaults(handler=_replay)
 
+    feeder = subcommand("feed", help="score the backlog; plan-only unless --execute")
+    feeder.add_argument(
+        "--execute",
+        action="store_true",
+        help="actually extract (needs a configured model); default is plan-only",
+    )
+    feeder.set_defaults(handler=_feed)
     sleeper = subcommand("sleep", help="run the sleep-time Dream pass")
     sleep_due = sleeper.add_mutually_exclusive_group()
     sleep_due.add_argument("--sessions-since", type=int, default=None)
@@ -859,6 +866,15 @@ def _replay(store: Store, args: argparse.Namespace) -> dict[str, object]:
         "skipped": report.skipped,
         "dream_actions": report.dream_actions,
     }
+
+
+def _feed(store: Store, args: argparse.Namespace) -> dict[str, object]:
+    from mnemobun.adapters import feed as feed_module
+
+    if not args.execute:
+        return feed_module.run(store, ask=None).as_dict()
+    executor = _executor(store, args, selection.WRITE)
+    return feed_module.run(store, ask=distiller.distiller(executor)).as_dict()
 
 
 def _sleep(store: Store, args: argparse.Namespace) -> dict[str, object]:

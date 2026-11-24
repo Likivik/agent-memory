@@ -445,9 +445,15 @@ def _setup(store: Store, arguments: dict[str, object]) -> dict[str, object]:
 
 
 def _doctor(store: Store, arguments: dict[str, object]) -> dict[str, object]:
+    from mnemobun.core import spend
+
     result: dict[str, object] = {
         "store": str(store.root),
         "records": len(store.records()),
+        "spend": {
+            "today": spend.usage(store, day=True),
+            "month": spend.usage(store, day=False),
+        },
         "brain": {
             "host": store.config.executor.host,
             "model": store.config.executor.host_model,
