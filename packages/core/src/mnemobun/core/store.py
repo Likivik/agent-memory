@@ -29,7 +29,6 @@ from .record import (
     STANDING_DEFAULT,
     STANDING_PROPOSED,
     STANDING_STATES,
-    STANDING_SUPERSEDED,
     MemoryRecord,
 )
 from .schema import MODE_ADD_ONLY, SOURCE_MENU, MemorySchema, SchemaRegistry, source_of
@@ -895,8 +894,6 @@ def _spec_standing(spec: dict[str, object], existing: MemoryRecord | None) -> st
     raw = str(spec.get("standing") or "").strip()
     if raw in STANDING_STATES:
         return raw
-    if spec.get("supersedes"):
-        return STANDING_SUPERSEDED
     if existing is not None:
         return existing.standing
     if str(spec.get("type") or "") == "claim":

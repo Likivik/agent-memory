@@ -193,6 +193,63 @@ def test_unpaired_user_turn_is_carried_not_dropped(tmp_path):
     assert turns[0].assistant == ""
 
 
+def test_supersede_wins_and_the_successor_starts_proposed(tmp_path):
+    store = _store(tmp_path)
+    old = store.record(
+        type="claim",
+        fields={"project": "aurora"},
+        abstract="aurora deploys Friday 22:00 UTC",
+        valid_from="2026-01-01",
+    )
+    new = store.record(
+        type="claim",
+        fields={"project": "aurora"},
+        abstract="aurora deploys Saturday 09:00 UTC",
+        valid_from="2026-02-01",
+        supersedes=old.name,
+    )
+    predecessor = store.find(old.name)
+    # the predecessor leaves the active set, the successor is the current truth
+    assert predecessor.invalid_at is not None
+    assert predecessor.superseded_by == new.name
+    assert predecessor.standing == "superseded"
+    assert new.standing == "proposed"  # a new claim needs a ruling, decision 4
+    fresh = [hit.name for hit in Recall(store).recall("aurora deploys", log=False)]
+    assert new.name in fresh and old.name not in fresh
+    before = [hit.name for hit in Recall(store).recall("aurora deploys", as_of="2026-01-15")]
+    assert old.name in before and new.name not in before
+
+
+def test_a_check_failed_operation_is_parked_not_lost(tmp_path):
+    from mnemobun.core.distill import distill
+    from mnemobun.core.sessions import Message
+
+    store = _store(tmp_path)
+    store.record(
+        type="claim", fields={"project": "aurora"}, abstract="aurora deploys Friday 22:00 UTC"
+    )
+
+    def sloppy(prompt: str) -> str:  # names a handle without the supersede op
+        return json.dumps(
+            {
+                "type": "claim",
+                "fields": {"project": "aurora"},
+                "abstract": "aurora deploys Saturday 09:00 UTC",
+                "body": "Aurora now deploys Saturday at 09:00 UTC.",
+                "supersedes": "aurora-deploys-friday-22-00-utc",
+            }
+        )
+
+    messages = [
+        Message(0, "user", "update: aurora moved to Saturday", "2026-11-24T03:00:00+00:00"),
+        Message(1, "assistant", "noted", "2026-11-24T03:00:01+00:00"),
+    ]
+    report = distill(store, "s2", messages, _counted(store, sloppy))
+    batch = report.batches[0]
+    assert batch.written == ()
+    assert batch.pending == 1  # parked for the next run, never silently lost
+
+
 def test_reopening_the_store_mid_lifecycle_is_consistent(tmp_path):
     store = _store(tmp_path)
     db = _state_db(tmp_path, AURORA)
