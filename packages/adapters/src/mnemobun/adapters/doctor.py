@@ -332,7 +332,6 @@ def _live_reasoner_check(store: Store, host: str, operation: str) -> Check:
     try:
         from mnemobun.executor import selection
         from mnemobun.executor.distiller import distiller
-        from mnemobun.executor.reasoners import HostReasoner
 
         executor = selection.resolve(
             store.config.executor,
@@ -340,12 +339,6 @@ def _live_reasoner_check(store: Store, host: str, operation: str) -> Check:
             source_host=host if operation == selection.WRITE else "",
         )
         reasoner = distiller(executor, store=store)
-        if isinstance(reasoner, HostReasoner):
-            reasoner.host.spec = dataclasses.replace(
-                reasoner.host.spec,
-                attempts=1,
-                timeout_seconds=min(executor.timeout_seconds, 60.0),
-            )
         reply = reasoner("Reply with exactly AGENT_MEMORY_READY.")
     except Exception as error:
         return Check(
