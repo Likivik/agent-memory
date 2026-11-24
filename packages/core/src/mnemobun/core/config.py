@@ -78,6 +78,16 @@ class MemoryMdConfig:
 
 
 @dataclasses.dataclass
+class BudgetConfig:
+    """Hard bounds are calls + input tokens (user ruling 2026-11-24)."""
+
+    max_calls_per_run: float = 40.0
+    max_tokens_per_day: float = 2000000.0
+    est_usd_per_day: float = 1.0
+    est_usd_per_month: float = 10.0
+
+
+@dataclasses.dataclass
 class UsageConfig:
     initial: float = 1.0
     floor: float = 0.05
@@ -246,6 +256,7 @@ class Config:
     index: IndexConfig = dataclasses.field(default_factory=IndexConfig)
     memory_md: MemoryMdConfig = dataclasses.field(default_factory=MemoryMdConfig)
     usage: UsageConfig = dataclasses.field(default_factory=UsageConfig)
+    budget: BudgetConfig = dataclasses.field(default_factory=BudgetConfig)
     recall: RecallConfig = dataclasses.field(default_factory=RecallConfig)
     manage: ManageConfig = dataclasses.field(default_factory=ManageConfig)
     write: WriteConfig = dataclasses.field(default_factory=WriteConfig)

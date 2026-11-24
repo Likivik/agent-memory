@@ -424,7 +424,6 @@ def _setup(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     if host:
         brain.host = str(host)
     for field, key in (
-        ("host_model", "model"),
         ("host_provider", "provider"),
         ("endpoint", "endpoint"),
     ):
@@ -432,7 +431,9 @@ def _setup(store: Store, arguments: dict[str, object]) -> dict[str, object]:
         if value:
             setattr(brain, field, str(value))
     if _optional(arguments, "model"):
-        brain.model_source = "chat"
+        from mnemobun.core.settings import apply_settings
+
+        apply_settings(store, {"model": str(_optional(arguments, "model"))}, actor="chat")
     store.config.save(store.root)
     return {
         "host": brain.host,

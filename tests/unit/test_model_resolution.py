@@ -1,15 +1,18 @@
-"""Model is never selected silently; provenance is recorded (2026-11-24 rulings)."""
+"""Model is never selected silently; ONE writer serves every surface (2026-11-24 rulings)."""
+
+import json
 
 import pytest
 from mnemobun.core.config import Config
+from mnemobun.core.settings import apply_settings, effective_settings
 from mnemobun.core.store import Store
 from mnemobun.executor.model_resolution import (
     NEEDS_MODEL,
     resolve_model,
     route_for,
     set_model,
-    sync_gui_config,
 )
+from mnemobun.mcp.tools import dispatch
 
 
 def _store(tmp_path):
@@ -23,6 +26,7 @@ def test_no_silent_defaults_anywhere():
     assert executor.model == ""
     assert executor.host_model == ""
     assert executor.model_source == "unset"
+    assert Config.default().budget.max_calls_per_run > 0
 
 
 def test_resolution_precedence_flag_brain_gui_then_none():
@@ -35,36 +39,60 @@ def test_resolution_precedence_flag_brain_gui_then_none():
     assert "set memory.model" in NEEDS_MODEL
 
 
-def test_set_model_records_source_and_rejects_unknown(tmp_path):
+def test_one_writer_all_actors_produce_identical_state(tmp_path):
+    for actor in ("chat", "cli", "gui"):
+        store = _store(tmp_path / actor)
+        apply_settings(
+            store,
+            {"model": "m1", "distill_model": "d1", "dream_model": "r1",
+             "max_calls_per_run": 7, "max_tokens_per_day": 1000},
+            actor=actor,
+        )
+        settings = effective_settings(store)
+        assert settings["model"] == "m1"
+        assert settings["model_source"] == actor
+        assert settings["distill_model"] == "d1"
+        assert settings["max_calls_per_run"] == 7.0
+        reloaded = Store(store.root, config=Config.load(store.root), agent="t")
+        assert route_for(reloaded).label() == f"m1 (source: {actor})"
+
+
+def test_apply_settings_validates(tmp_path):
     store = _store(tmp_path)
-    route = set_model(store, "m1", "chat")
-    assert route.label() == "m1 (source: chat)"
-    assert route_for(store).label() == "m1 (source: chat)"
     with pytest.raises(ValueError):
-        set_model(store, "m2", "telepathy")
-    reloaded = Store(store.root, config=Config.load(store.root), agent="t")
-    assert route_for(reloaded).label() == "m1 (source: chat)"
+        apply_settings(store, {"telepathy": "x"}, actor="gui")
+    with pytest.raises(ValueError):
+        apply_settings(store, {"model": "  "}, actor="gui")
+    with pytest.raises(ValueError):
+        apply_settings(store, {"max_calls_per_run": -1}, actor="gui")
+    assert effective_settings(store)["model"] == ""
 
 
-def test_gui_sync_is_write_once(tmp_path):
+def test_audit_records_change_and_actor(tmp_path):
     store = _store(tmp_path)
-    first = sync_gui_config(store, {"model": "gui-model"})
-    assert first["imported"] == {"model": "gui-model"}
-    second = sync_gui_config(store, {"model": "other-model"})
-    assert second["skipped"] == {"model": "gui-model"}
-    assert route_for(store).label() == "gui-model (source: gui)"
-    # chat sets it afterwards; a later restart sync must not revert it
-    set_model(store, "chat-model", "chat")
-    third = sync_gui_config(store, {"model": "gui-again"})
-    assert third["skipped"] == {"model": "chat-model"}
+    apply_settings(store, {"model": "m1"}, actor="gui")
+    apply_settings(store, {"model": "m2"}, actor="chat")
+    lines = (store.root / ".state" / "settings-audit.jsonl").read_text().splitlines()
+    assert len(lines) == 2
+    first, second = (json.loads(line) for line in lines)
+    assert first["actor"] == "gui"
+    assert first["changed"]["model"] == {"from": "", "to": "m1"}
+    assert second["actor"] == "chat"
+    # a no-op write records nothing
+    apply_settings(store, {"model": "m2"}, actor="cli")
+    assert len((store.root / ".state" / "settings-audit.jsonl").read_text().splitlines()) == 2
+
+
+def test_mcp_memory_setup_routes_through_the_writer(tmp_path):
+    store = _store(tmp_path)
+    dispatch(store, "memory_setup", {"model": "chat-model"})
     assert route_for(store).label() == "chat-model (source: chat)"
+    lines = (store.root / ".state" / "settings-audit.jsonl").read_text().splitlines()
+    assert json.loads(lines[-1])["actor"] == "chat"
 
 
-def test_gui_sync_fills_empty_policy_models(tmp_path):
+def test_set_model_is_a_wrapper(tmp_path):
     store = _store(tmp_path)
-    result = sync_gui_config(
-        store, {"distill_model": "d1", "dream_model": "r1"}
-    )
-    assert result["imported"] == {"distill_model": "d1", "dream_model": "r1"}
-    assert store.config.executor.write.model == "d1"
-    assert store.config.executor.manage.model == "r1"
+    route = set_model(store, "m1", "cli")
+    assert route.label() == "m1 (source: cli)"
+    assert effective_settings(store)["model_source"] == "cli"

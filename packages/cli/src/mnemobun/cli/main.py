@@ -997,7 +997,9 @@ def _setup(store: Store, args: argparse.Namespace) -> dict[str, object]:
     if args.provider:
         brain.host_provider = args.provider
     if args.model:
-        brain.model_source = "cli"
+        from mnemobun.core.settings import apply_settings
+
+        apply_settings(store, {"model": args.model}, actor="cli")
     if args.model:
         brain.host_model = args.model
     if getattr(args, "endpoint", None):
