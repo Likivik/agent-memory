@@ -15,7 +15,7 @@ from . import observation, timestamp
 from .access_log import KIND_RECALL, AccessEntry, AccessLog
 from .config import Config
 from .database import SURFACE_ACTIVE, SURFACE_HISTORY, Database
-from .record import STANDING_CONTESTED, STANDING_PROPOSED
+from .record import STANDING_CONTESTED, STANDING_PROPOSED, STANDING_RETRACTED, STANDING_SUPERSEDED
 from .search_index import LINK_SEPARATOR, Candidate, SearchIndex
 from .store import Store
 from .vector_index import VectorIndex
@@ -222,11 +222,13 @@ class Recall:
         return hits
 
     def _standing_multiplier(self, standing: str) -> float:
-        """Contested/proposed claims stay visible but rank below accepted ones
-        (cortex §10.3: standing is a *usage*, not a filter)."""
+        """Every state except accepted stays visible but ranks below accepted
+        ones (cortex §10.3: standing is a *usage*, not a filter)."""
         penalties = {
             STANDING_CONTESTED: self._config.standing.penalty_contested,
             STANDING_PROPOSED: self._config.standing.penalty_proposed,
+            STANDING_RETRACTED: self._config.standing.penalty_retracted,
+            STANDING_SUPERSEDED: self._config.standing.penalty_superseded,
         }
         return penalties.get(standing, 1.0)
 

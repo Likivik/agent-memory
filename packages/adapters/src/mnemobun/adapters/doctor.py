@@ -75,8 +75,11 @@ def smoke(store: Store, host: str = "", model: str = "") -> dict[str, object]:
         os.environ["OPENROUTER_API_KEY"] = credential.value
 
     config = selection.resolve(store.config.executor, "write", model=model)
-    reasoner = distiller_module.distiller(config, store=store)
-    answer = reasoner("Reply with exactly the two letters: OK")
+    try:
+        reasoner = distiller_module.distiller(config, store=store)
+        answer = reasoner("Reply with exactly the two letters: OK")
+    except Exception as error:  # the doctor reports, it does not crash
+        return {"answered": False, "answer": "", "reason": f"{type(error).__name__}: {error}"}
     return {"answered": bool(answer and answer.strip()), "answer": answer[:200]}
 
 
@@ -297,7 +300,7 @@ def _reasoner_checks(
             if executor.reasoner == "endpoint":
                 endpoint = available.get("GEMINI_BASE_URL", "") or executor.endpoint
                 project = available.get("GOOGLE_CLOUD_PROJECT", "") or executor.project
-                api_key = available.get("GEMINI_API_KEY", "")
+                api_key = available.get(executor.key_env or "GEMINI_API_KEY", "")
                 ok = bool(project or (endpoint and api_key))
                 if endpoint and api_key:
                     detail = f"{operation} uses explicit model endpoint"

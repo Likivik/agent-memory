@@ -231,6 +231,8 @@ class StandingConfig:
 
     penalty_contested: float = 0.5
     penalty_proposed: float = 0.75
+    penalty_retracted: float = 0.25
+    penalty_superseded: float = 0.25
     audit_max_per_session: int = 3
 
 
