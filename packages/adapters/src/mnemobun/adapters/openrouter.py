@@ -106,7 +106,7 @@ def merge_routing(
 
 def proxy_binary(environment: dict[str, str] | None = None) -> str | None:
     env = os.environ if environment is None else environment
-    explicit = env.get("AGENT_MEMORY_PPROXY", "").strip()
+    explicit = env.get("MNEMOBUN_PPROXY", "").strip()
     candidate = explicit or shutil.which("pproxy", path=env.get("PATH"))
     if not candidate:
         return None

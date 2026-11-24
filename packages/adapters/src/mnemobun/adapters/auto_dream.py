@@ -8,8 +8,6 @@ import subprocess
 from mnemobun.core import dreaming
 from mnemobun.core.config import (
     EXECUTOR_ENV_VAR,
-    REASONER_ENDPOINT,
-    REASONER_HOST,
     STORE_ENV_VAR,
 )
 from mnemobun.core.dream import Dream
@@ -24,7 +22,6 @@ LOG_FILENAME = "hooks.log"
 EXECUTABLE = "mnemobun"
 COMMAND = "dream-worker"
 CLAIM_FLAG = "--claim"
-REASON_HOST_FLAG = "--reason-host"
 REASON_FLAG = "--reason"
 REASON_MODEL_FLAG = "--reason-model"
 
@@ -34,7 +31,7 @@ def launch(store: Store, *, trigger_source: str = "hook") -> dreaming.ClaimResul
     reasoner_kind, host, model = _manage_target(store)
     result = dreaming.claim_due(
         store,
-        host or reasoner_kind,
+        host,
         trigger_source=trigger_source,
         reasoner=reasoner_kind,
         model=model,
@@ -48,8 +45,6 @@ def launch(store: Store, *, trigger_source: str = "hook") -> dreaming.ClaimResul
         store.layout.state_dir.mkdir(parents=True, exist_ok=True)
         with (store.layout.state_dir / LOG_FILENAME).open("a", encoding="utf-8") as log:
             worker = [command, COMMAND, CLAIM_FLAG, claim.id, REASON_FLAG, reasoner_kind]
-            if reasoner_kind == REASONER_HOST:
-                worker.extend((REASON_HOST_FLAG, host))
             if model:
                 worker.extend((REASON_MODEL_FLAG, model))
             subprocess.Popen(
@@ -81,15 +76,14 @@ def run_due(
     trigger_source: str,
 ) -> dict[str, object]:
     """Run the same claimed Dream pipeline used by a detached Hook worker."""
-    target = host if reasoner_kind == REASONER_HOST else reasoner_kind
     result = dreaming.claim_due(
         store,
-        target,
+        host,
         trigger_source=trigger_source,
         reasoner=reasoner_kind,
         model=model,
     )
-    diagnostic = _reasoner_diagnostic(reasoner_kind, host, model)
+    diagnostic = _reasoner_diagnostic(reasoner_kind, model)
     if result.claim is None:
         return {
             "slept": False,
@@ -137,11 +131,7 @@ def run_worker(store: Store, claim_id: str, reasoner: Reasoner | None) -> dict[s
                 "dreamed": True,
                 "claim": claim.id,
                 "trigger_source": claim.trigger_source,
-                "reasoner": _reasoner_diagnostic(
-                    claim.reasoner,
-                    claim.host if claim.reasoner == REASONER_HOST else "",
-                    claim.model,
-                ),
+                "reasoner": _reasoner_diagnostic(claim.reasoner, claim.model),
                 **report.as_dict(),
             }
     except LockTimeoutError:
@@ -160,17 +150,11 @@ def _manage_target(store: Store) -> tuple[str, str, str]:
     executor = store.config.executor
     manage = executor.manage
     reasoner = manage.reasoner or executor.reasoner
-    if reasoner == REASONER_HOST:
-        return reasoner, manage.host or executor.host, manage.host_model or executor.host_model
-    if reasoner == REASONER_ENDPOINT:
-        return reasoner, "", manage.model or executor.model
-    return reasoner, "", ""
+    return reasoner, "", manage.model or executor.model
 
 
-def _reasoner_diagnostic(kind: str, host: str, model: str) -> dict[str, str]:
+def _reasoner_diagnostic(kind: str, model: str) -> dict[str, str]:
     payload = {"kind": kind}
-    if kind == REASONER_HOST and host:
-        payload["host"] = host
     if model:
         payload["model"] = model
     return payload

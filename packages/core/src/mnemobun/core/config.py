@@ -11,26 +11,17 @@ import tomllib
 from typing import Any
 
 CONFIG_FILENAME = "config.toml"
-STORE_ENV_VAR = "AGENT_MEMORY_STORE"
-EXECUTOR_ENV_VAR = "AGENT_MEMORY_EXECUTOR"
-MUSE_SETTINGS_ENV_VAR = "AGENT_MEMORY_MUSE_SETTINGS"
-REASONER_HOST = "host"
+STORE_ENV_VAR = "MNEMOBUN_STORE"
+EXECUTOR_ENV_VAR = "MNEMOBUN_EXECUTOR"
+MUSE_SETTINGS_ENV_VAR = "MNEMOBUN_MUSE_SETTINGS"
 REASONER_ENDPOINT = "endpoint"
 TOOL_MODE_AUTO = "auto"
-TOOL_MODE_NATIVE = "native"
 TOOL_MODE_TEXT = "text"
 COORDINATION_LOCK_POLL_SECONDS = 0.02
 DREAM_CLAIM_ID_LENGTH = 20
 DREAM_ERROR_MAX_CHARS = 1000
 STATE_JSON_INDENT = 2
 DEFAULT_STORE = "~/mnemobun-store"
-LEGACY_KNOBS = {
-    "index": frozenset({"raw_chunk_chars"}),
-    "recall": frozenset({"deep_limit_multiplier", "raw_enabled", "raw_relevance_factor"}),
-    "manage": frozenset({"raw_hit_min"}),
-}
-
-
 @dataclasses.dataclass
 class StorageConfig:
     schemas_dirname: str = "schemas"
@@ -79,7 +70,7 @@ class MemoryMdConfig:
 
 @dataclasses.dataclass
 class BudgetConfig:
-    """Hard bounds are calls + input tokens (user ruling 2026-11-24)."""
+    """Hard bounds are calls + input tokens."""
 
     max_calls_per_run: float = 40.0
     max_tokens_per_day: float = 2000000.0
@@ -198,10 +189,6 @@ class WriteConfig:
 @dataclasses.dataclass
 class OperationExecutorConfig:
     reasoner: str = ""
-    host: str = ""
-    host_provider: str = ""
-    host_allow_data_training: bool = False
-    host_model: str = ""
     model: str = ""
     endpoint: str = ""
     project: str = ""
@@ -212,12 +199,8 @@ class OperationExecutorConfig:
 
 @dataclasses.dataclass
 class ExecutorConfig:
-    reasoner: str = REASONER_HOST
-    host: str = "claude-code"
-    host_provider: str = ""
-    host_allow_data_training: bool = False
-    host_model: str = ""
-    model: str = ""  # no silent default (user ruling 2026-11-24)
+    reasoner: str = REASONER_ENDPOINT  # memory jobs run one endpoint completion
+    model: str = ""  # no silent default
     key_env: str = ""  # env var name holding the endpoint API key
     model_source: str = "unset"  # chat | cli | gui | unset
     endpoint: str = ""
@@ -387,8 +370,6 @@ def _load_section(section: Any, values: object, path: str) -> None:
         raise ValueError(f"config section must be a table: {path}")
     known = {field.name for field in dataclasses.fields(section)}
     for key, value in values.items():
-        if key in LEGACY_KNOBS.get(path, ()):
-            continue
         if key not in known:
             raise ValueError(f"unknown config knob: {path}.{key}")
         current = getattr(section, key)

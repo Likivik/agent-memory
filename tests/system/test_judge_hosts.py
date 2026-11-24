@@ -96,7 +96,7 @@ def test_independent_roles_end_to_end(tmp_path, monkeypatch, tested, judge):
     assert len(set(paths)) == 5
     assert all(not p.exists() and not p.is_relative_to(workspace) for p in paths)
     assert all(c[2]["tools_enabled"] is False for c in judge_calls)
-    assert all(c[2]["environment"]["AGENT_MEMORY_STORE"] == "" for c in judge_calls)
+    assert all(c[2]["environment"]["MNEMOBUN_STORE"] == "" for c in judge_calls)
     metadata = json.loads((workspace / "run.json").read_text())
     assert (metadata["host"], metadata["judge_host"]) == (tested, judge)
     assert (metadata["model"], metadata["judge_model"]) == ("tested-model", "judge-model")

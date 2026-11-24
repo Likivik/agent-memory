@@ -1,4 +1,4 @@
-"""Spend guard: hard bounds on calls + input tokens; USD soft (2026-11-24)."""
+"""Spend guard: hard bounds on calls + input tokens; USD soft."""
 
 import pytest
 from mnemobun.core import spend

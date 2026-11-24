@@ -30,7 +30,7 @@ NATIVE = "mnemobun"
 MEMCORE = "memcore"
 NAMES = (NATIVE, MEMCORE)
 
-NATIVE_STORE_ENV = "AGENT_MEMORY_STORE"
+NATIVE_STORE_ENV = "MNEMOBUN_STORE"
 NATIVE_TOOL_PATTERN = "Bash(mem:*)"
 NATIVE_RECORD_HINT = (
     'mem record --type <type> --field <key>=<value> --abstract "<one line>" --body "<markdown>"'

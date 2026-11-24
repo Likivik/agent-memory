@@ -13,7 +13,6 @@ from collections.abc import Callable
 
 from mnemobun.core.config import (
     REASONER_ENDPOINT,
-    REASONER_HOST,
     TOOL_MODE_TEXT,
     ExecutorConfig,
 )
@@ -22,12 +21,6 @@ from mnemobun.core.store import Store
 
 from .credentials import VertexCredentials
 from .reasoners import EndpointReasoner, EndpointTextReasoner
-
-HOST_REASONER_REMOVED = (
-    "host reasoners were removed from memory jobs (2026-11-24): one completion is "
-    "one call, and only a direct endpoint can be counted and bounded. configure one: "
-    "mnemobun brain config write --endpoint <url> --key-env <env> --model <m>"
-)
 
 
 class CountedAsk:
@@ -60,8 +53,17 @@ class CountedAsk:
 def distiller(
     config: ExecutorConfig, *, store: Store | None = None
 ) -> EndpointReasoner | EndpointTextReasoner | CountedAsk:
-    if config.reasoner == REASONER_HOST:
-        raise ReasonerUnavailableError(HOST_REASONER_REMOVED)
+    if config.reasoner not in (REASONER_ENDPOINT,):
+        raise ReasonerUnavailableError(
+            f"unsupported reasoner {config.reasoner!r}: memory jobs run one endpoint "
+            "completion; configure one: mnemobun setup --endpoint <url> "
+            "--key-env <env> --model <m>"
+        )
+    if not config.model.strip():  # no silent model selection
+        raise ReasonerUnavailableError(
+            "no model configured: record memory settings (model, endpoint, key_env) "
+            "via mnemobun setup or memory_setup"
+        )
     if config.reasoner == REASONER_ENDPOINT:
         endpoint = EndpointReasoner(
             model=config.model,

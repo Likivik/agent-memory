@@ -27,7 +27,7 @@ from mnemobun.core import (
     write_trace,
 )
 from mnemobun.core import migrate as migrate_module
-from mnemobun.core.config import REASONER_ENDPOINT, REASONER_HOST, ExecutorConfig
+from mnemobun.core.config import REASONER_ENDPOINT, ExecutorConfig
 from mnemobun.core.docket import Docket
 from mnemobun.core.dream import Dream
 from mnemobun.core.errors import FieldError, MemoryStoreError, ValidationError
@@ -40,7 +40,6 @@ from mnemobun.core.watermark import Watermark
 from mnemobun.executor import distiller, selection
 
 SESSION_FLAG = "--session"
-REASON_HOST = REASONER_HOST
 REASON_ENDPOINT = REASONER_ENDPOINT
 REASON_NONE = "none"
 EMIT_INDENT = 2
@@ -81,7 +80,7 @@ def _global_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--store",
         default=argparse.SUPPRESS,
-        help="store root (defaults to AGENT_MEMORY_STORE)",
+        help="store root (defaults to MNEMOBUN_STORE)",
     )
     parser.add_argument("--agent", default=argparse.SUPPRESS, help="calling agent identity")
     parser.add_argument(
@@ -204,13 +203,7 @@ def _parser() -> argparse.ArgumentParser:
     still.add_argument(
         "--force", action="store_true", help="distill every backlog regardless of thresholds"
     )
-    still.add_argument("--reason", choices=(REASON_HOST, REASON_ENDPOINT), default=None)
-    still.add_argument(
-        "--source-host",
-        default="",
-        help="host that produced the archived session; used by the default Write policy",
-    )
-    still.add_argument("--reason-host", default=None)
+    still.add_argument("--reason", choices=(REASON_ENDPOINT,), default=None)
     still.add_argument("--reason-model", default="")
     still.add_argument("--auto-dream", action="store_true", help=argparse.SUPPRESS)
     job_mode = still.add_mutually_exclusive_group()
@@ -259,8 +252,7 @@ def _parser() -> argparse.ArgumentParser:
 
     dreamer = subcommand("dream-worker", help=argparse.SUPPRESS)
     dreamer.add_argument("--claim", required=True)
-    dreamer.add_argument("--reason", choices=(REASON_HOST, REASON_ENDPOINT), default=None)
-    dreamer.add_argument("--reason-host", default=None)
+    dreamer.add_argument("--reason", choices=(REASON_ENDPOINT,), default=None)
     dreamer.add_argument("--reason-model", default="")
     dreamer.set_defaults(handler=_dream_worker)
 
@@ -378,12 +370,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     sleeper.add_argument(
         "--reason",
-        choices=(REASON_HOST, REASON_ENDPOINT, REASON_NONE),
+        choices=(REASON_ENDPOINT, REASON_NONE),
         default=None,
-        help="who rules on the open proposals: the configured executor (default), an agent CLI, "
+        help="who rules on the open proposals: the configured executor (default), "
         "a model endpoint, or nobody",
     )
-    sleeper.add_argument("--reason-host", default=None)
     sleeper.add_argument("--reason-model", default="")
     sleeper.set_defaults(handler=_sleep)
 
@@ -473,8 +464,7 @@ def _parser() -> argparse.ArgumentParser:
     skiller = subcommand("skill", help="print the agent skill text")
     skiller.set_defaults(handler=_skill)
 
-    installer = subcommand("setup", help="configure a host and run preflight")
-    installer.add_argument("--host", default=None)
+    installer = subcommand("setup", help="configure the endpoint and run preflight")
     installer.add_argument("--settings", default=None)
     installer.add_argument("--provider", default=None)
     installer.add_argument("--model", default=None)
@@ -627,7 +617,7 @@ def _distill(store: Store, args: argparse.Namespace) -> dict[str, object]:
     watermark = Watermark(store.layout, store.clock)
     named = list(args.session or [])
     candidates = named or sorted(set(watermark.sessions()) | set(_archived_sessions(store)))
-    ask = _reasoner(store, args, selection.WRITE, source_host=args.source_host)
+    ask = _reasoner(store, args, selection.WRITE)
     assert ask is not None
     now = store.clock.now().isoformat()
     reports = []
@@ -663,12 +653,12 @@ def _distill(store: Store, args: argparse.Namespace) -> dict[str, object]:
 
 
 def _distill_job(store: Store, args: argparse.Namespace) -> dict[str, object]:
-    executor = _executor(store, args, selection.WRITE, source_host=args.source_host)
+    executor = _executor(store, args, selection.WRITE)
     payload = write_run.run_job(
         store,
         args.job,
         distiller.distiller(executor, store=store),
-        owner=_owner(args.source_host),
+        owner=_owner(),
         transport=_transport(executor),
     )
     if args.auto_dream:
@@ -677,12 +667,12 @@ def _distill_job(store: Store, args: argparse.Namespace) -> dict[str, object]:
 
 
 def _distill_drain(store: Store, args: argparse.Namespace) -> dict[str, object]:
-    executor = _executor(store, args, selection.WRITE, source_host=args.source_host)
+    executor = _executor(store, args, selection.WRITE)
     payload: dict[str, object] = {
         "drained": write_run.drain(
             store,
             distiller.distiller(executor, store=store),
-            owner=_owner(args.source_host),
+            owner=_owner(),
             transport=_transport(executor),
             limit=args.max,
         )
@@ -734,13 +724,11 @@ def _jobs(store: Store, args: argparse.Namespace) -> dict[str, object]:
     return {"jobs": collected["jobs"], "traces": collected["traces"]}
 
 
-def _owner(source_host: str) -> str:
-    return f"{os.getpid()}@{source_host or 'cli'}"
+def _owner() -> str:
+    return f"{os.getpid()}@cli"
 
 
 def _transport(executor: ExecutorConfig) -> str:
-    if executor.reasoner == REASONER_HOST:
-        return f"{REASONER_HOST}/{executor.host}"
     if executor.reasoner == REASONER_ENDPOINT:
         return f"{REASONER_ENDPOINT}/{executor.model}"
     return executor.reasoner
@@ -916,12 +904,12 @@ def _sleep(store: Store, args: argparse.Namespace) -> dict[str, object]:
                 trigger_source=args.trigger_source,
             )
         executor = _executor(store, args, selection.MANAGE)
-        model = executor.host_model if executor.reasoner == REASON_HOST else executor.model
+        model = executor.model
         return auto_dream.run_due(
             store,
             distiller.distiller(executor, store=store),
             reasoner_kind=executor.reasoner,
-            host=executor.host if executor.reasoner == REASON_HOST else "",
+            host="",
             model=model,
             trigger_source=args.trigger_source,
         )
@@ -956,12 +944,10 @@ def _reasoner(
     store: Store,
     args: argparse.Namespace,
     operation: str,
-    *,
-    source_host: str = "",
 ) -> Reasoner | None:
     if args.reason == REASON_NONE:
         return None
-    executor = _executor(store, args, operation, source_host=source_host)
+    executor = _executor(store, args, operation)
     return distiller.distiller(executor, store=store)
 
 
@@ -969,15 +955,11 @@ def _executor(
     store: Store,
     args: argparse.Namespace,
     operation: str,
-    *,
-    source_host: str = "",
 ) -> ExecutorConfig:
     return selection.resolve(
         store.config.executor,
         operation,
-        source_host=source_host,
         reasoner=args.reason or "",
-        host=args.reason_host or "",
         model=args.reason_model,
     )
 
@@ -1029,7 +1011,7 @@ def _setup(store: Store, args: argparse.Namespace) -> dict[str, object]:
         "status": "READY",
         "store": str(store.root),
         "settings": settings,
-        "note": "host wizards were removed (2026-11-24): memory jobs use direct endpoints",
+        "note": "host wizards were removed: memory jobs use direct endpoints",
     }
 
 

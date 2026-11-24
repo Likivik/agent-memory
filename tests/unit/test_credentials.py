@@ -115,7 +115,12 @@ def test_the_distiller_hands_the_configured_project_to_the_minter():
     from mnemobun.executor.distiller import distiller
 
     reasoner = distiller(
-        ExecutorConfig(reasoner="endpoint", project="built-in", location="global")
+        ExecutorConfig(
+            reasoner="endpoint",
+            project="built-in",
+            location="global",
+            model="gemini-test",
+        )
     )
     assert reasoner.credentials.project == "built-in"
     assert reasoner.credentials.location == "global"

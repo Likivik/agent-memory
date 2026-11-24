@@ -17,7 +17,7 @@ def _entry(name):
 
 
 def _run(command, store_root, stdin=b""):
-    environment = {**os.environ, "PYTHONIOENCODING": "ascii", "AGENT_MEMORY_STORE": str(store_root)}
+    environment = {**os.environ, "PYTHONIOENCODING": "ascii", "MNEMOBUN_STORE": str(store_root)}
     environment.pop("PYTHONUTF8", None)
     return subprocess.run(command, input=stdin, capture_output=True, env=environment, timeout=60)
 

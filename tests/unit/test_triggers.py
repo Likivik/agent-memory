@@ -98,9 +98,11 @@ def test_the_distill_command_runs_the_executor_over_a_named_session(store, monke
     assert Watermark(store.layout).read("hooked").distilled == len(LINES)
 
 
-def test_cross_host_write_keeps_source_session_provenance(store, monkeypatch, capsys):
+def test_write_keeps_source_session_provenance(store, monkeypatch, capsys):
     capture_module.capture(store, "codex-source", LINES)
-    store.config.executor.write = OperationExecutorConfig(reasoner="host", host="muse-code")
+    store.config.executor.write = OperationExecutorConfig(
+        reasoner="endpoint", model="write-model"
+    )
     store.config.save(store.root)
     selected = []
 
@@ -118,13 +120,11 @@ def test_cross_host_write_keeps_source_session_provenance(store, monkeypatch, ca
             "distill",
             "--session",
             "codex-source",
-            "--source-host",
-            "codex",
         ]
     )
 
     assert code == 0
-    assert selected[0].host == "muse-code"
+    assert selected[0].model == "write-model"
     assert store.read("deploy-day").record.provenance == ["sessions/codex-source#0-0"]
     assert not (store.layout.sessions / "muse-code.jsonl").exists()
     capsys.readouterr()

@@ -1,7 +1,7 @@
 """Spend guard: hard bounds on calls + input tokens; USD is a soft estimate.
 
 Hard, enforced limits are what we control: the number of LLM calls per run and
-the input tokens we send per day (user ruling 2026-11-24). USD is estimated
+the input tokens we send per day. USD is estimated
 (chars over chars-per-token times a per-token price when one is known) and
 never gates. The ledger is append-only signed lines; the day window is their
 sum, so a run's reservation is replaced by its actuals at finish and a crashed

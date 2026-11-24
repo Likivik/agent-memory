@@ -77,7 +77,7 @@ class AgentMemoryHermesProvider(_HOST_BASE):
     def _resolve_store_path(self, hermes_home: str | None) -> Path:
         import os
 
-        env = os.environ.get("AGENT_MEMORY_STORE")
+        env = os.environ.get("MNEMOBUN_STORE")
         if env:
             return Path(env)
         try:

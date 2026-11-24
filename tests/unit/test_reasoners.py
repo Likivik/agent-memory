@@ -50,14 +50,21 @@ def test_an_empty_host_reply_is_reported():
         HostReasoner(host=host)("review this")
 
 
-def test_the_default_executor_is_refused_because_host_spawning_is_gone():
+def test_the_default_executor_is_refused_until_a_model_is_configured():
     from mnemobun.core.config import Config
     from mnemobun.core.errors import ReasonerUnavailableError
     from mnemobun.executor import distiller
 
     with pytest.raises(ReasonerUnavailableError) as excinfo:
         distiller.distiller(Config.default().executor)
-    assert "host reasoners were removed from memory jobs" in str(excinfo.value)
+    assert "no model configured" in str(excinfo.value)
+
+    host_config = Config.default().executor
+    host_config.reasoner = "host"
+    host_config.model = "m"
+    with pytest.raises(ReasonerUnavailableError) as host_excinfo:
+        distiller.distiller(host_config)
+    assert "unsupported reasoner" in str(host_excinfo.value)
 
 
 def test_an_endpoint_reasoner_reads_the_first_message(monkeypatch):
@@ -256,7 +263,9 @@ def test_an_executor_configured_for_an_endpoint_uses_it():
     from mnemobun.core.config import ExecutorConfig
     from mnemobun.executor import distiller
 
-    configured = ExecutorConfig(reasoner="endpoint", project="user-project")
+    configured = ExecutorConfig(
+        reasoner="endpoint", project="user-project", model="gemini-test"
+    )
     assert isinstance(distiller.distiller(configured), EndpointReasoner)
 
 
@@ -266,7 +275,9 @@ def test_an_explicit_openai_endpoint_does_not_require_a_google_cloud_project(mon
 
     monkeypatch.setenv("GEMINI_API_KEY", "user-key")
     chosen = distiller.distiller(
-        ExecutorConfig(reasoner="endpoint", endpoint="https://models.example/v1")
+        ExecutorConfig(
+            reasoner="endpoint", endpoint="https://models.example/v1", model="gemini-test"
+        )
     )
     assert isinstance(chosen, EndpointReasoner)
     assert chosen.base_url == "https://models.example/v1"

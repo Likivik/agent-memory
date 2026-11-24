@@ -114,9 +114,9 @@ def test_offline_env_controls_fastembed_local_file_loading(monkeypatch, value, e
     fake_fastembed.TextEmbedding = FakeTextEmbedding
     monkeypatch.setitem(sys.modules, "fastembed", fake_fastembed)
     if value is None:
-        monkeypatch.delenv("AGENT_MEMORY_OFFLINE", raising=False)
+        monkeypatch.delenv("MNEMOBUN_OFFLINE", raising=False)
     else:
-        monkeypatch.setenv("AGENT_MEMORY_OFFLINE", value)
+        monkeypatch.setenv("MNEMOBUN_OFFLINE", value)
 
     FastEmbedder("fake/model")
 

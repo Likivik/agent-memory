@@ -33,8 +33,8 @@ def test_muse_preflight_stages_only_auth_in_isolated_config(tmp_path):
 
 
 @pytest.mark.skipif(
-    shutil.which("muse") is None or os.environ.get("AGENT_MEMORY_LIVE_MUSE") != "1",
-    reason="set AGENT_MEMORY_LIVE_MUSE=1 with an installed, authenticated Muse Code",
+    shutil.which("muse") is None or os.environ.get("MNEMOBUN_LIVE_MUSE") != "1",
+    reason="set MNEMOBUN_LIVE_MUSE=1 with an installed, authenticated Muse Code",
 )
 def test_live_muse_shell_hook_and_mcp_preflight():
     probe = pathlib.Path(__file__).parents[2] / "tools" / "muse_sandbox_probe.py"

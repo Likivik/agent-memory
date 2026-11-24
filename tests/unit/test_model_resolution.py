@@ -24,7 +24,7 @@ def _store(tmp_path):
 def test_no_silent_defaults_anywhere():
     executor = Config.default().executor
     assert executor.model == ""
-    assert executor.host_model == ""
+    assert executor.model == ""
     assert executor.model_source == "unset"
     assert Config.default().budget.max_calls_per_run > 0
 

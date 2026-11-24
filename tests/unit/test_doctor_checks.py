@@ -53,7 +53,7 @@ def test_a_non_ascii_path_still_matches():
 
 
 def test_the_probe_token_is_read_through_stray_characters():
-    assert doctor._probe_matched("AGENT_MEMORY_READY")
+    assert doctor._probe_matched("MNEMOBUN_READY")
     assert doctor._probe_matched("AGENT_M#EMORY_READY")
     assert doctor._probe_matched("AGENT_M\nEMORY_READY")
     assert not doctor._probe_matched("SORRY")

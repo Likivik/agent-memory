@@ -74,7 +74,7 @@ def smoke(store: Store, host: str = "", model: str = "") -> dict[str, object]:
     if credential is not None and not os.environ.get("OPENROUTER_API_KEY"):
         os.environ["OPENROUTER_API_KEY"] = credential.value
 
-    config = selection.resolve(store.config.executor, "write", host=host, model=model)
+    config = selection.resolve(store.config.executor, "write", model=model)
     reasoner = distiller_module.distiller(config, store=store)
     answer = reasoner("Reply with exactly the two letters: OK")
     return {"answered": bool(answer and answer.strip()), "answer": answer[:200]}
@@ -292,7 +292,7 @@ def _reasoner_checks(
             executor = selection.resolve(
                 store.config.executor,
                 operation,
-                source_host=host if operation == selection.WRITE else "",
+
             )
             if executor.reasoner == "endpoint":
                 endpoint = available.get("GEMINI_BASE_URL", "") or executor.endpoint
@@ -311,8 +311,8 @@ def _reasoner_checks(
             else:
                 ok = False
                 detail = (
-                    f"{operation} host reasoners were removed from memory jobs "
-                    "(2026-11-24): configure a direct endpoint"
+                    f"{operation} reasoner must be an endpoint: "
+                    "configure a direct endpoint"
                 )
         except Exception as error:
             ok = False
@@ -336,10 +336,10 @@ def _live_reasoner_check(store: Store, host: str, operation: str) -> Check:
         executor = selection.resolve(
             store.config.executor,
             operation,
-            source_host=host if operation == selection.WRITE else "",
+
         )
         reasoner = distiller(executor, store=store)
-        reply = reasoner("Reply with exactly AGENT_MEMORY_READY.")
+        reply = reasoner("Reply with exactly MNEMOBUN_READY.")
     except Exception as error:
         return Check(
             f"{operation.upper()}_REASONER_UNAVAILABLE",
@@ -385,7 +385,7 @@ def _probe_matched(reply: str) -> bool:
     which says nothing about whether the endpoint is usable. Compare on letters
     alone before declaring the endpoint unavailable.
     """
-    if "AGENT_MEMORY_READY" in reply:
+    if "MNEMOBUN_READY" in reply:
         return True
     return "AGENTMEMORYREADY" in re.sub(r"[^A-Za-z]", "", reply).upper()
 

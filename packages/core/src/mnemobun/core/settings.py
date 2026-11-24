@@ -1,4 +1,4 @@
-"""Memory settings: the ONE writer every surface funnels through (2026-11-24).
+"""Memory settings: the ONE writer every surface funnels through.
 
 The store config is the single source of truth (portable with the store);
 ``apply_settings`` is its only writer — GUI, chat and CLI are callers. Reads
@@ -38,10 +38,9 @@ def apply_settings(store: Store, payload: dict[str, object], *, actor: str) -> d
         if not text:
             raise ValueError(f"{key} must be a non-empty string")
         if key == "model":
-            if brain.host_model != text:  # idempotent re-assert is a no-op
+            if brain.model != text:  # idempotent re-assert is a no-op
                 brain.model_source = actor
-            brain.host_model = text
-            brain.model = text  # hosts are gone: the endpoint reads this
+            brain.model = text
         else:
             getattr(brain, "write" if key == "distill_model" else "manage").model = text
     for key in ("endpoint", "key_env"):
@@ -77,7 +76,7 @@ def effective_settings(store: Store) -> dict[str, object]:
     """Pull the current settings from the store. Every surface reads this."""
     brain = store.config.executor
     return {
-        "model": brain.model or brain.host_model,
+        "model": brain.model,
         "model_source": brain.model_source,
         "distill_model": brain.write.model,
         "dream_model": brain.manage.model,

@@ -528,13 +528,17 @@ def test_a_plain_sleep_asks_the_library_executor(cli, monkeypatch):
 
 def test_write_and_manage_select_their_own_reasoners_and_cli_wins(cli, monkeypatch):
     store = Store(cli.root)
-    store.config.executor.write = OperationExecutorConfig(reasoner="host", host="muse-code")
-    store.config.executor.manage = OperationExecutorConfig(reasoner="host", host="codex")
+    store.config.executor.write = OperationExecutorConfig(
+        reasoner="endpoint", model="write-model"
+    )
+    store.config.executor.manage = OperationExecutorConfig(
+        reasoner="endpoint", model="manage-model"
+    )
     store.config.save(store.root)
     capture_module.capture(store, "source-session", ["user: deploys happen on Friday"])
     selected = []
 
-    def reasoner(config):
+    def reasoner(config, **_kw):
         selected.append(config)
         return lambda _prompt: json.dumps(
             {
@@ -547,29 +551,27 @@ def test_write_and_manage_select_their_own_reasoners_and_cli_wins(cli, monkeypat
 
     monkeypatch.setattr("mnemobun.executor.distiller.distiller", reasoner)
 
-    cli("distill", "--session", "source-session", "--source-host", "codex")
-    assert selected[-1].host == "muse-code"
+    cli("distill", "--session", "source-session")
+    assert selected[-1].model == "write-model"
 
     capture_module.capture(store, "override-session", ["user: releases happen on Monday"])
     cli(
         "distill",
         "--session",
         "override-session",
-        "--source-host",
-        "muse-code",
         "--reason",
-        "host",
-        "--reason-host",
-        "codex",
+        "endpoint",
+        "--reason-model",
+        "cli-model",
     )
-    assert selected[-1].host == "codex"
+    assert selected[-1].model == "cli-model"
 
     _near_duplicates(cli)
     cli("sleep")
-    assert selected[-1].host == "codex"
+    assert selected[-1].model == "manage-model"
 
-    cli("sleep", "--reason", "host", "--reason-host", "muse-code")
-    assert selected[-1].host == "muse-code"
+    cli("sleep", "--reason", "endpoint", "--reason-model", "other-model")
+    assert selected[-1].model == "other-model"
 
 
 def test_sleep_reports_a_reasoner_failure_instead_of_succeeding_silently(cli, monkeypatch):

@@ -237,7 +237,7 @@ def test_a_killed_worker_leaves_the_job_to_the_next_run(
     monkeypatch.setenv("FAKE_HOST_LOG", str(tmp_path / "host-log.jsonl"))
 
     code = main(
-        ["--store", str(root), "--json", "distill", "--job", job.id, "--source-host", "claude-code"]
+        ["--store", str(root), "--json", "distill", "--job", job.id]
     )
 
     assert code == EXIT_OK
@@ -279,7 +279,7 @@ def test_a_crash_between_settle_and_complete_is_recovered_by_the_next_run(
     monkeypatch.setenv("FAKE_HOST_LOG", str(tmp_path / "host-log.jsonl"))
 
     code = main(
-        ["--store", str(root), "--json", "distill", "--job", job.id, "--source-host", "claude-code"]
+        ["--store", str(root), "--json", "distill", "--job", job.id]
     )
 
     assert code == EXIT_OK
@@ -345,8 +345,6 @@ def test_the_host_transport_traces_its_tool_calls_end_to_end(
             "distill",
             "--job",
             job.id,
-            "--source-host",
-            "claude-code",
         ]
     )
 
@@ -432,7 +430,7 @@ for index, (name, arguments) in enumerate(json.loads(os.environ["FAKE_HOST_SCRIP
 child.stdin.close()
 child.wait()
 with open(os.environ["FAKE_HOST_LOG"], "a", encoding="utf-8") as log:
-    record = {{"argv": argv, "executor": os.environ.get("AGENT_MEMORY_EXECUTOR")}}
+    record = {{"argv": argv, "executor": os.environ.get("MNEMOBUN_EXECUTOR")}}
     log.write(json.dumps(record) + "\\n")
 print("done")
 """
@@ -463,8 +461,6 @@ def test_mem_distill_job_runs_one_job_end_to_end_with_the_deterministic_host(
             "distill",
             "--job",
             job.id,
-            "--source-host",
-            "claude-code",
         ]
     )
 
@@ -495,7 +491,7 @@ def test_mem_distill_drain_claims_and_runs_every_due_job(
     monkeypatch.setenv("FAKE_HOST_LOG", str(tmp_path / "host-log.jsonl"))
 
     code = main(
-        ["--store", str(store.root), "--json", "distill", "--drain", "--source-host", "claude-code"]
+        ["--store", str(store.root), "--json", "distill", "--drain"]
     )
 
     assert code == EXIT_OK

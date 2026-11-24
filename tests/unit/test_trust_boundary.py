@@ -1,4 +1,4 @@
-"""Trust boundary (2026-11-24): untrusted data, powerless extractor, strict output."""
+"""Trust boundary: untrusted data, powerless extractor, strict output."""
 
 import pathlib
 import types
@@ -36,7 +36,7 @@ def test_extraction_profile_has_no_tools_and_keeps_rules():
     assert "--ignore-rules" in interactive
 
 
-def test_host_reasoners_are_refused_for_memory_jobs():
+def test_unknown_reasoners_are_refused_for_memory_jobs():
     from mnemobun.core.config import Config
     from mnemobun.core.errors import ReasonerUnavailableError
     from mnemobun.executor import distiller
@@ -44,11 +44,11 @@ def test_host_reasoners_are_refused_for_memory_jobs():
     config = Config.default().executor
     config.reasoner = "host"
     config.host = "hermes"
-    config.host_model = "m"
+    config.model = "m"
     with pytest.raises(ReasonerUnavailableError) as excinfo:
         distiller.distiller(config)
-    assert "host reasoners were removed from memory jobs" in str(excinfo.value)
-    assert "brain config write" in str(excinfo.value)
+    assert "unsupported reasoner" in str(excinfo.value)
+    assert "mnemobun setup" in str(excinfo.value)
 
 
 def test_extraction_prompt_marks_content_as_untrusted_data():
