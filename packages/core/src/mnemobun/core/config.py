@@ -11,26 +11,17 @@ import tomllib
 from typing import Any
 
 CONFIG_FILENAME = "config.toml"
-STORE_ENV_VAR = "AGENT_MEMORY_STORE"
-EXECUTOR_ENV_VAR = "AGENT_MEMORY_EXECUTOR"
-MUSE_SETTINGS_ENV_VAR = "AGENT_MEMORY_MUSE_SETTINGS"
-REASONER_HOST = "host"
+STORE_ENV_VAR = "MNEMOBUN_STORE"
+EXECUTOR_ENV_VAR = "MNEMOBUN_EXECUTOR"
+MUSE_SETTINGS_ENV_VAR = "MNEMOBUN_MUSE_SETTINGS"
 REASONER_ENDPOINT = "endpoint"
 TOOL_MODE_AUTO = "auto"
-TOOL_MODE_NATIVE = "native"
 TOOL_MODE_TEXT = "text"
 COORDINATION_LOCK_POLL_SECONDS = 0.02
 DREAM_CLAIM_ID_LENGTH = 20
 DREAM_ERROR_MAX_CHARS = 1000
 STATE_JSON_INDENT = 2
 DEFAULT_STORE = "~/mnemobun-store"
-LEGACY_KNOBS = {
-    "index": frozenset({"raw_chunk_chars"}),
-    "recall": frozenset({"deep_limit_multiplier", "raw_enabled", "raw_relevance_factor"}),
-    "manage": frozenset({"raw_hit_min"}),
-}
-
-
 @dataclasses.dataclass
 class StorageConfig:
     schemas_dirname: str = "schemas"
@@ -75,6 +66,16 @@ class MemoryMdConfig:
     budget_bytes: int = 8192
     max_lines: int = 120
     header: str = "# MEMORY.md"
+
+
+@dataclasses.dataclass
+class BudgetConfig:
+    """Hard bounds are calls + input tokens."""
+
+    max_calls_per_run: float = 40.0
+    max_tokens_per_day: float = 2000000.0
+    est_usd_per_day: float = 1.0
+    est_usd_per_month: float = 10.0
 
 
 @dataclasses.dataclass
@@ -188,10 +189,6 @@ class WriteConfig:
 @dataclasses.dataclass
 class OperationExecutorConfig:
     reasoner: str = ""
-    host: str = ""
-    host_provider: str = ""
-    host_allow_data_training: bool = False
-    host_model: str = ""
     model: str = ""
     endpoint: str = ""
     project: str = ""
@@ -202,12 +199,10 @@ class OperationExecutorConfig:
 
 @dataclasses.dataclass
 class ExecutorConfig:
-    reasoner: str = REASONER_HOST
-    host: str = "claude-code"
-    host_provider: str = ""
-    host_allow_data_training: bool = False
-    host_model: str = ""
-    model: str = "google/gemini-3.7-flash"
+    reasoner: str = REASONER_ENDPOINT  # memory jobs run one endpoint completion
+    model: str = ""  # no silent default
+    key_env: str = ""  # env var name holding the endpoint API key
+    model_source: str = "unset"  # chat | cli | gui | unset
     endpoint: str = ""
     project: str = ""
     location: str = "global"
@@ -236,6 +231,8 @@ class StandingConfig:
 
     penalty_contested: float = 0.5
     penalty_proposed: float = 0.75
+    penalty_retracted: float = 0.25
+    penalty_superseded: float = 0.25
     audit_max_per_session: int = 3
 
 
@@ -245,6 +242,7 @@ class Config:
     index: IndexConfig = dataclasses.field(default_factory=IndexConfig)
     memory_md: MemoryMdConfig = dataclasses.field(default_factory=MemoryMdConfig)
     usage: UsageConfig = dataclasses.field(default_factory=UsageConfig)
+    budget: BudgetConfig = dataclasses.field(default_factory=BudgetConfig)
     recall: RecallConfig = dataclasses.field(default_factory=RecallConfig)
     manage: ManageConfig = dataclasses.field(default_factory=ManageConfig)
     write: WriteConfig = dataclasses.field(default_factory=WriteConfig)
@@ -374,8 +372,6 @@ def _load_section(section: Any, values: object, path: str) -> None:
         raise ValueError(f"config section must be a table: {path}")
     known = {field.name for field in dataclasses.fields(section)}
     for key, value in values.items():
-        if key in LEGACY_KNOBS.get(path, ()):
-            continue
         if key not in known:
             raise ValueError(f"unknown config knob: {path}.{key}")
         current = getattr(section, key)

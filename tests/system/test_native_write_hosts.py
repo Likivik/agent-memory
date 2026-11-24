@@ -80,7 +80,7 @@ child.wait()
 
 with open(os.environ["FAKE_HOST_LOG"], "w", encoding="utf-8") as log:
     json.dump({{"argv": argv, "stdin": prompt, "system": system, "listed": listed,
-               "replies": replies, "executor": os.environ.get("AGENT_MEMORY_EXECUTOR"),
+               "replies": replies, "executor": os.environ.get("MNEMOBUN_EXECUTOR"),
                "settings": settings}}, log)
 if "--output-last-message" in argv:
     open(after("--output-last-message"), "w", encoding="utf-8").write("done")

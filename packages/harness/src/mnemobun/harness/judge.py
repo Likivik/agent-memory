@@ -96,10 +96,10 @@ class Judge:
                 tools_enabled=False,
                 workdir=pathlib.Path(scratch),
                 environment={
-                    "AGENT_MEMORY_STORE": "",
+                    "MNEMOBUN_STORE": "",
                     "MEMCORE_DIR": "",
-                    "AGENT_MEMORY_OBSERVATION_DIR": "",
-                    "AGENT_MEMORY_OBSERVATION_ATTEMPT": "",
+                    "MNEMOBUN_OBSERVATION_DIR": "",
+                    "MNEMOBUN_OBSERVATION_ATTEMPT": "",
                 },
             )
 

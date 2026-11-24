@@ -6,6 +6,8 @@ source of truth); this module owns the catalogue and dispatch only.
 
 from __future__ import annotations
 
+import json
+
 from mnemobun.core import timestamp
 from mnemobun.core.errors import FieldError, ValidationError
 from mnemobun.core.recall import Recall
@@ -50,7 +52,7 @@ SCHEMAS: dict[str, dict[str, object]] = {
     TOOL_SETUP: {
         "type": "object",
         "properties": {
-            "host": {"type": "string"},
+    
             "model": {"type": "string"},
             "provider": {"type": "string"},
             "endpoint": {"type": "string"},
@@ -151,7 +153,7 @@ DESCRIPTIONS = {
     TOOL_RECALL: "Search the memory store and return an L0 list of candidates.",
     TOOL_READ: "Read one memory at a chosen level of detail.",
     TOOL_SETUP: (
-        "Record the brain config (host/model/provider/endpoint) that feed, "
+        "Record the brain config (model/endpoint) that feed, "
         "review and jobs use for their LLM calls."
     ),
     TOOL_DOCTOR: (
@@ -412,7 +414,7 @@ def _verify(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     from mnemobun.core import audit
 
     # The MCP surface retrieves evidence deterministically; the label arrives via the
-    # host reasoner binding (P3/P6). Without one wired, the honest verdict is abstain.
+    # same endpoint completion. Without one configured, the honest verdict is abstain.
     return audit.verify(
         store, str(arguments["draft"]), str(arguments["query"]), labeler=None
     )
@@ -420,43 +422,63 @@ def _verify(store: Store, arguments: dict[str, object]) -> dict[str, object]:
 
 def _setup(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     brain = store.config.executor
-    host = _optional(arguments, "host")
-    if host:
-        brain.host = str(host)
-    for field, key in (
-        ("host_model", "model"),
-        ("host_provider", "provider"),
-        ("endpoint", "endpoint"),
-    ):
-        value = _optional(arguments, key)
-        if value:
-            setattr(brain, field, str(value))
+    value = _optional(arguments, "endpoint")
+    if value:
+        brain.reasoner = "endpoint"
+        brain.endpoint = str(value)
+    if _optional(arguments, "model"):
+        from mnemobun.core.settings import apply_settings
+
+        apply_settings(store, {"model": str(_optional(arguments, "model"))}, actor="chat")
     store.config.save(store.root)
     return {
-        "host": brain.host,
-        "model": brain.host_model,
-        "provider": brain.host_provider,
+        "model": brain.model,
+        "model_source": brain.model_source,
         "endpoint": brain.endpoint,
     }
 
 
+def _versions(store: Store) -> dict[str, object]:
+    path = store.root / ".state" / "handshake.json"
+    if not path.exists():
+        return {"schema": "unknown"}
+    try:
+        known = json.loads(path.read_text(encoding="utf-8"))
+        return {
+            "schema": known.get("schema_version"),
+            "writer": known.get("writer_version"),
+        }
+    except Exception:
+        return {"schema": "unreadable"}
+
+
 def _doctor(store: Store, arguments: dict[str, object]) -> dict[str, object]:
+    from mnemobun.core import spend
+
     result: dict[str, object] = {
         "store": str(store.root),
         "records": len(store.records()),
+        "spend": {
+            "today": spend.usage(store, day=True),
+            "month": spend.usage(store, day=False),
+        },
+        "versions": _versions(store),
         "brain": {
-            "host": store.config.executor.host,
-            "model": store.config.executor.host_model,
-            "provider": store.config.executor.host_provider,
+            "model": store.config.executor.model,
+            "model_source": store.config.executor.model_source,
+            "model_route": (
+                f"{store.config.executor.model}"
+                f" (source: {store.config.executor.model_source})"
+                if store.config.executor.model
+                else "needs_model"
+            ),
             "endpoint": store.config.executor.endpoint,
         },
     }
     if bool(arguments.get("smoke")):
         from mnemobun.adapters import doctor as doctor_module
 
-        result["smoke"] = doctor_module.smoke(
-            store, host=store.config.executor.host
-        )
+        result["smoke"] = doctor_module.smoke(store, host="")
     return result
 
 

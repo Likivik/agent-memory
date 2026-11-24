@@ -55,6 +55,10 @@ class HermesDialect(Dialect):
         if spec.provider:
             command += ["--provider", spec.provider]
         command += ["-t", HERMES_TOOLSETS if tools_enabled else ""]
+        if not tools_enabled:
+            # extraction profile (2026-11-24 trust ruling): no tools, rules APPLY,
+            # nothing to approve. The interactive form keeps --ignore-rules/--yolo.
+            return command + ["--yolo"]
         return command + ["--ignore-rules", "--yolo"]
 
     def routed_model(self, spec: HostSpec) -> str:

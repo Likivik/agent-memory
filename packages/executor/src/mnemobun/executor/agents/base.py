@@ -59,7 +59,7 @@ HERMES_NATIVE_TOOL_REQUIREMENT = "Hermes native tools require Hermes Agent 0.22.
 # Kept for callers that imported the Write-specific name before Manage reused the same runtime.
 HERMES_NATIVE_WRITE_REQUIREMENT = HERMES_NATIVE_TOOL_REQUIREMENT
 HERMES_DATA_TRAINING_REQUIREMENT = (
-    "Hermes contributor models require host_allow_data_training = true"
+    "Hermes contributor models require allow_data_training = true"
 )
 CODEX_SANDBOX_TOOLS = "workspace-write"
 CODEX_SANDBOX_READONLY = "read-only"
@@ -733,7 +733,7 @@ class Host:
         """The memory system's own variables win; the store root is the native default."""
         environment = dict(os.environ)
         if store_root is not None:
-            environment["AGENT_MEMORY_STORE"] = str(store_root)
+            environment["MNEMOBUN_STORE"] = str(store_root)
         environment.update(extra)
         for binary in (self.spec.binary, "mnemobun"):
             found = shutil.which(binary)

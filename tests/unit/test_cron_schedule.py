@@ -59,7 +59,7 @@ def test_install_is_idempotent_and_quotes_store_executable_environment_and_log(
     assert state["text"] == installed
     assert state["text"].count("# BEGIN mnemobun dream") == 1
     assert "--json sleep --if-due --trigger-source cron" in first["command"]
-    assert f"AGENT_MEMORY_STORE='{store.root}'" in first["command"]
+    assert f"MNEMOBUN_STORE='{store.root}'" in first["command"]
     assert f"'{binary}'" in first["command"]
     assert f"'{log}'" in first["command"]
     assert "7 3 * * * /usr/bin/existing-job" in state["text"]
@@ -202,7 +202,7 @@ def test_env_file_invocation_exports_values_to_the_exact_due_aware_command(
 ):
     _state, binary = cron_harness
     binary.write_text(
-        '#!/bin/sh\nprintf "%s|%s|%s\\n" "$REASONER_ROUTE" "$AGENT_MEMORY_STORE" "$*"\n',
+        '#!/bin/sh\nprintf "%s|%s|%s\\n" "$REASONER_ROUTE" "$MNEMOBUN_STORE" "$*"\n',
         encoding="utf-8",
     )
     store = Store(tmp_path / "Store With Spaces")

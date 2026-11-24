@@ -23,7 +23,7 @@ def native():
 
 def test_every_system_points_the_host_at_its_own_store(tmp_path, native, memcore, memcore_home):
     root = tmp_path / "store"
-    assert native.environment(root)["AGENT_MEMORY_STORE"] == str(root)
+    assert native.environment(root)["MNEMOBUN_STORE"] == str(root)
     environment = memcore.environment(root)
     assert environment["MEMCORE_DIR"] == str(root)
     assert environment["PATH"].split(os.pathsep)[0] == str(memcore_home)

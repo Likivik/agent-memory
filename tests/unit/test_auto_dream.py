@@ -205,7 +205,7 @@ def test_duplicate_worker_lock_timeout_does_not_mark_the_owner_failed(store):
 def test_detached_launcher_uses_manage_host_and_executor_environment(store, monkeypatch):
     _enough(store)
     store.config.executor.manage = OperationExecutorConfig(
-        reasoner="host", host=moments.HOST_MUSE_CODE, host_model="muse-test"
+        reasoner="endpoint", model="muse-test"
     )
     store.config.save(store.root)
     launched = {}
@@ -217,14 +217,12 @@ def test_detached_launcher_uses_manage_host_and_executor_environment(store, monk
     result = auto_dream.launch(store, trigger_source="hook")
 
     assert result.claim is not None
-    assert result.claim.host == moments.HOST_MUSE_CODE
+    assert result.claim.host == ""
     assert result.claim.trigger_source == "hook"
-    assert result.claim.reasoner == "host"
-    assert launched["command"][-6:] == [
+    assert result.claim.reasoner == "endpoint"
+    assert launched["command"][-4:] == [
         "--reason",
-        "host",
-        "--reason-host",
-        moments.HOST_MUSE_CODE,
+        "endpoint",
         "--reason-model",
         "muse-test",
     ]
@@ -248,7 +246,7 @@ def test_detached_launcher_does_not_fallback_from_explicit_endpoint(store, monke
     result = auto_dream.launch(store, trigger_source="hook")
 
     assert result.claim is not None
-    assert result.claim.host == "endpoint"
+    assert result.claim.host == ""
     assert result.claim.reasoner == "endpoint"
     assert "--reason-host" not in launched["command"]
     assert launched["command"][-4:] == [
@@ -314,7 +312,9 @@ def test_sleep_if_due_runs_t0_t1_and_records_the_actual_manage_reasoner(
             valid_from="2000-01-01",
         )
     _enough(store)
-    store.config.executor.manage = OperationExecutorConfig(reasoner="host", host="codex")
+    store.config.executor.manage = OperationExecutorConfig(
+        reasoner="endpoint", model="codex-test"
+    )
     store.config.save(store.root)
     proposal = next(
         item
@@ -323,7 +323,7 @@ def test_sleep_if_due_runs_t0_t1_and_records_the_actual_manage_reasoner(
     )
     selected = []
 
-    def reasoner(config):
+    def reasoner(config, **_kwargs):
         selected.append(config)
         return lambda _prompt: json.dumps({"proposal": proposal.id, "verdict": "reject"})
 
@@ -349,8 +349,8 @@ def test_sleep_if_due_runs_t0_t1_and_records_the_actual_manage_reasoner(
     assert payload["slept"] is True
     assert payload["status"] == "succeeded"
     assert payload["trigger_source"] == "cron"
-    assert payload["reasoner"] == {"kind": "host", "host": "codex"}
-    assert selected[-1].host == "codex"
+    assert payload["reasoner"] == {"kind": "endpoint", "model": "codex-test"}
+    assert selected[-1].model == "codex-test"
     assert any(action["kind"] == "duplicate-merged" for action in payload["actions"])
     assert [decision["proposal"] for decision in payload["decisions"]] == [proposal.id]
     assert pathlib.Path(payload["path"]).is_file()
@@ -363,14 +363,16 @@ def test_sleep_if_due_reasoner_failure_is_persisted_without_a_report(
 ):
     _twins(store)
     _enough(store)
-    store.config.executor.manage = OperationExecutorConfig(reasoner="host", host="codex")
+    store.config.executor.manage = OperationExecutorConfig(
+        reasoner="endpoint", model="codex-test"
+    )
     store.config.save(store.root)
 
     def unavailable(_prompt: str) -> str:
         raise ReasonerUnavailableError("configured Codex unavailable")
 
     monkeypatch.setattr(
-        "mnemobun.executor.distiller.distiller", lambda _config: unavailable
+        "mnemobun.executor.distiller.distiller", lambda _config, **_kw: unavailable
     )
 
     assert (
@@ -384,8 +386,8 @@ def test_sleep_if_due_reasoner_failure_is_persisted_without_a_report(
     assert error["code"] == "reasoner_unavailable"
     status = dreaming.state(store)
     assert status["status"] == dreaming.STATUS_FAILED
-    assert status["host"] == "codex"
-    assert status["reasoner"] == "host"
+    assert status["host"] == ""
+    assert status["reasoner"] == "endpoint"
     assert "configured Codex unavailable" in str(status["last_error"])
     assert not list(store.layout.dream_reports.glob("auto-*.md"))
 
@@ -447,7 +449,7 @@ def test_hook_distill_checks_dream_only_after_watermark_settles(
     observed = []
 
     monkeypatch.setattr(
-        "mnemobun.executor.distiller.distiller", lambda _config: lambda _prompt: "{}"
+        "mnemobun.executor.distiller.distiller", lambda _config, **_kw: lambda _prompt: "{}"
     )
     monkeypatch.setattr(
         auto_dream,
@@ -467,8 +469,6 @@ def test_hook_distill_checks_dream_only_after_watermark_settles(
                 "distill",
                 "--session",
                 "boundary",
-                "--source-host",
-                moments.HOST_CODEX,
                 "--auto-dream",
             ]
         )
@@ -482,17 +482,17 @@ def test_hook_distill_checks_dream_only_after_watermark_settles(
     assert trigger_source == "hook"
 
 
-def test_hook_distill_uses_manage_host_instead_of_source_host(store, monkeypatch, capsys):
+def test_hook_distill_uses_manage_model_instead_of_the_source(store, monkeypatch, capsys):
     store.config.manage.trigger_min_sessions = 1
     store.config.executor.manage = OperationExecutorConfig(
-        reasoner="host", host=moments.HOST_MUSE_CODE
+        reasoner="endpoint", model="muse-test"
     )
     store.config.save(store.root)
     capture.capture(store, "boundary", ["user: remember the green queue"], source="pause")
     launched = {}
     monkeypatch.setattr(
         "mnemobun.executor.distiller.distiller",
-        lambda _config: lambda _prompt: json.dumps(
+        lambda _config, **_kw: lambda _prompt: json.dumps(
             {
                 "type": "fact",
                 "fields": {"project": "queue", "subject": "colour"},
@@ -516,8 +516,6 @@ def test_hook_distill_uses_manage_host_instead_of_source_host(store, monkeypatch
                 "distill",
                 "--session",
                 "boundary",
-                "--source-host",
-                moments.HOST_CODEX,
                 "--auto-dream",
             ]
         )
@@ -525,8 +523,9 @@ def test_hook_distill_uses_manage_host_instead_of_source_host(store, monkeypatch
     )
     payload = json.loads(capsys.readouterr().out)
 
-    assert payload["auto_dream"]["host"] == moments.HOST_MUSE_CODE
-    assert launched["command"][-2:] == ["--reason-host", moments.HOST_MUSE_CODE]
+    assert payload["auto_dream"]["reasoner"] == "endpoint"
+    assert payload["auto_dream"]["host"] == ""
+    assert launched["command"][-2:] == ["--reason-model", "muse-test"]
     state = dreaming.state(store)
-    assert state["host"] == moments.HOST_MUSE_CODE
+    assert state["host"] == ""
     assert state["trigger_source"] == "hook"

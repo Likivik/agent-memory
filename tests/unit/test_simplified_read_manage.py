@@ -147,11 +147,4 @@ def test_failed_merge_rolls_back_all_files(store, monkeypatch):
     assert store.find("first-merged") is None
 
 
-def test_legacy_raw_config_knobs_load_as_ignored_compatibility(store):
-    config = store.root / "config.toml"
-    config.write_text(config.read_text().replace(
-        "[recall]", "[recall]\ndeep_limit_multiplier = 2\nraw_enabled = true\n"
-        "raw_relevance_factor = 0.4\n"
-    ))
-    reopened = Store(store.root)
-    assert reopened.config.recall.default_limit == store.config.recall.default_limit
+

@@ -20,6 +20,11 @@ _LIB = Path(__file__).resolve().parent / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
+from mnemobun.core.settings import (  # noqa: E402
+    SETTINGS_KEYS,
+    apply_settings,
+    effective_settings,
+)
 from mnemobun.core.store import Store  # noqa: E402
 from mnemobun.executor.hermes_provider import (  # noqa: E402
     PROVIDER_NAME,
@@ -72,7 +77,7 @@ class AgentMemoryHermesProvider(_HOST_BASE):
     def _resolve_store_path(self, hermes_home: str | None) -> Path:
         import os
 
-        env = os.environ.get("AGENT_MEMORY_STORE")
+        env = os.environ.get("MNEMOBUN_STORE")
         if env:
             return Path(env)
         try:
@@ -105,6 +110,20 @@ class AgentMemoryHermesProvider(_HOST_BASE):
         return self.is_available()
 
     def _ensure_store(self) -> bool:
+        try:
+            return self._ensure_store_inner()
+        except Exception as error:
+            import logging
+
+            if type(error).__name__ == "StoreVersionError":
+                logging.getLogger(__name__).error(
+                    "mnemobun: VERSION MISMATCH — %s (store stays untouched)", error
+                )
+                self._unavailable = str(error)
+                return False
+            raise
+
+    def _ensure_store_inner(self) -> bool:
         if self._store is not None:
             return True
         path = self._resolve_store_path(self._hermes_home)
@@ -184,7 +203,45 @@ class AgentMemoryHermesProvider(_HOST_BASE):
                 "name": "store_path",
                 "type": "string",
                 "description": "Filesystem path of the mnemobun store",
-            }
+            },
+            {
+                "name": "model",
+                "type": "string",
+                "description": (
+                    "LLM model for memory work. Never inherited; "
+                    "empty = deterministic-only"
+                ),
+            },
+            {
+                "name": "endpoint",
+                "type": "string",
+                "description": "OpenAI-compatible base URL for memory work (required)",
+            },
+            {
+                "name": "key_env",
+                "type": "string",
+                "description": "Env var name holding the endpoint API key (e.g. LITELLM_API_KEY)",
+            },
+            {
+                "name": "distill_model",
+                "type": "string",
+                "description": "Optional override: model for feed/distill",
+            },
+            {
+                "name": "dream_model",
+                "type": "string",
+                "description": "Optional override: model for dream/review",
+            },
+            {
+                "name": "max_calls_per_run",
+                "type": "float",
+                "description": "Hard cap: LLM calls per run",
+            },
+            {
+                "name": "max_tokens_per_day",
+                "type": "float",
+                "description": "Hard cap: input tokens per day",
+            },
         ]
 
     def save_config(self, values: dict, hermes_home: str) -> None:
@@ -194,13 +251,21 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             current = json.loads(path.read_text(encoding="utf-8"))
         current.update({k: v for k, v in values.items() if k in {"store_path"}})
         path.write_text(json.dumps(current, indent=2), encoding="utf-8")
+        settings = {k: v for k, v in values.items() if k in SETTINGS_KEYS and v not in (None, "")}
+        if settings and self._ensure_store():
+            apply_settings(self._store, settings, actor="gui")
 
     def read_config_fields(self, hermes_home: str) -> dict:
+        """Pull: display reads the store (single source), not a cached copy."""
+        fields: dict = {}
         try:
             raw = json.loads(self._config_path(hermes_home).read_text(encoding="utf-8"))
+            fields.update({k: v for k, v in raw.items() if k in {"store_path"}})
         except Exception:
-            return {}
-        return {k: v for k, v in raw.items() if k in {"store_path"}}
+            pass
+        if self._ensure_store():
+            fields.update(effective_settings(self._store))
+        return fields
 
     def write_config_fields(self, values: dict, hermes_home: str) -> None:
         self.save_config(values, hermes_home)

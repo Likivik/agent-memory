@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from typing import Protocol
 
 INSTALL_HINT = "pip install 'mnemobun-core[vector]'"
-OFFLINE_ENV_VAR = "AGENT_MEMORY_OFFLINE"
+OFFLINE_ENV_VAR = "MNEMOBUN_OFFLINE"
 
 
 class Embedder(Protocol):

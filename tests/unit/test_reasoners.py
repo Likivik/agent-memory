@@ -50,6 +50,23 @@ def test_an_empty_host_reply_is_reported():
         HostReasoner(host=host)("review this")
 
 
+def test_the_default_executor_is_refused_until_a_model_is_configured():
+    from mnemobun.core.config import Config
+    from mnemobun.core.errors import ReasonerUnavailableError
+    from mnemobun.executor import distiller
+
+    with pytest.raises(ReasonerUnavailableError) as excinfo:
+        distiller.distiller(Config.default().executor)
+    assert "no model configured" in str(excinfo.value)
+
+    host_config = Config.default().executor
+    host_config.reasoner = "host"
+    host_config.model = "m"
+    with pytest.raises(ReasonerUnavailableError) as host_excinfo:
+        distiller.distiller(host_config)
+    assert "unsupported reasoner" in str(host_excinfo.value)
+
+
 def test_an_endpoint_reasoner_reads_the_first_message(monkeypatch):
     monkeypatch.setenv("GEMINI_BASE_URL", "https://example.invalid/openapi")
     monkeypatch.setenv("GEMINI_API_KEY", "token")
@@ -242,91 +259,13 @@ def test_a_host_reasoner_marks_its_session_as_the_executor_so_hooks_stand_down()
     assert host.calls[0][1]["environment"][EXECUTOR_ENV_VAR]
 
 
-def test_the_default_executor_reasons_through_the_host_cli():
-    from mnemobun.core.config import ExecutorConfig
-    from mnemobun.executor import distiller
-
-    assert isinstance(distiller.distiller(ExecutorConfig()), HostReasoner)
-    chosen = distiller.distiller(ExecutorConfig(host="codex"))
-    assert chosen.host.spec.name == "codex"
-
-
-def test_hosts_with_a_default_mcp_posture_negotiate_with_tools_and_the_rest_keep_text():
-    from mnemobun.core.config import ExecutorConfig
-    from mnemobun.core.reasoning import ToolReasoner
-    from mnemobun.executor import distiller
-    from mnemobun.executor.agents import BINARIES, DIALECTS
-
-    for name in BINARIES:
-        chosen = distiller.distiller(ExecutorConfig(host=name))
-        assert isinstance(chosen, ToolReasoner) == DIALECTS[name].tools_by_default, name
-        assert callable(chosen)
-    assert isinstance(distiller.distiller(ExecutorConfig(reasoner="endpoint")), ToolReasoner)
-
-
-@pytest.mark.parametrize("name", ["hermes", "muse-code"])
-def test_additional_native_write_tools_are_automatic_and_text_can_be_forced(name):
-    from mnemobun.core.config import TOOL_MODE_TEXT, ExecutorConfig
-    from mnemobun.core.reasoning import ToolReasoner
-    from mnemobun.executor import distiller
-
-    native = distiller.distiller(ExecutorConfig(host=name))
-    text = distiller.distiller(ExecutorConfig(host=name, tool_mode=TOOL_MODE_TEXT))
-
-    assert isinstance(native, ToolReasoner)
-    assert not isinstance(text, ToolReasoner)
-
-
-def test_native_write_tools_fail_closed_for_an_unknown_host():
-    from mnemobun.core.config import TOOL_MODE_NATIVE, ExecutorConfig
-    from mnemobun.core.errors import ReasonerUnavailableError
-    from mnemobun.executor import distiller
-
-    with pytest.raises(ReasonerUnavailableError, match="does not support native Write tools"):
-        distiller.distiller(ExecutorConfig(host="unknown", tool_mode=TOOL_MODE_NATIVE))
-
-
-def test_hermes_openrouter_does_not_construct_vertex_credentials():
-    from mnemobun.core.config import ExecutorConfig
-    from mnemobun.executor import distiller
-    from mnemobun.executor.agents import HERMES_DATA_TRAINING_REQUIREMENT
-
-    with pytest.raises(ReasonerUnavailableError, match=HERMES_DATA_TRAINING_REQUIREMENT):
-        distiller.distiller(
-            ExecutorConfig(
-                host="hermes",
-                host_provider="openrouter",
-                host_model="meta/muse-spark-1.3-contributor",
-            )
-        )
-
-    chosen = distiller.distiller(
-        ExecutorConfig(
-            host="hermes",
-            host_provider="openrouter",
-            host_model="meta/muse-spark-1.3-contributor",
-            host_allow_data_training=True,
-        )
-    )
-    assert chosen.host.spec.provider == "openrouter"
-    assert chosen.host.spec.allow_data_training is True
-    assert chosen.host.credentials is None
-
-
-def test_an_unknown_write_tool_mode_is_not_silently_downgraded():
-    from mnemobun.core.config import ExecutorConfig
-    from mnemobun.core.errors import ReasonerUnavailableError
-    from mnemobun.executor import distiller
-
-    with pytest.raises(ReasonerUnavailableError, match="unsupported Write tool mode"):
-        distiller.distiller(ExecutorConfig(host="muse-code", tool_mode="guess"))
-
-
 def test_an_executor_configured_for_an_endpoint_uses_it():
     from mnemobun.core.config import ExecutorConfig
     from mnemobun.executor import distiller
 
-    configured = ExecutorConfig(reasoner="endpoint", project="user-project")
+    configured = ExecutorConfig(
+        reasoner="endpoint", project="user-project", model="gemini-test"
+    )
     assert isinstance(distiller.distiller(configured), EndpointReasoner)
 
 
@@ -336,7 +275,9 @@ def test_an_explicit_openai_endpoint_does_not_require_a_google_cloud_project(mon
 
     monkeypatch.setenv("GEMINI_API_KEY", "user-key")
     chosen = distiller.distiller(
-        ExecutorConfig(reasoner="endpoint", endpoint="https://models.example/v1")
+        ExecutorConfig(
+            reasoner="endpoint", endpoint="https://models.example/v1", model="gemini-test"
+        )
     )
     assert isinstance(chosen, EndpointReasoner)
     assert chosen.base_url == "https://models.example/v1"

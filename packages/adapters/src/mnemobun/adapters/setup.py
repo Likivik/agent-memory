@@ -205,7 +205,7 @@ def _merge_json_mcp(
     if host == moments.HOST_MUSE_CODE:
         expected["mode"] = "optional"
     if store_root is not None:
-        expected["env"] = {"AGENT_MEMORY_STORE": str(pathlib.Path(store_root).resolve())}
+        expected["env"] = {"MNEMOBUN_STORE": str(pathlib.Path(store_root).resolve())}
     existing = servers.get(MCP_SERVER)
     if existing is not None and existing != expected:
         raise ValidationError(
@@ -234,7 +234,7 @@ def _install_external_mcp(
     environment = {**os.environ, "CODEX_HOME": str(target.parent)}
     command = [binary, "mcp", "add", MCP_SERVER]
     if store_root is not None:
-        command += ["--env", f"AGENT_MEMORY_STORE={pathlib.Path(store_root).resolve()}"]
+        command += ["--env", f"MNEMOBUN_STORE={pathlib.Path(store_root).resolve()}"]
     command += ["--", mcp_binary()]
     current = subprocess.run(
         [binary, "mcp", "get", MCP_SERVER, "--json"],

@@ -463,7 +463,7 @@ def test_muse_executor_uses_hook_pinned_settings_and_sibling_auth(tmp_path, monk
     result = host.run(
         "question",
         workdir=tmp_path,
-        environment={"AGENT_MEMORY_MUSE_SETTINGS": str(pinned)},
+        environment={"MNEMOBUN_MUSE_SETTINGS": str(pinned)},
     )
 
     assert result.ok
@@ -513,7 +513,7 @@ def test_muse_native_write_stages_only_the_batch_toolkit(tmp_path, monkeypatch):
         "batch material",
         system_prompt="distillation instructions",
         server=server,
-        environment={"XDG_CONFIG_HOME": str(source_config), "AGENT_MEMORY_EXECUTOR": "1"},
+        environment={"XDG_CONFIG_HOME": str(source_config), "MNEMOBUN_EXECUTOR": "1"},
     )
 
     assert result.ok
@@ -532,7 +532,7 @@ def test_muse_native_write_stages_only_the_batch_toolkit(tmp_path, monkeypatch):
             }
         },
     }
-    assert observed["environment"]["AGENT_MEMORY_EXECUTOR"] == "1"
+    assert observed["environment"]["MNEMOBUN_EXECUTOR"] == "1"
     assert observed["environment"]["TMPDIR"] == agents.MUSE_RUNTIME_TMPDIR
     override = observed["command"][observed["command"].index("-c") + 1]
     assert json.loads(override.removeprefix("run.toolset=")) == [
@@ -602,7 +602,7 @@ def test_muse_executor_reports_transport_failures(tmp_path, monkeypatch, failure
 
 def test_mcp_memory_tool_calls_use_host_neutral_observation(store, tmp_path, monkeypatch):
     evidence = tmp_path / "observation"
-    monkeypatch.setenv("AGENT_MEMORY_OBSERVATION_DIR", str(evidence))
+    monkeypatch.setenv("MNEMOBUN_OBSERVATION_DIR", str(evidence))
     response = mcp_server.handle(
         store,
         {

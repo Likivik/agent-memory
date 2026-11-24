@@ -8,49 +8,61 @@ keep the text protocol.
 
 from __future__ import annotations
 
+import uuid
+from collections.abc import Callable
+
 from mnemobun.core.config import (
     REASONER_ENDPOINT,
-    REASONER_HOST,
-    TOOL_MODE_AUTO,
-    TOOL_MODE_NATIVE,
     TOOL_MODE_TEXT,
     ExecutorConfig,
 )
 from mnemobun.core.errors import ReasonerUnavailableError
+from mnemobun.core.store import Store
 
-from .agents import DIALECTS, HERMES_DATA_TRAINING_REQUIREMENT, HOST_HERMES
 from .credentials import VertexCredentials
-from .reasoners import EndpointReasoner, EndpointTextReasoner, HostReasoner, ToolHostReasoner
+from .reasoners import EndpointReasoner, EndpointTextReasoner
 
 
-def distiller(config: ExecutorConfig) -> EndpointReasoner | EndpointTextReasoner | HostReasoner:
-    if config.reasoner == REASONER_HOST:
-        dialect = DIALECTS.get(config.host)
-        mode = config.tool_mode or TOOL_MODE_AUTO
-        if mode not in (TOOL_MODE_AUTO, TOOL_MODE_NATIVE, TOOL_MODE_TEXT):
-            raise ReasonerUnavailableError(f"unsupported Write tool mode {mode!r}")
-        if mode == TOOL_MODE_NATIVE and (dialect is None or not dialect.supports_tools):
-            raise ReasonerUnavailableError(
-                f"host reasoner {config.host!r} does not support native Write tools"
-            )
-        if (
-            config.host == HOST_HERMES
-            and "contributor" in config.host_model.lower().split("-")
-            and not config.host_allow_data_training
-        ):
-            raise ReasonerUnavailableError(HERMES_DATA_TRAINING_REQUIREMENT)
-        speaks_tools = mode == TOOL_MODE_NATIVE or (
-            mode == TOOL_MODE_AUTO
-            and dialect is not None
-            and dialect.supports_tools
-            and dialect.tools_by_default
+class CountedAsk:
+    """The choke point: every model call here is counted against the spend guard."""
+
+    def __init__(self, ask: Callable[[str], str], store: Store) -> None:
+        self._ask = ask
+        self._store = store
+        # one id per operation, so max_calls_per_run binds outside feed runs too
+        self._run_id = f"ask-{uuid.uuid4().hex}"
+
+    def __call__(self, prompt: str) -> str:
+        from mnemobun.core import spend
+
+        spend.record_call(
+            self._store,
+            run_id=spend.current_run_id() or self._run_id,
+            prompt_chars=len(prompt),
         )
-        chosen = ToolHostReasoner if speaks_tools else HostReasoner
-        return chosen.for_host(
-            config.host,
-            model=config.host_model,
-            provider=config.host_provider,
-            allow_data_training=config.host_allow_data_training,
+        return self._ask(prompt)
+
+    def __getattr__(self, name: str) -> object:
+        if name in ("converse", "review_converse"):
+            # memory jobs are single completions; a tool loop would make calls
+            # that bypass the counter, so the counted ask simply has no such method
+            raise AttributeError(name)
+        return getattr(self._ask, name)
+
+
+def distiller(
+    config: ExecutorConfig, *, store: Store | None = None
+) -> EndpointReasoner | EndpointTextReasoner | CountedAsk:
+    if config.reasoner not in (REASONER_ENDPOINT,):
+        raise ReasonerUnavailableError(
+            f"unsupported reasoner {config.reasoner!r}: memory jobs run one endpoint "
+            "completion; configure one: mnemobun setup --endpoint <url> "
+            "--key-env <env> --model <m>"
+        )
+    if not config.model.strip():  # no silent model selection
+        raise ReasonerUnavailableError(
+            "no model configured: record memory settings (model, endpoint, key_env) "
+            "via mnemobun setup or memory_setup"
         )
     if config.reasoner == REASONER_ENDPOINT:
         endpoint = EndpointReasoner(
@@ -58,9 +70,13 @@ def distiller(config: ExecutorConfig) -> EndpointReasoner | EndpointTextReasoner
             timeout_seconds=config.timeout_seconds,
             credentials=VertexCredentials(project=config.project, location=config.location),
             base_url=config.endpoint,
+            key_env=config.key_env,
             attempts=config.attempts,
         )
+        reasoner: EndpointReasoner | EndpointTextReasoner
         if config.tool_mode == TOOL_MODE_TEXT:
-            return EndpointTextReasoner(endpoint)
-        return endpoint
+            reasoner = EndpointTextReasoner(endpoint)
+        else:
+            reasoner = endpoint
+        return CountedAsk(reasoner, store) if store is not None else reasoner
     raise ReasonerUnavailableError(f"unsupported reasoner {config.reasoner!r}")

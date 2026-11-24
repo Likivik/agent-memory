@@ -74,9 +74,12 @@ def smoke(store: Store, host: str = "", model: str = "") -> dict[str, object]:
     if credential is not None and not os.environ.get("OPENROUTER_API_KEY"):
         os.environ["OPENROUTER_API_KEY"] = credential.value
 
-    config = selection.resolve(store.config.executor, "write", host=host, model=model)
-    reasoner = distiller_module.distiller(config)
-    answer = reasoner("Reply with exactly the two letters: OK")
+    config = selection.resolve(store.config.executor, "write", model=model)
+    try:
+        reasoner = distiller_module.distiller(config, store=store)
+        answer = reasoner("Reply with exactly the two letters: OK")
+    except Exception as error:  # the doctor reports, it does not crash
+        return {"answered": False, "answer": "", "reason": f"{type(error).__name__}: {error}"}
     return {"answered": bool(answer and answer.strip()), "answer": answer[:200]}
 
 
@@ -283,7 +286,6 @@ def _reasoner_checks(
     store: Store, host: str, environment: dict[str, str] | None = None
 ) -> list[Check]:
     from mnemobun.executor import selection
-    from mnemobun.executor.reasoners import HostReasoner
 
     available = os.environ if environment is None else environment
     checks = []
@@ -293,12 +295,12 @@ def _reasoner_checks(
             executor = selection.resolve(
                 store.config.executor,
                 operation,
-                source_host=host if operation == selection.WRITE else "",
+
             )
             if executor.reasoner == "endpoint":
                 endpoint = available.get("GEMINI_BASE_URL", "") or executor.endpoint
                 project = available.get("GOOGLE_CLOUD_PROJECT", "") or executor.project
-                api_key = available.get("GEMINI_API_KEY", "")
+                api_key = available.get(executor.key_env or "GEMINI_API_KEY", "")
                 ok = bool(project or (endpoint and api_key))
                 if endpoint and api_key:
                     detail = f"{operation} uses explicit model endpoint"
@@ -310,9 +312,11 @@ def _reasoner_checks(
                         "API key or a Google Cloud project"
                     )
             else:
-                reasoner = HostReasoner.for_host(executor.host, model=executor.host_model)
-                ok = bool(reasoner.host.spec.binary)
-                detail = f"{operation} uses host {executor.host}"
+                ok = False
+                detail = (
+                    f"{operation} reasoner must be an endpoint: "
+                    "configure a direct endpoint"
+                )
         except Exception as error:
             ok = False
             detail = f"{operation} reasoner configuration failed: {error}"
@@ -331,21 +335,14 @@ def _live_reasoner_check(store: Store, host: str, operation: str) -> Check:
     try:
         from mnemobun.executor import selection
         from mnemobun.executor.distiller import distiller
-        from mnemobun.executor.reasoners import HostReasoner
 
         executor = selection.resolve(
             store.config.executor,
             operation,
-            source_host=host if operation == selection.WRITE else "",
+
         )
-        reasoner = distiller(executor)
-        if isinstance(reasoner, HostReasoner):
-            reasoner.host.spec = dataclasses.replace(
-                reasoner.host.spec,
-                attempts=1,
-                timeout_seconds=min(executor.timeout_seconds, 60.0),
-            )
-        reply = reasoner("Reply with exactly AGENT_MEMORY_READY.")
+        reasoner = distiller(executor, store=store)
+        reply = reasoner("Reply with exactly MNEMOBUN_READY.")
     except Exception as error:
         return Check(
             f"{operation.upper()}_REASONER_UNAVAILABLE",
@@ -391,7 +388,7 @@ def _probe_matched(reply: str) -> bool:
     which says nothing about whether the endpoint is usable. Compare on letters
     alone before declaring the endpoint unavailable.
     """
-    if "AGENT_MEMORY_READY" in reply:
+    if "MNEMOBUN_READY" in reply:
         return True
     return "AGENTMEMORYREADY" in re.sub(r"[^A-Za-z]", "", reply).upper()
 

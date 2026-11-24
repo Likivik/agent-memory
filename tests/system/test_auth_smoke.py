@@ -13,8 +13,7 @@ from mnemobun.executor.agents import HOST_HERMES
 
 def test_sandbox_spawn_has_auth(tmp_path):
     config = Config.default()
-    config.executor.host_allow_data_training = True
-    config.executor.host_model = "mimo-v2.6-pro"
+    config.executor.model = "mimo-v2.6-pro"
     store = Store(tmp_path / "store", config=config, agent="auth-smoke")
     store.init()
     report = doctor.smoke(store, host=HOST_HERMES)

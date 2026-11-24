@@ -114,9 +114,9 @@ def test_offline_env_controls_fastembed_local_file_loading(monkeypatch, value, e
     fake_fastembed.TextEmbedding = FakeTextEmbedding
     monkeypatch.setitem(sys.modules, "fastembed", fake_fastembed)
     if value is None:
-        monkeypatch.delenv("AGENT_MEMORY_OFFLINE", raising=False)
+        monkeypatch.delenv("MNEMOBUN_OFFLINE", raising=False)
     else:
-        monkeypatch.setenv("AGENT_MEMORY_OFFLINE", value)
+        monkeypatch.setenv("MNEMOBUN_OFFLINE", value)
 
     FastEmbedder("fake/model")
 
@@ -331,7 +331,8 @@ def test_distilled_raw_bindings_survive_read_and_rebuild_with_either_index(
         "provenance": ["1"],
     })
     monkeypatch.setattr(
-        "mnemobun.executor.distiller.distiller", lambda config: lambda prompt: reply
+        "mnemobun.executor.distiller.distiller",
+        lambda config, **_kwargs: lambda prompt: reply,
     )
     assert main(["--store", str(store.root), "--json", "distill", "--session", "service"]) == 0
     report = json.loads(capsys.readouterr().out)

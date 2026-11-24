@@ -39,9 +39,9 @@ def _gateway(monkeypatch, *responses):
 
 
 def test_a_dropped_request_is_retried(monkeypatch):
-    seen = _gateway(monkeypatch, urllib.error.URLError("reset"), _reply("AGENT_MEMORY_READY"))
+    seen = _gateway(monkeypatch, urllib.error.URLError("reset"), _reply("MNEMOBUN_READY"))
     reasoner = EndpointReasoner(model="a-model", attempts=3)
-    assert reasoner("Reply with exactly AGENT_MEMORY_READY.") == "AGENT_MEMORY_READY"
+    assert reasoner("Reply with exactly MNEMOBUN_READY.") == "MNEMOBUN_READY"
     assert len(seen) == 2
 
 
@@ -126,10 +126,10 @@ class _RecordingToolkit:
 @pytest.mark.parametrize(
     "reply",
     [
-        "AGENT_MEMORY_READY",
+        "MNEMOBUN_READY",
         "AGENT_M#EMORY_READY",
         "AGENT_M\nEMORY_READY",
-        "  AGENT_MEMORY_READY  ",
+        "  MNEMOBUN_READY  ",
     ],
 )
 def test_the_probe_token_survives_a_stray_character(reply):

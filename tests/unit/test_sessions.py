@@ -35,7 +35,6 @@ def test_a_pointer_survives_rechunking_of_the_raw_index(store):
     store.archive.append_session("s2", LINES)
     pointer = sessions.Pointer("s2", 1, 1)
     before = [message.text for message in sessions.resolve(store.layout, pointer)]
-    store.config.index.raw_chunk_chars = len(LINES[0])
     store.rebuild_index()
     after = [message.text for message in sessions.resolve(store.layout, pointer)]
     assert before == after

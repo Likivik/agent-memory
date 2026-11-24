@@ -75,7 +75,7 @@ def claim_due(
     host: str,
     *,
     trigger_source: str = "hook",
-    reasoner: str = "host",
+    reasoner: str = "endpoint",
     model: str = "",
 ) -> ClaimResult:
     """Atomically claim one due Dream, or explain why no worker should be launched."""

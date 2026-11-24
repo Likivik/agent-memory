@@ -42,5 +42,9 @@ class LockTimeoutError(MemoryStoreError):
     code = "lock_timeout"
 
 
+class StoreVersionError(MemoryStoreError):
+    """The store was written by a newer schema/plugin than this one understands."""
+
+
 class ReasonerUnavailableError(MemoryStoreError):
     code = "reasoner_unavailable"
