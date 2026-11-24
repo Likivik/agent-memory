@@ -119,9 +119,8 @@ class _ignore_bad:
         return exc_type is not None and issubclass(exc_type, (ValueError, KeyError))
 
 
-def _in_window(stamp: str, *, day: bool) -> bool:
+def _in_window(stamp: str, *, day: bool, now: dt.datetime) -> bool:
     when = dt.datetime.fromisoformat(stamp)
-    now = dt.datetime.now(dt.UTC)
     if day:
         return (when.year, when.month, when.day) == (now.year, now.month, now.day)
     return (when.year, when.month) == (now.year, now.month)
@@ -140,7 +139,7 @@ def usage(store: Store, *, day: bool) -> dict[str, float]:
     for line in _lines(store):
         if line.get("kind") == KIND_REFUSED:
             continue
-        if not _in_window(str(line["at"]), day=day):
+        if not _in_window(str(line["at"]), day=day, now=store.clock.now()):
             continue
         sign = -1.0 if line["kind"] == KIND_FINISH else 1.0
         calls += sign * float(str(line.get("calls", 0)))
