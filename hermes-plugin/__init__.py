@@ -198,49 +198,52 @@ class AgentMemoryHermesProvider(_HOST_BASE):
 
     # -- config surface --------------------------------------------------------
     def get_config_schema(self) -> list[dict]:
+        # The host reads ``key`` (agent.memory_provider.MemoryProvider) and
+        # drops any field without one - a schema using ``name`` renders an
+        # empty panel ("does not expose dashboard settings").
         return [
             {
-                "name": "store_path",
-                "type": "string",
-                "description": "Filesystem path of the mnemobun store",
-            },
-            {
-                "name": "model",
-                "type": "string",
+                "key": "model",
+                "type": "text",
                 "description": (
                     "LLM model for memory work. Never inherited; "
                     "empty = deterministic-only"
                 ),
             },
             {
-                "name": "endpoint",
-                "type": "string",
-                "description": "OpenAI-compatible base URL for memory work (required)",
+                "key": "endpoint",
+                "type": "text",
+                "description": "OpenAI-compatible base URL for memory work",
             },
             {
-                "name": "key_env",
-                "type": "string",
-                "description": "Env var name holding the endpoint API key (e.g. LITELLM_API_KEY)",
+                "key": "key_env",
+                "type": "text",
+                "description": "Env var name holding the endpoint API key",
             },
             {
-                "name": "distill_model",
-                "type": "string",
+                "key": "distill_model",
+                "type": "text",
                 "description": "Optional override: model for feed/distill",
             },
             {
-                "name": "dream_model",
-                "type": "string",
+                "key": "dream_model",
+                "type": "text",
                 "description": "Optional override: model for dream/review",
             },
             {
-                "name": "max_calls_per_run",
-                "type": "float",
+                "key": "max_calls_per_run",
+                "type": "number",
                 "description": "Hard cap: LLM calls per run",
             },
             {
-                "name": "max_tokens_per_day",
-                "type": "float",
+                "key": "max_tokens_per_day",
+                "type": "number",
                 "description": "Hard cap: input tokens per day",
+            },
+            {
+                "key": "store_path",
+                "type": "text",
+                "description": "Filesystem path of the mnemobun store",
             },
         ]
 

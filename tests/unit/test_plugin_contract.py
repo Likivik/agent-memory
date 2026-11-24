@@ -41,6 +41,27 @@ def _home_with_store(plugin_module, tmp_path):
     return home, store_root
 
 
+def test_get_config_schema_uses_the_host_key_contract(plugin_module):
+    """Regression: the host normalizer reads field["key"] and silently drops
+    fields without one - the panel then shows "does not expose dashboard
+    settings" although the provider declares a schema."""
+    fields = plugin_module.AgentMemoryHermesProvider().get_config_schema()
+
+    assert fields, "the provider must declare settings"
+    for field in fields:
+        assert str(field.get("key") or "").strip(), f"field missing key: {field}"
+    assert {field["key"] for field in fields} == {
+        "model",
+        "endpoint",
+        "key_env",
+        "distill_model",
+        "dream_model",
+        "max_calls_per_run",
+        "max_tokens_per_day",
+        "store_path",
+    }
+
+
 def test_register_exposes_both_idle_tasks(plugin_module):
     """Regression: register() referenced provider.feed_tick, which did not
     exist - the feed idle task silently never registered since P13.5."""
