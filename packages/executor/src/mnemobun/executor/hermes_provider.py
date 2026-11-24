@@ -102,7 +102,7 @@ class HermesMemoryProvider:
         ask = None
         try:
             ask = distiller_module.distiller(
-                selection.resolve(self.store.config.executor, "write")
+                selection.resolve(self.store.config.executor, "write"), store=self.store
             )
         except Exception:
             ask = None  # decision-only report instead of a dead idle task

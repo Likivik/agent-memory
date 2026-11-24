@@ -213,6 +213,16 @@ class AgentMemoryHermesProvider(_HOST_BASE):
                 ),
             },
             {
+                "name": "endpoint",
+                "type": "string",
+                "description": "OpenAI-compatible base URL for memory work (required)",
+            },
+            {
+                "name": "key_env",
+                "type": "string",
+                "description": "Env var name holding the endpoint API key (e.g. LITELLM_API_KEY)",
+            },
+            {
                 "name": "distill_model",
                 "type": "string",
                 "description": "Optional override: model for feed/distill",

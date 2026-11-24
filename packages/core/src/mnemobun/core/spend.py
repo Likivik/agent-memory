@@ -10,13 +10,33 @@ run keeps counting its reservation (the safe direction: underspend).
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import dataclasses
 import datetime as dt
 import json
 import math
+from collections.abc import Iterator
 
 from mnemobun.core.config import Config
+from mnemobun.core.locking import store_lock
 from mnemobun.core.store import Store
+
+_CURRENT_RUN: contextvars.ContextVar[str] = contextvars.ContextVar("mnemobun_spend_run", default="")
+
+
+@contextlib.contextmanager
+def run_scope(
+    store: Store, *, projection: Projection, run_id: str, actor: str
+) -> Iterator[None]:
+    """Book the run, attribute its calls to it, net the reservation at the end."""
+    guard_run(store, projection, run_id=run_id, actor=actor)
+    token = _CURRENT_RUN.set(run_id)
+    try:
+        yield
+    finally:
+        _CURRENT_RUN.reset(token)
+        finish_run(store, run_id=run_id, projection=projection)
 
 KIND_RESERVE = "reserve"
 KIND_CALL = "call"
@@ -132,6 +152,11 @@ def _refuse(reason: str, calls: float, tokens: float, remaining: float) -> Spend
 
 def guard_run(store: Store, projection: Projection, *, run_id: str, actor: str) -> None:
     """Book the projection; refuse the run if it cannot fit the hard bounds."""
+    with store_lock(store.layout):
+        _guard_run_locked(store, projection, run_id=run_id, actor=actor)
+
+
+def _guard_run_locked(store: Store, projection: Projection, *, run_id: str, actor: str) -> None:
     config = store.config.budget
     if projection.calls > config.max_calls_per_run:
         raise _refuse(
@@ -178,8 +203,16 @@ def open_reserve(store: Store, run_id: str) -> dict[str, float]:
     return {"calls": calls, "in_tokens": tokens}
 
 
-def record_call(store: Store, *, run_id: str, prompt_chars: int, model: str = "") -> None:
+def record_call(
+    store: Store, *, prompt_chars: int, run_id: str = "", model: str = ""
+) -> None:
     """One real request about to be sent. Refuses past the hard bounds."""
+    run_id = run_id or _CURRENT_RUN.get() or f"adhoc-{store.clock.now().isoformat()}"
+    with store_lock(store.layout):
+        _record_call_locked(store, run_id=run_id, prompt_chars=prompt_chars, model=model)
+
+
+def _record_call_locked(store: Store, *, run_id: str, prompt_chars: int, model: str = "") -> None:
     config = store.config.budget
     tokens = prompt_chars // store.config.write.chars_per_token
     own = open_reserve(store, run_id)
@@ -191,7 +224,7 @@ def record_call(store: Store, *, run_id: str, prompt_chars: int, model: str = ""
         for line in _lines(store)
         if line.get("kind") == KIND_CALL and line.get("run_id") == run_id
     )
-    if run_calls + own["calls"] >= config.max_calls_per_run:
+    if run_calls >= config.max_calls_per_run:
         raise _refuse("max_calls_per_run", run_calls, today["in_tokens"], config.max_calls_per_run)
     if adjusted_tokens + tokens > config.max_tokens_per_day:
         raise _refuse(
@@ -214,7 +247,8 @@ def record_call(store: Store, *, run_id: str, prompt_chars: int, model: str = ""
 
 def finish_run(store: Store, *, run_id: str, projection: Projection) -> None:
     """Net out the reservation; the calls already counted stay counted."""
-    _append(
+    with store_lock(store.layout):
+        _append(
         store,
         {
             "kind": KIND_FINISH,
@@ -224,6 +258,54 @@ def finish_run(store: Store, *, run_id: str, projection: Projection) -> None:
             "est_usd": projection.est_usd,
         },
     )
+
+
+def open_reservations(store: Store, *, hours: float = 0.0) -> list[dict[str, object]]:
+    """Reservations not yet netted out; optionally only those older than hours."""
+    import datetime as _dt
+
+    cutoff = store.clock.now() - _dt.timedelta(hours=hours)
+    rows: dict[str, dict[str, float]] = {}
+    stamps: dict[str, str] = {}
+    for line in _lines(store):
+        run_id = str(line.get("run_id") or "")
+        if not run_id:
+            continue
+        row = rows.setdefault(run_id, {"calls": 0.0, "in_tokens": 0.0})
+        stamps.setdefault(run_id, str(line.get("at") or ""))
+        if line["kind"] == KIND_RESERVE:
+            row["calls"] += float(str(line.get("calls", 0)))
+            row["in_tokens"] += float(str(line.get("in_tokens", 0)))
+        elif line["kind"] == KIND_FINISH:
+            row["calls"] -= float(str(line.get("calls", 0)))
+            row["in_tokens"] -= float(str(line.get("in_tokens", 0)))
+    out = []
+    for run_id, row in rows.items():
+        if row["calls"] <= 0 and row["in_tokens"] <= 0:
+            continue
+        if hours and _dt.datetime.fromisoformat(stamps[run_id]) > cutoff:
+            continue
+        out.append({"run_id": run_id, "at": stamps[run_id], **row})
+    return out
+
+
+def release_stale(store: Store, *, hours: float) -> int:
+    """Explicit recovery: net out reservations older than hours (a release line)."""
+    released = 0
+    with store_lock(store.layout):
+        for row in open_reservations(store, hours=hours):
+            _append(
+                store,
+                {
+                    "kind": KIND_FINISH,
+                    "run_id": row["run_id"],
+                    "actor": "release-stale",
+                    "calls": row["calls"],
+                    "in_tokens": row["in_tokens"],
+                },
+            )
+            released += 1
+    return released
 
 
 def estimated_calls(chars: int, config: Config) -> int:

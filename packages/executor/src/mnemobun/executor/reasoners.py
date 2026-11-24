@@ -189,6 +189,7 @@ class EndpointReasoner:
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
     credentials: VertexCredentials = dataclasses.field(default_factory=VertexCredentials)
     base_url: str = EMPTY
+    key_env: str = EMPTY
     attempts: int = DEFAULT_ENDPOINT_ATTEMPTS
     last_usage: dict[str, object] | None = None
 
@@ -286,7 +287,7 @@ class EndpointReasoner:
     def _endpoint(self) -> tuple[str, str]:
         environment = dict(os.environ)
         base = self.base_url or environment.get(BASE_URL_ENV, EMPTY)
-        key = environment.get(API_KEY_ENV, EMPTY)
+        key = environment.get(self.key_env or API_KEY_ENV, EMPTY)
         if not base:
             supplied = self.credentials.environment(preserve_api_key=False)
             base = supplied.get(BASE_URL_ENV, EMPTY)

@@ -18,6 +18,8 @@ SETTINGS_KEYS = (
     "dream_model",
     "max_calls_per_run",
     "max_tokens_per_day",
+    "endpoint",
+    "key_env",
 )
 
 
@@ -41,6 +43,18 @@ def apply_settings(store: Store, payload: dict[str, object], *, actor: str) -> d
             brain.host_model = text
         else:
             getattr(brain, "write" if key == "distill_model" else "manage").model = text
+    for key in ("endpoint", "key_env"):
+        value = payload.get(key)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if not text:
+            raise ValueError(f"{key} must be a non-empty string")
+        if key == "endpoint":
+            brain.reasoner = "endpoint"
+            brain.endpoint = text
+        else:
+            brain.key_env = text
     for key in ("max_calls_per_run", "max_tokens_per_day"):
         value = payload.get(key)
         if value is None:
@@ -68,6 +82,8 @@ def effective_settings(store: Store) -> dict[str, object]:
         "dream_model": brain.manage.model,
         "max_calls_per_run": store.config.budget.max_calls_per_run,
         "max_tokens_per_day": store.config.budget.max_tokens_per_day,
+        "endpoint": brain.endpoint,
+        "key_env": brain.key_env,
     }
 
 

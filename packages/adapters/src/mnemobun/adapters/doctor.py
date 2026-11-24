@@ -75,7 +75,7 @@ def smoke(store: Store, host: str = "", model: str = "") -> dict[str, object]:
         os.environ["OPENROUTER_API_KEY"] = credential.value
 
     config = selection.resolve(store.config.executor, "write", host=host, model=model)
-    reasoner = distiller_module.distiller(config)
+    reasoner = distiller_module.distiller(config, store=store)
     answer = reasoner("Reply with exactly the two letters: OK")
     return {"answered": bool(answer and answer.strip()), "answer": answer[:200]}
 
@@ -339,7 +339,7 @@ def _live_reasoner_check(store: Store, host: str, operation: str) -> Check:
             operation,
             source_host=host if operation == selection.WRITE else "",
         )
-        reasoner = distiller(executor)
+        reasoner = distiller(executor, store=store)
         if isinstance(reasoner, HostReasoner):
             reasoner.host.spec = dataclasses.replace(
                 reasoner.host.spec,

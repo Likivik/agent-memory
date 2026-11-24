@@ -346,6 +346,15 @@ def _parser() -> argparse.ArgumentParser:
     )
     replayer.set_defaults(handler=_replay)
 
+    spender = subcommand("spend", help="show spend usage; release stale reservations")
+    spender.add_argument(
+        "--clear-stale",
+        type=float,
+        default=0.0,
+        metavar="HOURS",
+        help="net out run reservations older than HOURS",
+    )
+    spender.set_defaults(handler=_spend)
     feeder = subcommand("feed", help="score the backlog; plan-only unless --execute")
     feeder.add_argument(
         "--execute",
@@ -471,6 +480,9 @@ def _parser() -> argparse.ArgumentParser:
     installer.add_argument("--model", default=None)
     installer.add_argument(
         "--endpoint", default=None, help="model endpoint/base URL for the reasoner"
+    )
+    installer.add_argument(
+        "--key-env", default=None, help="env var name holding the endpoint API key"
     )
     installer.add_argument("--mcp", action="store_true", help="also configure the stdio MCP server")
     installer.add_argument(
@@ -655,7 +667,7 @@ def _distill_job(store: Store, args: argparse.Namespace) -> dict[str, object]:
     payload = write_run.run_job(
         store,
         args.job,
-        distiller.distiller(executor),
+        distiller.distiller(executor, store=store),
         owner=_owner(args.source_host),
         transport=_transport(executor),
     )
@@ -669,7 +681,7 @@ def _distill_drain(store: Store, args: argparse.Namespace) -> dict[str, object]:
     payload: dict[str, object] = {
         "drained": write_run.drain(
             store,
-            distiller.distiller(executor),
+            distiller.distiller(executor, store=store),
             owner=_owner(args.source_host),
             transport=_transport(executor),
             limit=args.max,
@@ -868,13 +880,27 @@ def _replay(store: Store, args: argparse.Namespace) -> dict[str, object]:
     }
 
 
+def _spend(store: Store, args: argparse.Namespace) -> dict[str, object]:
+    from mnemobun.core import spend
+
+    released = 0
+    if args.clear_stale > 0:
+        released = spend.release_stale(store, hours=args.clear_stale)
+    return {
+        "today": spend.usage(store, day=True),
+        "month": spend.usage(store, day=False),
+        "open_reservations": spend.open_reservations(store),
+        "released": released,
+    }
+
+
 def _feed(store: Store, args: argparse.Namespace) -> dict[str, object]:
     from mnemobun.adapters import feed as feed_module
 
     if not args.execute:
         return feed_module.run(store, ask=None).as_dict()
     executor = _executor(store, args, selection.WRITE)
-    return feed_module.run(store, ask=distiller.distiller(executor)).as_dict()
+    return feed_module.run(store, ask=distiller.distiller(executor, store=store)).as_dict()
 
 
 def _sleep(store: Store, args: argparse.Namespace) -> dict[str, object]:
@@ -893,7 +919,7 @@ def _sleep(store: Store, args: argparse.Namespace) -> dict[str, object]:
         model = executor.host_model if executor.reasoner == REASON_HOST else executor.model
         return auto_dream.run_due(
             store,
-            distiller.distiller(executor),
+            distiller.distiller(executor, store=store),
             reasoner_kind=executor.reasoner,
             host=executor.host if executor.reasoner == REASON_HOST else "",
             model=model,
@@ -935,7 +961,8 @@ def _reasoner(
 ) -> Reasoner | None:
     if args.reason == REASON_NONE:
         return None
-    return distiller.distiller(_executor(store, args, operation, source_host=source_host))
+    executor = _executor(store, args, operation, source_host=source_host)
+    return distiller.distiller(executor, store=store)
 
 
 def _executor(
@@ -994,10 +1021,9 @@ def _setup(store: Store, args: argparse.Namespace) -> dict[str, object]:
     if getattr(args, "model", None):
         payload["model"] = args.model
     if getattr(args, "endpoint", None):
-        brain = store.config.executor
-        brain.reasoner = "endpoint"
-        brain.endpoint = args.endpoint
-        store.config.save(store.root)
+        payload["endpoint"] = args.endpoint
+    if getattr(args, "key_env", None):
+        payload["key_env"] = args.key_env
     settings = apply_settings(store, payload, actor="cli") if payload else effective_settings(store)
     return {
         "status": "READY",

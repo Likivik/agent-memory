@@ -76,6 +76,41 @@ def test_record_call_refuses_past_run_and_day_caps(tmp_path):
         spend.record_call(store, run_id="r2", prompt_chars=1000)
 
 
+def test_the_run_cap_counts_real_calls_not_the_reservation(tmp_path):
+    """Regression 2026-11-24: a 1-call reservation must not eat the run's cap."""
+    store = _store(tmp_path)
+    store.config.budget.max_calls_per_run = 2
+    store.config.save(store.root)
+    projection = spend.project(chars=400, calls=1, config=store.config)
+    spend.guard_run(store, projection, run_id="r", actor="feed")
+    spend.record_call(store, run_id="r", prompt_chars=400)
+    spend.record_call(store, run_id="r", prompt_chars=400)  # both fit: cap is 2
+
+
+def test_run_scope_attributes_calls_and_nets_the_reservation(tmp_path):
+    store = _store(tmp_path)
+    projection = spend.project(chars=400, calls=1, config=store.config)
+    with spend.run_scope(store, projection=projection, run_id="r", actor="feed"):
+        spend.record_call(store, prompt_chars=400)  # run_id from the scope
+    today = spend.usage(store, day=True)
+    assert today["calls"] == 1.0
+    assert today["in_tokens"] == 100.0
+
+
+def test_stale_reservations_are_listed_and_released_explicitly(tmp_path):
+
+    store = _store(tmp_path)
+    projection = spend.project(chars=400, calls=1, config=store.config)
+    spend.guard_run(store, projection, run_id="crashed", actor="feed")
+    assert spend.open_reservations(store) == [
+        {"run_id": "crashed", "at": spend.open_reservations(store)[0]["at"],
+         "calls": 1.0, "in_tokens": 100.0}
+    ]
+    assert spend.release_stale(store, hours=0.0) == 1
+    assert spend.open_reservations(store) == []
+    assert spend.usage(store, day=True)["in_tokens"] == 0.0
+
+
 def test_estimated_calls_scales_with_backlog(tmp_path):
     store = _store(tmp_path)
     config = store.config

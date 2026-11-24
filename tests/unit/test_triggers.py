@@ -71,7 +71,8 @@ def test_an_idle_session_becomes_due_after_the_configured_silence(store):
 
 def _stub_executor(monkeypatch, reply):
     monkeypatch.setattr(
-        "mnemobun.executor.distiller.distiller", lambda config: lambda prompt: reply
+        "mnemobun.executor.distiller.distiller",
+        lambda config, **_kwargs: lambda prompt: reply,
     )
 
 
@@ -103,7 +104,7 @@ def test_cross_host_write_keeps_source_session_provenance(store, monkeypatch, ca
     store.config.save(store.root)
     selected = []
 
-    def chosen(config):
+    def chosen(config, **_kwargs):
         selected.append(config)
         return lambda _prompt: _spec("deploy day", "Deploys happen on Fridays", "0")
 
@@ -138,7 +139,7 @@ def test_a_reasoner_failure_is_reported_and_leaves_the_backlog_unsettled(
         raise ReasonerUnavailableError("host reasoner failed")
 
     monkeypatch.setattr(
-        "mnemobun.executor.distiller.distiller", lambda _config: unavailable
+        "mnemobun.executor.distiller.distiller", lambda _config, **_kw: unavailable
     )
 
     code = main(

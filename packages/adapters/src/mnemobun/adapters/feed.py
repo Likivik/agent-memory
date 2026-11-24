@@ -183,17 +183,23 @@ def run(
             projection=projection.as_dict(),
         )
 
-    def counted(prompt: str) -> str:
-        spend.record_call(store, run_id=run_id, prompt_chars=len(prompt))
-        return ask(prompt)
-
     written = 0
     try:
-        for session, backlog in pending.items():
-            report = distill(store, session, messages_for(backlog), counted)
-            written += sum(len(batch.written) for batch in report.batches)
-    finally:
-        spend.finish_run(store, run_id=run_id, projection=projection)
+        with spend.run_scope(store, projection=projection, run_id=run_id, actor="feed"):
+            for session, backlog in pending.items():
+                report = distill(store, session, messages_for(backlog), ask)
+                written += sum(len(batch.written) for batch in report.batches)
+    except spend.SpendRefused as error:
+        return FeedReport(
+            fired=True,
+            signal=signal,
+            quiet_seconds=quiet,
+            backlog_turns=backlog_turns,
+            backlog_tokens=backlog_tokens,
+            sessions=tuple(pending),
+            reason=str(error),
+            projection=projection.as_dict(),
+        )
     return FeedReport(
         fired=True,
         signal=signal,

@@ -323,7 +323,7 @@ def test_sleep_if_due_runs_t0_t1_and_records_the_actual_manage_reasoner(
     )
     selected = []
 
-    def reasoner(config):
+    def reasoner(config, **_kwargs):
         selected.append(config)
         return lambda _prompt: json.dumps({"proposal": proposal.id, "verdict": "reject"})
 
@@ -370,7 +370,7 @@ def test_sleep_if_due_reasoner_failure_is_persisted_without_a_report(
         raise ReasonerUnavailableError("configured Codex unavailable")
 
     monkeypatch.setattr(
-        "mnemobun.executor.distiller.distiller", lambda _config: unavailable
+        "mnemobun.executor.distiller.distiller", lambda _config, **_kw: unavailable
     )
 
     assert (
@@ -447,7 +447,7 @@ def test_hook_distill_checks_dream_only_after_watermark_settles(
     observed = []
 
     monkeypatch.setattr(
-        "mnemobun.executor.distiller.distiller", lambda _config: lambda _prompt: "{}"
+        "mnemobun.executor.distiller.distiller", lambda _config, **_kw: lambda _prompt: "{}"
     )
     monkeypatch.setattr(
         auto_dream,
@@ -492,7 +492,7 @@ def test_hook_distill_uses_manage_host_instead_of_source_host(store, monkeypatch
     launched = {}
     monkeypatch.setattr(
         "mnemobun.executor.distiller.distiller",
-        lambda _config: lambda _prompt: json.dumps(
+        lambda _config, **_kw: lambda _prompt: json.dumps(
             {
                 "type": "fact",
                 "fields": {"project": "queue", "subject": "colour"},

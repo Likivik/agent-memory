@@ -57,6 +57,24 @@ def test_one_writer_all_actors_produce_identical_state(tmp_path):
         assert route_for(reloaded).label() == f"m1 (source: {actor})"
 
 
+def test_endpoint_and_key_env_are_settings_not_side_channels(tmp_path):
+    from mnemobun.core.config import Config
+    from mnemobun.core.settings import apply_settings, effective_settings
+    from mnemobun.core.store import Store
+
+    store = Store(tmp_path / "s", config=Config.default(), agent="t")
+    store.init()
+    apply_settings(
+        store,
+        {"endpoint": "https://api.example.test/v1", "key_env": "MY_KEY"},
+        actor="gui",
+    )
+    settings = effective_settings(store)
+    assert settings["endpoint"] == "https://api.example.test/v1"
+    assert settings["key_env"] == "MY_KEY"
+    assert store.config.executor.reasoner == "endpoint"
+
+
 def test_apply_settings_validates(tmp_path):
     store = _store(tmp_path)
     with pytest.raises(ValueError):

@@ -218,6 +218,7 @@ class ExecutorConfig:
     host_allow_data_training: bool = False
     host_model: str = ""
     model: str = ""  # no silent default (user ruling 2026-11-24)
+    key_env: str = ""  # env var name holding the endpoint API key
     model_source: str = "unset"  # chat | cli | gui | unset
     endpoint: str = ""
     project: str = ""
