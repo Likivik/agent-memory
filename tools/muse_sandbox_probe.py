@@ -137,7 +137,7 @@ def main() -> int:
             "XDG_DATA_HOME": str(data_home),
             "MUSE_AUTH_PATH": str(staged_auth),
             "MUSE_NO_AUTO_UPDATE": "1",
-            "AGENT_MEMORY_STORE": str(store_root),
+            "MNEMOBUN_STORE": str(store_root),
         }
 
         version = _run([str(muse), "--version"], environment, workspace)
@@ -164,7 +164,7 @@ def main() -> int:
                 "transport": "stdio",
                 "command": str(mem_mcp),
                 "args": [],
-                "env": {"AGENT_MEMORY_STORE": str(store_root)},
+                "env": {"MNEMOBUN_STORE": str(store_root)},
                 "mode": "required",
             }
         }

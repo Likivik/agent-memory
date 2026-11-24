@@ -28,7 +28,7 @@ Status: DECIDED 2026-11-21. Target: latest **released** Hermes (API read from th
 | # | Question | Decision |
 |---|---|---|
 | D1 | How does the plugin import our engine on a read-only Nix Hermes? | Vendor: the plugin dir carries `lib/` with the built `mnemobun` packages (core + adapters + executor + mcp wheels' payloads); `__init__.py` prepends `lib` to `sys.path` before importing. No Hermes source patches, no Nix env changes. Upgrade = re-copy `lib/`. |
-| D2 | Where is the store? | Plugin config field `store_path` (via `get_config_schema`/`read_config_fields`), default `~/.hermes/mnemobun-store`; the seeded store is copied/moved there at activation. `AGENT_MEMORY_STORE` env still honoured (config wins). |
+| D2 | Where is the store? | Plugin config field `store_path` (via `get_config_schema`/`read_config_fields`), default `~/.hermes/mnemobun-store`; the seeded store is copied/moved there at activation. `MNEMOBUN_STORE` env still honoured (config wins). |
 | D3 | Verify labeler | v1: `labeler=None` → `memory_verify` returns evidence + `abstain` (honest, zero deps). Upgrade path (P7): executor endpoint reasoner configured in plugin config; NO host-subprocess reasoner in v1 (fresh-AIAgent-per-message makes nested `hermes chat` calls fragile). |
 | D4 | Dream trigger | `ctx.register_idle_task("dream", fn, interval_hours=24, min_idle_hours=1, first_run="defer")` (verified in this build: `hermes_cli/plugins_idle_tasks.py`) — runs when the host has been idle ≥1h AND 24h passed AND the cross-process claim is free; `fn` checks `Manage.due(sessions_since)` then runs sleep with `reasoner=None` (deterministic half). Polled by gateway housekeeping + CLI/TUI + serve — no cron plumbing. Exceptions logged, never raised. Session-end and cron NOT used. Reasoner rulings: upgrade path via `ctx.llm` (same idle task), deferred to P7. |
 | D5 | sync_turn policy | Raw event per turn (as built), `session:<id>` provenance marker, salience filter skipped (v1 keeps everything — the store's dedup handles noise; salience was a graphiti-specific graph-size concern). |
@@ -94,7 +94,7 @@ by the session's turns. Soak: 3 days of real sessions, then the P9 import decisi
   cached at module level (multiplexing contract) — bound on the instance only.
 - **Two writers** (gateway + CLI `mem`): store_lock already serialises; the plugin never bypasses it.
 - **fastembed model download on first query**: model already cached on this host from the backfill;
-  `AGENT_MEMORY_OFFLINE=1` set in the plugin env to guarantee no surprise network at query time.
+  `MNEMOBUN_OFFLINE=1` set in the plugin env to guarantee no surprise network at query time.
 
 ## Out of scope
 

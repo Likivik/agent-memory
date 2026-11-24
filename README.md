@@ -79,7 +79,7 @@ matched, and an outline computed at read time.
 ## The store
 
 ```
-$AGENT_MEMORY_STORE/
+$MNEMOBUN_STORE/
 ├── MEMORY.md              root index, one line per memory — the only resident injection
 ├── config.toml            every tunable; an unknown knob is refused at load
 ├── schemas/               one file per type: its key fields, the field it groups by, write mode
@@ -160,7 +160,7 @@ export PATH="$PWD/.venv/bin:$PATH"
 mem init
 ```
 
-The store defaults to `~/agent-memory-store`; export `AGENT_MEMORY_STORE` only to put it
+The store defaults to `~/agent-memory-store`; export `MNEMOBUN_STORE` only to put it
 somewhere else, and export it everywhere your agents run, not just in this shell.
 
 Write one memory, find it again, then throw the index away and prove nothing was lost:
@@ -191,7 +191,7 @@ conflicting setting fails closed instead of being replaced.
 Use a non-default Store in the usual way; setup pins its absolute path into every installed hook:
 
 ```bash
-AGENT_MEMORY_STORE=/absolute/path/to/store mem setup --host codex
+MNEMOBUN_STORE=/absolute/path/to/store mem setup --host codex
 ```
 
 Run the same checks later, or get a precise failure layer after setup fails:
@@ -458,7 +458,7 @@ or run doctor if the proxy is no longer reachable. Use `--mcp` to merge the MCP 
 mem setup --host muse-code --provider openrouter --mcp
 ```
 
-Muse native memory and agent-memory's `AGENT_MEMORY_STORE` are separate systems. Setup does not
+Muse native memory and agent-memory's `MNEMOBUN_STORE` are separate systems. Setup does not
 read, write, copy, or synchronize Muse native memory. For attributable experiments, use a clean
 workspace with no `.agents/memory` content and isolated `HOME`, `XDG_CONFIG_HOME`, and
 `XDG_DATA_HOME`; the included `tools/muse_sandbox_probe.py` does this while reusing only the
@@ -473,7 +473,7 @@ The experiment adapter keeps the sandbox enabled and roots its temporary Store a
 one explicit experiment workspace. It never adds `--yolo` or `--disable-sandbox`.
 
 ```bash
-AGENT_MEMORY_LIVE_MUSE=1 uv run python tools/muse_sandbox_probe.py
+MNEMOBUN_LIVE_MUSE=1 uv run python tools/muse_sandbox_probe.py
 ```
 
 Start with the three ordered portability mechanics before a full four-host matrix:
@@ -490,7 +490,7 @@ verified on a machine with Muse Code installed and authenticated. Muse 1.4.3 doe
 exact `run.toolset` MCP selection required by native Write mode. Muse 1.4.9 plus OpenRouter emits
 Responses namespace calls as a namespace and child name while Muse dispatches canonical flat MCP
 ids; native Write bridges that local pproxy transport for the duration of the run. The live matrix
-is opt-in with `AGENT_MEMORY_LIVE_MUSE_NATIVE=1`, selects Muse through the default `auto` posture,
+is opt-in with `MNEMOBUN_LIVE_MUSE_NATIVE=1`, selects Muse through the default `auto` posture,
 and covers New, Recall/Read/Supersede, Skip, and tool-error observation. Lifecycle hooks and
 SessionStart injection do not depend on native Write.
 Echo or mocked providers do not count as live E2E evidence.
@@ -546,7 +546,7 @@ BM25 is the low-latency baseline retrieval path. Install `agent-memory-core[vect
 in the store's `[index]` configuration. `vector_model` defaults to
 `BAAI/bge-small-en-v1.5`. The first enabled Store loads FastEmbed/ONNX and may
 need network access to download the model; disabled stores never load FastEmbed.
-Set `AGENT_MEMORY_OFFLINE=1` to load strictly from the FastEmbed cache
+Set `MNEMOBUN_OFFLINE=1` to load strictly from the FastEmbed cache
 (`FASTEMBED_CACHE_PATH`, default `~/.cache/fastembed_cache` on most systems) —
 useful for air-gapped hosts or caches populated from a mirror.
 

@@ -51,9 +51,9 @@
   Windows runs, 2026-10-22; one Linux run submitted Skip, 2026-11-09). Decide whether a
   no-submission answer should count as Skip; until then it stays a failure.
 - Keep the authenticated Claude Code native matrix in the release checks:
-  `AGENT_MEMORY_LIVE_CLAUDE_NATIVE=1 uv run pytest -q tests/system/test_live_claude_native_write.py
+  `MNEMOBUN_LIVE_CLAUDE_NATIVE=1 uv run pytest -q tests/system/test_live_claude_native_write.py
   tests/system/test_live_claude_native_manage.py` (model override:
-  `AGENT_MEMORY_LIVE_CLAUDE_MODEL`).
+  `MNEMOBUN_LIVE_CLAUDE_MODEL`).
 - Claude executor runs (Write and Manage) still load Claude's settings sources and instruction
   files and persist a session transcript. Decide whether `--setting-sources` and
   `--no-session-persistence` can tighten that without losing OAuth.
@@ -67,7 +67,7 @@
 
 - Muse Code 1.4.9 passed the OpenRouter/pproxy native Write matrix on 2026-10-16: New,
   Recall/Read/Supersede, Skip, tool-error observation, Store/Provenance, and Watermark. The live
-  test is `AGENT_MEMORY_LIVE_MUSE_NATIVE=1 uv run pytest -q
+  test is `MNEMOBUN_LIVE_MUSE_NATIVE=1 uv run pytest -q
   tests/system/test_live_muse_native_write.py`. Keep this opt-in credentialed check in the release
   matrix; ordinary CI covers the same MCP/Store chain with the deterministic Host.
 - Run Muse-to-Muse, Muse-to-Codex, and Codex-to-Muse portability smoke before the full four-host
