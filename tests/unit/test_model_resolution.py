@@ -115,10 +115,20 @@ def test_apply_settings_validates(tmp_path):
     with pytest.raises(ValueError):
         apply_settings(store, {"telepathy": "x"}, actor="gui")
     with pytest.raises(ValueError):
-        apply_settings(store, {"model": "  "}, actor="gui")
-    with pytest.raises(ValueError):
         apply_settings(store, {"max_calls_per_run": -1}, actor="gui")
+    with pytest.raises(ValueError):
+        apply_settings(store, {"max_calls_per_run": "abc"}, actor="gui")
     assert effective_settings(store)["model"] == ""
+
+
+def test_apply_settings_clears_on_an_explicit_empty_value(tmp_path):
+    store = _store(tmp_path)
+    apply_settings(store, {"model": "m1"}, actor="gui")
+    assert effective_settings(store)["model"] == "m1"
+    apply_settings(store, {"model": "  "}, actor="gui")
+    cleared = effective_settings(store)
+    assert cleared["model"] == ""
+    assert cleared["model_source"] == "unset"
 
 
 def test_audit_records_change_and_actor(tmp_path):

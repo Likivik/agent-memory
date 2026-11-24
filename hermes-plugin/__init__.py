@@ -109,9 +109,9 @@ class AgentMemoryHermesProvider(_HOST_BASE):
         self._hermes_home = kwargs.get("hermes_home")  # type: ignore[assignment]
         return self.is_available()
 
-    def _ensure_store(self) -> bool:
+    def _ensure_store(self, hermes_home: str | None = None) -> bool:
         try:
-            return self._ensure_store_inner()
+            return self._ensure_store_inner(hermes_home)
         except Exception as error:
             import logging
 
@@ -123,10 +123,10 @@ class AgentMemoryHermesProvider(_HOST_BASE):
                 return False
             raise
 
-    def _ensure_store_inner(self) -> bool:
+    def _ensure_store_inner(self, hermes_home: str | None = None) -> bool:
         if self._store is not None:
             return True
-        path = self._resolve_store_path(self._hermes_home)
+        path = self._resolve_store_path(hermes_home or self._hermes_home)
         if not path.exists():
             self._unavailable = f"store not found: {path}"
             return False
@@ -250,9 +250,14 @@ class AgentMemoryHermesProvider(_HOST_BASE):
         with contextlib.suppress(Exception):
             current = json.loads(path.read_text(encoding="utf-8"))
         current.update({k: v for k, v in values.items() if k in {"store_path"}})
-        path.write_text(json.dumps(current, indent=2), encoding="utf-8")
-        settings = {k: v for k, v in values.items() if k in SETTINGS_KEYS and v not in (None, "")}
-        if settings and self._ensure_store():
+        try:
+            path.write_text(json.dumps(current, indent=2), encoding="utf-8")
+        except OSError as error:
+            raise ValueError(f"cannot write {path}: {error.strerror}") from error
+        settings = {k: ("" if v is None else v) for k, v in values.items() if k in SETTINGS_KEYS}
+        if settings:
+            if not self._ensure_store(hermes_home):
+                raise ValueError(self._unavailable or "store not found")
             apply_settings(self._store, settings, actor="gui")
 
     def read_config_fields(self, hermes_home: str) -> dict:
@@ -263,7 +268,7 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             fields.update({k: v for k, v in raw.items() if k in {"store_path"}})
         except Exception:
             pass
-        if self._ensure_store():
+        if self._ensure_store(hermes_home):
             fields.update(effective_settings(self._store))
         placeholders: dict = {}
         if not fields.get("model"):
@@ -290,6 +295,22 @@ class AgentMemoryHermesProvider(_HOST_BASE):
         if report.get("skipped"):
             return None
         return "deterministic sleep ran (proposals queued, none ruled)"
+
+    def feed_tick(self, run) -> str | None:
+        """Called by the registered idle task. Feed when the trigger fires (D4).
+
+        ``run`` is the host's IdleTaskRun (kept for signature parity with
+        ``dream_tick``; feed keeps its own internal watermark).
+        """
+        if not self._ensure_store():
+            return None
+        report = self._provider().feed_tick()
+        if report.get("needs_model"):
+            return None
+        written = int(report.get("written") or 0)
+        if written:
+            return f"feed extracted {written} new record(s)"
+        return None
 
 
 def _default_home() -> Path:

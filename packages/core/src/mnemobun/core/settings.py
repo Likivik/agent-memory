@@ -34,12 +34,10 @@ def apply_settings(store: Store, payload: dict[str, object], *, actor: str) -> d
         value = payload.get(key)
         if value is None:
             continue
-        text = str(value).strip()
-        if not text:
-            raise ValueError(f"{key} must be a non-empty string")
+        text = str(value).strip()  # an explicit empty value clears (brain reads "" as unset)
         if key == "model":
             if brain.model != text:  # idempotent re-assert is a no-op
-                brain.model_source = actor
+                brain.model_source = actor if text else "unset"
             brain.model = text
         else:
             getattr(brain, "write" if key == "distill_model" else "manage").model = text
@@ -47,11 +45,10 @@ def apply_settings(store: Store, payload: dict[str, object], *, actor: str) -> d
         value = payload.get(key)
         if value is None:
             continue
-        text = str(value).strip()
-        if not text:
-            raise ValueError(f"{key} must be a non-empty string")
+        text = str(value).strip()  # an explicit empty value clears
         if key == "endpoint":
-            brain.reasoner = "endpoint"
+            if text:
+                brain.reasoner = "endpoint"
             brain.endpoint = text
         else:
             brain.key_env = text
@@ -59,8 +56,12 @@ def apply_settings(store: Store, payload: dict[str, object], *, actor: str) -> d
         value = payload.get(key)
         if value is None:
             continue
+        text = str(value).strip()
+        if not text:  # an explicit empty value resets the cap to its default
+            setattr(store.config.budget, key, getattr(type(store.config.budget)(), key))
+            continue
         try:
-            number = float(str(value))
+            number = float(text)
         except ValueError as error:
             raise ValueError(f"{key} must be a number") from error
         if number <= 0:
