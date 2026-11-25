@@ -50,9 +50,11 @@ The mechanism already exists; it needs one new proposal kind.
 
 - `core/access_log.py` records citations → salience is counted, not guessed.
 - `core/dream.py` runs offline and emits docket proposals; add `pin` and `unpin`.
-  - `pin`: a claim cited ≥ N times across ≥ M sessions, or a user correction that repeats.
-  - `unpin`: the least-cited pinned claim when the block is at budget, or a pinned claim whose
-    standing became `contradicted` / `superseded`.
+  - `pin`: a claim cited ≥ `pin_min_citations` times across ≥ `pin_min_queries` distinct queries
+    (the access log has no session column; distinct queries is the honest proxy), or a user
+    correction that repeats.
+  - `unpin`: a pinned claim whose standing became `contested` / `superseded`, or — when the block
+    overflows — the least-cited pinned claim.
 - `core/docket.py` applies them only after a ruling. Nothing self-pins; a model may draft, never
   decide.
 - **Deltas only.** ACE (arXiv 2510.04618, ICLR 2026) shows monolithic context rewriting collapses
@@ -144,9 +146,10 @@ deserves its own soak test before it is trusted.
 
 ## Not wired yet
 
-`adapters/pin_channel.py` is a registry with a digest test; only Hermes delivers today (through
-`system_prompt_block()`). Claude Code, Codex and Muse have their channels declared and no production
-caller. Wiring them is the next increment, not a claim this note can make.
+`adapters/pin_channel.py` is a registry with a digest test. Hermes delivers through
+`system_prompt_block()`; Claude Code, Codex and Muse deliver through `pin_channel.sync(store, host,
+path)`, which renders and splices the block into their prompt file. The executor does not call
+`sync()` yet — that hook is the remaining increment.
 
 ## Open questions
 

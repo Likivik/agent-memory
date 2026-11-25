@@ -47,3 +47,39 @@ def test_contested_pin_raises_an_unpin_proposal(store):
     set_standing(store, "rule-one", "contested", cause="test", force=True)
 
     assert (PROPOSAL_UNPIN, "rule-one") in _kinds(store, {})
+
+
+def _cite(store, name: str, queries: list[str]) -> None:
+    from mnemobun.core.access_log import KIND_RECALL, AccessEntry, AccessLog
+
+    entries = [AccessEntry(at="2026-01-15T09:00:00+00:00", name=name, query=q, kind=KIND_RECALL,
+                           agent="test") for q in queries]
+    with store._database.connect() as connection:  # noqa: SLF001 - the log has no public door
+        AccessLog(connection).append(entries)
+
+
+def test_one_query_repeated_does_not_propose_a_pin(store):
+    _claim(store, "rule-one", "approved tooling is podman")
+    store.config.manage.pin_min_queries = 3
+    _cite(store, "rule-one", ["same question"] * 9)
+
+    assert not [p for p in Docket(store).proposals() if p.kind == PROPOSAL_PIN]
+
+
+def test_many_distinct_queries_do_propose_a_pin(store):
+    _claim(store, "rule-one", "approved tooling is podman")
+    store.config.manage.pin_min_queries = 3
+    _cite(store, "rule-one", ["q1", "q2", "q3", "q4"])
+
+    assert [p for p in Docket(store).proposals() if p.kind == PROPOSAL_PIN]
+
+
+def test_full_block_proposes_unpinning_the_least_cited_rule(store):
+    for name in ("rule-often", "rule-rarely"):
+        _claim(store, name, f"{name} text long enough to matter")
+        Docket(store).pin(name)
+    store.config.recall.pinned_max_bytes = 90  # shrink after pinning: the block now overflows
+    with_block = [p for p in Docket(store).proposals(hits={"rule-often": 9, "rule-rarely": 1})
+                  if p.kind == PROPOSAL_UNPIN]
+
+    assert with_block and with_block[0].targets[0] == "rule-rarely"

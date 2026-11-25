@@ -160,3 +160,14 @@ def recorded(state_dir: pathlib.Path) -> dict[str, str]:
         return {str(k): str(v) for k, v in json.loads(path.read_text(encoding="utf-8")).items()}
     except ValueError:
         return {}
+
+
+def sync(store, host: str, target: pathlib.Path) -> Delivery:
+    """Render the block and deliver it to a host's prompt file. One call per host per run."""
+    from mnemobun.core import pinned as pinned_rules
+
+    channel_ = channel(host)
+    block = pinned_rules.render(store)
+    if not block:
+        return Delivery(host=host, digest=digest_of(""), wrote=False, degraded=channel_.degraded)
+    return deliver(channel_, block, target=target, state_dir=store.layout.state_dir)

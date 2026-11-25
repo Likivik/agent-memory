@@ -162,12 +162,14 @@ class Docket:
         inspected = self._store.records() if records is None else records
         if hits is not None:
             counts = hits
+            spread = dict(hits)  # a caller supplying hits stands in for distinct queries
         else:
             from .access_log import AccessLog
 
             with self._database.connect() as connection:
                 log = AccessLog(connection)
                 counts = log.counts()
+                spread = log.queries_per_name()
 
         decided = self._ledger().decided()
         drafted: list[Proposal] = []
@@ -175,8 +177,8 @@ class Docket:
         drafted.extend(self._propose_splits(inspected))
         drafted.extend(self._propose_abstract_review(inspected))
         drafted.extend(self._propose_deletions(inspected, counts))
-        drafted.extend(self._propose_pins(inspected, counts))
-        drafted.extend(self._propose_unpins(inspected))
+        drafted.extend(self._propose_pins(inspected, counts, spread))
+        drafted.extend(self._propose_unpins(inspected, counts))
         drafted.extend(self._propose_standing_accepts(inspected))
         drafted.extend(self._propose_conflict_reviews(inspected))
         return [proposal for proposal in drafted if proposal.id not in decided]
@@ -266,9 +268,12 @@ class Docket:
         pinned.set_pinned(self._store, name, pinned=False)
         return f"unpinned {name}"
 
-    def _propose_pins(self, records: list[MemoryRecord], counts: dict[str, int]) -> list[Proposal]:
+    def _propose_pins(
+        self, records: list[MemoryRecord], counts: dict[str, int], spread: dict[str, int]
+    ) -> list[Proposal]:
         """A claim the agent keeps citing is a candidate for always-on delivery. Deterministic."""
-        threshold = self._store.config.manage.pin_min_citations
+        manage = self._store.config.manage
+        threshold = manage.pin_min_citations
         out: list[Proposal] = []
         for record in sorted(records, key=lambda item: item.name):
             if record.type not in PINNED_TYPES or pinned.is_pinned(record):
@@ -276,21 +281,24 @@ class Docket:
             if record.standing not in (STANDING_ACCEPTED, STANDING_PROPOSED):
                 continue
             cited = counts.get(record.name, 0)
-            if cited < threshold:
+            queries = spread.get(record.name, 0)
+            if cited < threshold or queries < manage.pin_min_queries:
                 continue
             out.append(
                 Proposal(
                     kind=PROPOSAL_PIN,
                     targets=(record.name,),
-                    reason=f"cited {cited} times, threshold {threshold}",
+                    reason=f"cited {cited} times across {queries} queries",
                     evidence=record.abstract,
                 )
             )
         return out
 
-    def _propose_unpins(self, records: list[MemoryRecord]) -> list[Proposal]:
+    def _propose_unpins(
+        self, records: list[MemoryRecord], counts: dict[str, int] | None = None
+    ) -> list[Proposal]:
         """A pinned rule that lost its standing stops being always-on."""
-        return [
+        out = [
             Proposal(
                 kind=PROPOSAL_UNPIN,
                 targets=(record.name,),
@@ -300,6 +308,22 @@ class Docket:
             for record in sorted(records, key=lambda item: item.name)
             if pinned.is_pinned(record) and record.standing in PINNED_REFUSED_STANDING
         ]
+        if out:
+            return out
+        block = pinned.block(self._store)
+        if not block.omitted or not counts:
+            return out
+        pinned_names = sorted(
+            (record.name for record in records if pinned.is_pinned(record)),
+            key=lambda name: (counts.get(name, 0), name),
+        )
+        return [
+            Proposal(
+                kind=PROPOSAL_UNPIN,
+                targets=(pinned_names[0],),
+                reason=f"block full at {self._store.config.recall.pinned_max_bytes} bytes",
+            )
+        ] if pinned_names else out
 
     def _accept_standing(self, proposal: Proposal) -> str:
         """Deterministic apply: the reasoner only chose the docket item."""

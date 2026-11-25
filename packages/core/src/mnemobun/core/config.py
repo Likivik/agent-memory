@@ -134,6 +134,7 @@ class RecallConfig:
 @dataclasses.dataclass
 class ManageConfig:
     pin_min_citations: int = 3
+    pin_min_queries: int = 2  # distinct queries that cited the claim
     max_pins_per_sleep: int = 2
     max_unpins_per_sleep: int = 2  # a claim cited this often is worth a pin ruling
     auto_dream: bool = True

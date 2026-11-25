@@ -44,6 +44,13 @@ class AccessLog:
             ).fetchall()
         return {row["name"]: int(row["hits"]) for row in rows}
 
+    def queries_per_name(self) -> dict[str, int]:
+        """Distinct queries that cited each record: a proxy for independent sessions."""
+        rows = self._connection.execute(
+            "SELECT name, COUNT(DISTINCT query) AS queries FROM access_log GROUP BY name"
+        ).fetchall()
+        return {str(row["name"]): int(row["queries"]) for row in rows}
+
     def last_access(self) -> dict[str, str]:
         rows = self._connection.execute(
             "SELECT name, MAX(at) AS last FROM access_log GROUP BY name"

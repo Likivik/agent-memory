@@ -109,3 +109,18 @@ def test_reversed_markers_do_not_corrupt_the_file(tmp_path):
     text = target.read_text()
     assert "oops" in text
     assert text.count(BLOCK) == 1
+
+
+def test_sync_writes_the_block_into_a_host_file(store, tmp_path):
+    from mnemobun.core import pinned
+
+    store.record(name="rule-one", abstract="never prune without approval", type="claim")
+    pinned.set_pinned(store, "rule-one", pinned=True)
+    target = tmp_path / "AGENTS.md"
+    target.write_text("# project\n")
+
+    delivery = pin_channel.sync(store, "codex", target)
+
+    assert delivery.wrote is True
+    assert "never prune without approval" in target.read_text()
+    assert target.read_text().startswith("# project")
