@@ -42,7 +42,11 @@ def _home_with_store(plugin_module, tmp_path):
 
 
 def _flat_provider(plugin_module, tmp_path, monkeypatch=None, menu=None, effective=None):
-    """Provider bound to a temp home/store with the host surfaces stubbed."""
+    """Provider bound to a temp home/store with the host surfaces stubbed.
+
+    ``menu`` is a list of (label, model-id) pairs, exactly as the host menu
+    hands them over.
+    """
     provider = plugin_module.AgentMemoryHermesProvider()
     provider._hermes_home = str(tmp_path)
     provider._store_path = str(tmp_path / "store")
@@ -65,24 +69,31 @@ def test_the_model_field_offers_the_host_menu_with_unset_first(
     plugin_module, tmp_path, monkeypatch
 ):
     provider = _flat_provider(
-        plugin_module, tmp_path, monkeypatch, menu=["alpha", "beta"]
+        plugin_module,
+        tmp_path,
+        monkeypatch,
+        menu=[("Nous Portal \u00b7 alpha", "alpha"), ("OpenRouter \u00b7 beta", "beta")],
     )
 
     model = next(f for f in provider.get_config_schema() if f["key"] == "model")
 
-    assert model["choices"] == ["", "alpha", "beta"]
+    assert model["choices"] == ["", "Nous Portal \u00b7 alpha", "OpenRouter \u00b7 beta"]
 
 
 def test_a_saved_model_outside_the_menu_joins_the_choices(
     plugin_module, tmp_path, monkeypatch
 ):
     provider = _flat_provider(
-        plugin_module, tmp_path, monkeypatch, menu=["alpha"], effective={"model": "custom"}
+        plugin_module,
+        tmp_path,
+        monkeypatch,
+        menu=[("Nous Portal \u00b7 alpha", "alpha")],
+        effective={"model": "custom"},
     )
 
     model = next(f for f in provider.get_config_schema() if f["key"] == "model")
 
-    assert model["choices"] == ["", "alpha", "custom"]
+    assert model["choices"] == ["", "Nous Portal \u00b7 alpha", "custom"]
 
 
 def test_without_a_menu_the_model_field_stays_typed(plugin_module, tmp_path, monkeypatch):
@@ -112,7 +123,10 @@ def test_save_refuses_a_model_the_providers_do_not_offer(
     plugin_module, tmp_path, monkeypatch
 ):
     provider = _flat_provider(
-        plugin_module, tmp_path, monkeypatch, menu=["alpha", "beta"]
+        plugin_module,
+        tmp_path,
+        monkeypatch,
+        menu=[("Nous Portal \u00b7 alpha", "alpha")],
     )
 
     with pytest.raises(ValueError, match="not offered"):
@@ -120,7 +134,9 @@ def test_save_refuses_a_model_the_providers_do_not_offer(
 
 
 def test_save_writes_the_store_and_nothing_else(plugin_module, tmp_path, monkeypatch):
-    provider = _flat_provider(plugin_module, tmp_path, monkeypatch, menu=["alpha"])
+    provider = _flat_provider(
+        plugin_module, tmp_path, monkeypatch, menu=[("Nous Portal \u00b7 alpha", "alpha")]
+    )
     recorded: list = []
     monkeypatch.setattr(
         plugin_module,
@@ -128,7 +144,7 @@ def test_save_writes_the_store_and_nothing_else(plugin_module, tmp_path, monkeyp
         lambda store, payload, actor: recorded.append((payload, actor)),
     )
 
-    provider.save_config({"model": "alpha"}, str(tmp_path))
+    provider.save_config({"model": "Nous Portal \u00b7 alpha"}, str(tmp_path))
 
     assert recorded == [({"model": "alpha"}, "gui")]
     assert not (tmp_path / "mnemobun").exists()  # no mirror file

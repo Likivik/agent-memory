@@ -51,6 +51,7 @@ except Exception:  # pragma: no cover
     _HOST_BASE = object  # type: ignore[assignment]
 
 DEFAULT_STORE_DIRNAME = "mnemobun-store"
+MODEL_LABEL_SEP = " \u00b7 "  # display only: "Provider - model"
 # The host's display reader (web_server_memory._read_memory_provider_existing_values)
 # looks at $HERMES_HOME/<name>/config.json - the mirror lives exactly there.
 CONFIG_DIRNAME = "mnemobun"
@@ -193,9 +194,12 @@ class AgentMemoryHermesProvider(_HOST_BASE):
 
     # -- model suggestions (one read-only probe, cached; never on read) -------
     # -- model menu (a read-only peek at the host's own picker list) ---------
+    # The panel turns every choice into {value: choice}: labels are display
+    # only, so each choice reads "Provider - model" and save_config strips the
+    # label back to the bare id ctx.llm needs.
     @staticmethod
-    def _model_menu() -> list[str]:
-        """Models the host's picker offers; nothing is written anywhere."""
+    def _model_menu() -> list[tuple[str, str]]:
+        """(label, model-id) pairs from the host picker; nothing is written."""
         try:
             from hermes_cli.inventory import (
                 build_model_options_payload,
@@ -205,12 +209,26 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             payload = build_model_options_payload(load_picker_context())
         except Exception:
             return []
-        models: list[str] = []
+        pairs: list[tuple[str, str]] = []
+        seen: set[str] = set()
         for entry in payload.get("providers") or []:
+            name = str(entry.get("name") or entry.get("slug") or "").strip()
             for model in entry.get("models") or []:
-                if model and str(model) not in models:
-                    models.append(str(model))
-        return models
+                value = str(model)
+                label = f"{name}{MODEL_LABEL_SEP}{value}" if name else value
+                if label not in seen:
+                    seen.add(label)
+                    pairs.append((label, value))
+        return pairs
+
+    def _labelled_model(self, model: str) -> str:
+        """The menu label for a saved id (falls back to the bare id)."""
+        if not model:
+            return ""
+        for label, value in self._model_menu():
+            if value == model:
+                return label
+        return model
 
     def _effective(self) -> dict:
         """Effective settings straight from the store - the panel shows these."""
@@ -219,14 +237,20 @@ class AgentMemoryHermesProvider(_HOST_BASE):
         return effective_settings(self._store)
 
     def _model_choices(self) -> list[str]:
-        """'' (unset) + the picker list + a saved value the list lacks."""
+        """'' (unset) + labelled menu entries + a saved value the menu lacks."""
+        menu = self._model_menu()
         choices = [""]
-        for model in self._model_menu():
-            if model not in choices:
-                choices.append(model)
+        for label, _value in menu:
+            if label not in choices:
+                choices.append(label)
         saved = str(self._effective().get("model") or "")
-        if saved and saved not in choices:
-            choices.append(saved)  # never drop a saved model the list lacks
+        if saved:
+            labelled = next((lab for lab, value in menu if value == saved), "")
+            if labelled:
+                if labelled not in choices:
+                    choices.append(labelled)
+            elif saved not in choices:
+                choices.append(saved)  # never drop a saved model the menu lacks
         return choices
 
     def get_config_schema(self) -> list[dict]:
@@ -241,7 +265,7 @@ class AgentMemoryHermesProvider(_HOST_BASE):
                     "Never inherited; empty = deterministic-only"
                 ),
                 "placeholder": "unset - deterministic-only, jobs refuse loudly",
-                "default": str(effective.get("model") or ""),
+                "default": self._labelled_model(str(effective.get("model") or "")),
             },
             {
                 "key": "max_calls_per_run",
@@ -273,13 +297,16 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             for key, value in values.items()
             if key in SETTINGS_KEYS
         }
-        model = str(submitted.get("model") or "").strip()
-        if model:
+        raw_model = str(submitted.get("model") or "").strip()
+        if raw_model:
             menu = self._model_menu()
-            if menu and model not in menu:
+            by_label = dict(menu)
+            known_ids = {value for _label, value in menu}
+            if menu and raw_model not in by_label and raw_model not in known_ids:
                 raise ValueError(
-                    f"model {model!r} is not offered by any configured provider"
+                    f"model {raw_model!r} is not offered by any configured provider"
                 )
+            submitted["model"] = by_label.get(raw_model, raw_model)
         submitted_path = str(values.get("store_path") or "").strip()
         resolved = str(self._resolve_store_path(hermes_home))
         if submitted_path and submitted_path != resolved:
