@@ -11,7 +11,9 @@ import subprocess
 import tempfile
 import tomllib
 
+from mnemobun.core import health as health_events
 from mnemobun.core import prompts, timestamp, write_jobs
+from mnemobun.core.route import resolve_route
 from mnemobun.core.store import Store
 
 from . import moments, openrouter, setup
@@ -190,6 +192,26 @@ def _store_checks(store: Store) -> list[Check]:
         except OSError as error:
             detail = f"{store.root}: {error}"
     checks.append(Check("STORE_WRITABLE" if writable else "STORE_NOT_WRITABLE", writable, detail))
+    summary = health_events.summary(store)
+    counts = summary.get("counts") or {}
+    failures = int(counts.get("capture_failed", 0))
+    checks.append(
+        Check(
+            "CAPTURE_HEALTHY" if failures == 0 else "CAPTURE_FAILURES",
+            failures == 0,
+            f"capture_failed={failures} dedupe_refused={int(counts.get('dedupe_refused', 0))}",
+            required=False,
+        )
+    )
+    route = resolve_route(store, None).route
+    checks.append(
+        Check(
+            "ROUTE_SET" if route.is_set else "ROUTE_UNSET",
+            route.is_set,
+            route.label() or "unset - deterministic-only",
+            required=False,
+        )
+    )
     return checks
 
 

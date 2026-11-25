@@ -198,8 +198,8 @@ class AgentMemoryHermesProvider(_HOST_BASE):
     # only, so each choice reads "Provider - model" and save_config strips the
     # label back to the bare id ctx.llm needs.
     @staticmethod
-    def _model_menu() -> list[tuple[str, str]]:
-        """(label, model-id) pairs from the host picker; nothing is written."""
+    def _model_menu() -> list[tuple[str, str, str]]:
+        """(label, provider-slug, model-id) from the host picker; nothing is written."""
         try:
             from hermes_cli.inventory import (
                 build_model_options_payload,
@@ -209,26 +209,29 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             payload = build_model_options_payload(load_picker_context())
         except Exception:
             return []
-        pairs: list[tuple[str, str]] = []
+        pairs: list[tuple[str, str, str]] = []
         seen: set[str] = set()
         for entry in payload.get("providers") or []:
-            name = str(entry.get("name") or entry.get("slug") or "").strip()
+            slug = str(entry.get("slug") or "").strip()
+            name = str(entry.get("name") or slug).strip()
+            if not slug:
+                continue
             for model in entry.get("models") or []:
                 value = str(model)
-                label = f"{name}{MODEL_LABEL_SEP}{value}" if name else value
+                label = f"{name}{MODEL_LABEL_SEP}{value}"
                 if label not in seen:
                     seen.add(label)
-                    pairs.append((label, value))
+                    pairs.append((label, slug, value))
         return pairs
 
-    def _labelled_model(self, model: str) -> str:
-        """The menu label for a saved id (falls back to the bare id)."""
+    def _labelled_model(self, provider: str, model: str) -> str:
+        """The menu label for a saved pair (falls back to "slug - model")."""
         if not model:
             return ""
-        for label, value in self._model_menu():
-            if value == model:
+        for label, slug, value in self._model_menu():
+            if slug == provider and value == model:
                 return label
-        return model
+        return f"{provider}{MODEL_LABEL_SEP}{model}" if provider else model
 
     def _effective(self) -> dict:
         """Effective settings straight from the store - the panel shows these."""
@@ -240,17 +243,16 @@ class AgentMemoryHermesProvider(_HOST_BASE):
         """'' (unset) + labelled menu entries + a saved value the menu lacks."""
         menu = self._model_menu()
         choices = [""]
-        for label, _value in menu:
+        for label, _slug, _value in menu:
             if label not in choices:
                 choices.append(label)
-        saved = str(self._effective().get("model") or "")
-        if saved:
-            labelled = next((lab for lab, value in menu if value == saved), "")
-            if labelled:
-                if labelled not in choices:
-                    choices.append(labelled)
-            elif saved not in choices:
-                choices.append(saved)  # never drop a saved model the menu lacks
+        effective = self._effective()
+        saved_provider = str(effective.get("provider") or "")
+        saved_model = str(effective.get("model") or "")
+        if saved_model:
+            labelled = self._labelled_model(saved_provider, saved_model)
+            if labelled and labelled not in choices:
+                choices.append(labelled)  # never drop a saved pair the menu lacks
         return choices
 
     def get_config_schema(self) -> list[dict]:
@@ -265,7 +267,9 @@ class AgentMemoryHermesProvider(_HOST_BASE):
                     "Never inherited; empty = deterministic-only"
                 ),
                 "placeholder": "unset - deterministic-only, jobs refuse loudly",
-                "default": self._labelled_model(str(effective.get("model") or "")),
+                "default": self._labelled_model(
+                    str(effective.get("provider") or ""), str(effective.get("model") or "")
+                ),
             },
             {
                 "key": "max_calls_per_run",
@@ -297,24 +301,29 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             for key, value in values.items()
             if key in SETTINGS_KEYS
         }
+        if not self._ensure_store(hermes_home):
+            raise ValueError(self._unavailable or "store not found")
         raw_model = str(submitted.get("model") or "").strip()
         if raw_model:
             menu = self._model_menu()
-            by_label = dict(menu)
-            known_ids = {value for _label, value in menu}
-            if menu and raw_model not in by_label and raw_model not in known_ids:
+            if not menu:
+                # fail closed: an unreadable catalogue must never accept free text
+                raise ValueError("model menu unavailable")
+            picked = next(
+                ((slug, value) for label, slug, value in menu if label == raw_model), None
+            )
+            if picked is None:
                 raise ValueError(
-                    f"model {raw_model!r} is not offered by any configured provider"
+                    "model pair is not offered by any configured provider: "
+                    f"{raw_model!r}"
                 )
-            submitted["model"] = by_label.get(raw_model, raw_model)
+            submitted["provider"], submitted["model"] = picked
         submitted_path = str(values.get("store_path") or "").strip()
         resolved = str(self._resolve_store_path(hermes_home))
         if submitted_path and submitted_path != resolved:
             raise ValueError(
                 f"store path is fixed at {resolved}; set MNEMOBUN_STORE to move it"
             )
-        if not self._ensure_store(hermes_home):
-            raise ValueError(self._unavailable or "store not found")
         if submitted:
             apply_settings(self._store, submitted, actor="gui")
 
@@ -376,24 +385,29 @@ def _default_home() -> Path:
 provider = AgentMemoryHermesProvider()
 
 def _make_plugin_ask(llm):
-    """str->str ask backed by the host's ctx.llm - the recorded pick names the model."""
+    """str->str ask backed by the host's ctx.llm - the recorded pair names the route."""
     from mnemobun.core.errors import ReasonerUnavailableError
 
     def ask(prompt: str) -> str:
         if not provider._ensure_store():
             raise ReasonerUnavailableError("mnemobun store not found")
-        model = str(effective_settings(provider._store).get("model") or "").strip()
-        if not model:  # never silently inherit a model
+        settings = effective_settings(provider._store)
+        model = str(settings.get("model") or "").strip()
+        slug = str(settings.get("provider") or "").strip()
+        if not model or not slug:  # never silently inherit a route
             raise ReasonerUnavailableError(
-                "no model configured: record memory settings (model) in the mnemobun panel"
+                "no route configured: record provider and model in the mnemobun panel"
             )
         try:
             result = llm.complete(
-                [{"role": "user", "content": prompt}], model=model, purpose="mnemobun"
+                [{"role": "user", "content": prompt}],
+                provider=slug,
+                model=model,
+                purpose="mnemobun",
             )
         except Exception as error:
             raise ReasonerUnavailableError(
-                f"plugin LLM failed for {model!r}: {error}"
+                f"plugin LLM failed for {slug}{MODEL_LABEL_SEP}{model}: {error}"
             ) from error
         text = getattr(result, "text", None) or getattr(result, "content", None) or result
         text = str(text)

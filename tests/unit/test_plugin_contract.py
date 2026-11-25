@@ -72,7 +72,10 @@ def test_the_model_field_offers_the_host_menu_with_unset_first(
         plugin_module,
         tmp_path,
         monkeypatch,
-        menu=[("Nous Portal \u00b7 alpha", "alpha"), ("OpenRouter \u00b7 beta", "beta")],
+        menu=[
+            ("Nous Portal \u00b7 alpha", "nous", "alpha"),
+            ("OpenRouter \u00b7 beta", "openrouter", "beta"),
+        ],
     )
 
     model = next(f for f in provider.get_config_schema() if f["key"] == "model")
@@ -87,13 +90,13 @@ def test_a_saved_model_outside_the_menu_joins_the_choices(
         plugin_module,
         tmp_path,
         monkeypatch,
-        menu=[("Nous Portal \u00b7 alpha", "alpha")],
-        effective={"model": "custom"},
+        menu=[("Nous Portal \u00b7 alpha", "nous", "alpha")],
+        effective={"provider": "nous", "model": "custom"},
     )
 
     model = next(f for f in provider.get_config_schema() if f["key"] == "model")
 
-    assert model["choices"] == ["", "Nous Portal \u00b7 alpha", "custom"]
+    assert model["choices"] == ["", "Nous Portal \u00b7 alpha", "nous \u00b7 custom"]
 
 
 def test_without_a_menu_the_model_field_stays_typed(plugin_module, tmp_path, monkeypatch):
@@ -126,7 +129,7 @@ def test_save_refuses_a_model_the_providers_do_not_offer(
         plugin_module,
         tmp_path,
         monkeypatch,
-        menu=[("Nous Portal \u00b7 alpha", "alpha")],
+        menu=[("Nous Portal \u00b7 alpha", "nous", "alpha")],
     )
 
     with pytest.raises(ValueError, match="not offered"):
@@ -135,7 +138,7 @@ def test_save_refuses_a_model_the_providers_do_not_offer(
 
 def test_save_writes_the_store_and_nothing_else(plugin_module, tmp_path, monkeypatch):
     provider = _flat_provider(
-        plugin_module, tmp_path, monkeypatch, menu=[("Nous Portal \u00b7 alpha", "alpha")]
+        plugin_module, tmp_path, monkeypatch, menu=[("Nous Portal \u00b7 alpha", "nous", "alpha")]
     )
     recorded: list = []
     monkeypatch.setattr(
@@ -146,7 +149,7 @@ def test_save_writes_the_store_and_nothing_else(plugin_module, tmp_path, monkeyp
 
     provider.save_config({"model": "Nous Portal \u00b7 alpha"}, str(tmp_path))
 
-    assert recorded == [({"model": "alpha"}, "gui")]
+    assert recorded == [({"provider": "nous", "model": "alpha"}, "gui")]
     assert not (tmp_path / "mnemobun").exists()  # no mirror file
 
 
@@ -162,20 +165,22 @@ def test_the_ask_uses_the_recorded_model_and_refuses_without_one(
 
     class FakeLlm:
         def complete(self, messages, **kwargs):
-            calls.append(kwargs.get("model"))
+            calls.append((kwargs.get("provider"), kwargs.get("model")))
             return FakeResult()
 
     monkeypatch.setattr(
-        plugin_module, "effective_settings", lambda store: {"model": "alpha"}
+        plugin_module, "effective_settings", lambda store: {"provider": "nous", "model": "alpha"}
     )
     monkeypatch.setattr(plugin_module, "provider", provider)
     ask = plugin_module._make_plugin_ask(FakeLlm())
 
     assert ask("hello") == "reply"
-    assert calls == ["alpha"]
+    assert calls == [("nous", "alpha")]
 
-    monkeypatch.setattr(plugin_module, "effective_settings", lambda store: {"model": ""})
-    with pytest.raises(Exception, match="no model configured"):
+    monkeypatch.setattr(
+        plugin_module, "effective_settings", lambda store: {"provider": "", "model": ""}
+    )
+    with pytest.raises(Exception, match="no route configured"):
         ask("hello")
 
 
@@ -234,14 +239,21 @@ def test_save_config_refuses_loudly_when_the_store_is_missing(plugin_module, tmp
         provider.write_config_fields({"model": "x"}, str(home))
 
 
-def test_config_fields_honor_the_given_home_and_the_contract_shape(plugin_module, tmp_path):
+def test_config_fields_honor_the_given_home_and_the_contract_shape(
+    plugin_module, tmp_path, monkeypatch
+):
     """Regression: store resolution ignored the hermes_home parameter (it fell
     back to the process home), and read_config_fields returned a flat dict
     where the host reads values+placeholders."""
     home, store_root = _home_with_store(plugin_module, tmp_path)
     provider = plugin_module.AgentMemoryHermesProvider()
+    monkeypatch.setattr(
+        provider,
+        "_model_menu",
+        staticmethod(lambda: [("Test \u00b7 m-param", "testprov", "m-param")]),
+    )
 
-    provider.write_config_fields({"model": "m-param"}, str(home))
+    provider.write_config_fields({"model": "Test \u00b7 m-param"}, str(home))
     shape = provider.read_config_fields(str(home))
     assert set(shape) == {"values", "placeholders"}
     assert shape["values"]["model"] == "m-param"

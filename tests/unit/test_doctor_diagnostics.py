@@ -43,7 +43,8 @@ def test_store_checks_confirm_the_store_is_initialized_and_writable(tmp_path):
 
     codes = {check.code for check in checks}
     assert "STORE_INITIALIZED" in codes
-    assert all(check.ok for check in checks)
+    assert all(check.ok for check in checks if check.required)
+    assert {"CAPTURE_HEALTHY", "ROUTE_UNSET"} <= codes  # advisory, not required
 
 
 def test_smoke_reports_success_with_a_working_reasoner(tmp_path, monkeypatch):
