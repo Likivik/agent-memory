@@ -119,6 +119,8 @@ class HermesMemoryProvider:
         sections = self._claims_block(settings.prefetch_top_k)
         if query.strip():
             for hit in Recall(self.store).recall(query, log=False):
+                if getattr(hit, "type", "") == "event":
+                    continue  # raw turns are the log, not memory; recalling them is noise
                 line = f"- {hit.name}: {hit.abstract}"
                 sections.append(("recall", line))
         out: list[str] = []
@@ -140,6 +142,8 @@ class HermesMemoryProvider:
             and record.standing in (STANDING_ACCEPTED, STANDING_PROPOSED)
         ]
         claims.sort(key=lambda record: record.updated, reverse=True)
+        if not claims:  # no claims, no header: an empty block is noise on every turn
+            return []
         lines = ["Standing claims:"]
         for record in claims[:top_k]:
             marker = "" if record.standing == STANDING_ACCEPTED else " (proposed)"

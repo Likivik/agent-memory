@@ -89,6 +89,16 @@ def test_sync_turn_writes_one_event(provider, tmp_path):
     assert all(ch.isalnum() or ch == "-" for ch in events[0].name)
 
 
+def test_prefetch_is_silent_without_memory(provider, tmp_path):
+    """Regression: the claims header was injected on every turn with no claims."""
+    store = _store_ready(provider, tmp_path)
+    provider.initialize("sess-1", hermes_home=str(tmp_path))
+    provider.sync_turn("hello there", "hi", session_id="sess-1")
+
+    assert provider.prefetch("hello there") == ""
+    assert store is not None
+
+
 def test_recall_status_counts_lines(provider, tmp_path):
     store = _store_ready(provider, tmp_path)
     _write(store, "fact-a", "something real to recall")

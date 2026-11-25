@@ -25,11 +25,16 @@ class TurnCaptureService:
         if not user and not assistant:
             return {"written": "", "skipped": "empty"}
         limit = self.store.config.storage.slug_max_length
+        first_line = next((line.strip() for line in user.splitlines() if line.strip()), "")
+        if not first_line:  # assistant-only turn: the abstract still has to exist
+            first_line = next((line.strip() for line in assistant.splitlines() if line.strip()), "")
+        if not first_line:
+            first_line = f"turn {session_id or 'anon'}"
         day = self.store.clock.now().strftime("%Y-%m-%d")
         key = DedupeKey.of(session_id, user, assistant, day=day)
         name = Slug.of(f"turn-{key.value}", limit, identity=True).value
         spec = RecordSpec(
-            abstract=user[: self.store.config.storage.abstract_max_chars],
+            abstract=first_line[: self.store.config.storage.abstract_max_chars],
             type="event",
             body=f"USER: {user}\nASSISTANT: {assistant}",
             name=name,
