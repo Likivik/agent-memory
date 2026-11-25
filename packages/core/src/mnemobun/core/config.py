@@ -14,6 +14,14 @@ CONFIG_FILENAME = "config.toml"
 STORE_ENV_VAR = "MNEMOBUN_STORE"
 EXECUTOR_ENV_VAR = "MNEMOBUN_EXECUTOR"
 MUSE_SETTINGS_ENV_VAR = "MNEMOBUN_MUSE_SETTINGS"
+PINNED_FIELD = "pinned"
+PIN_ORDER_FIELD = "pin_order"
+PIN_ORDER_DEFAULT = 1000
+PINNED_TYPES = frozenset({"claim"})
+PINNED_REFUSED_STANDING = frozenset({"contested", "retracted", "superseded"})
+PINNED_DATE_CHARS = 10
+PINNED_ROSTER_FILENAME = "pins.json"
+PINNED_ROSTER_INDENT = 2
 DEFAULT_SLUG_MAX_LENGTH = 80
 SLUG_WIDEN_FACTOR = 4
 SLUG_DIGEST_LENGTH = 8
@@ -118,6 +126,7 @@ class RecallConfig:
     context_full_text_entries: int = 4
     injection_enabled: bool = True
     injection_budget_bytes: int = 8192
+    pinned_max_bytes: int = 2048  # the pinned-rules block: ~500 tokens, ~10 rules
     anchor_context_chars: int = 160
     snippet_max_chars: int = 400
 

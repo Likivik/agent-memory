@@ -89,34 +89,47 @@ def test_sync_turn_writes_one_event(provider, tmp_path):
     assert all(ch.isalnum() or ch == "-" for ch in events[0].name)
 
 
-def test_prefetch_is_silent_without_memory(provider, tmp_path):
-    """Regression: the claims header was injected on every turn with no claims."""
+def test_system_prompt_block_returns_the_pinned_render(provider, tmp_path):
+    from mnemobun.core import pinned as pinned_rules
+
     store = _store_ready(provider, tmp_path)
-    provider.initialize("sess-1", hermes_home=str(tmp_path))
-    provider.sync_turn("hello there", "hi", session_id="sess-1")
-
-    assert provider.prefetch("hello there") == ""
-    assert store is not None
-
-
-def test_claims_are_sent_once_per_session(provider, tmp_path):
-    """The host prefetches every turn; a stable claims block must not repeat."""
-    store = _store_ready(provider, tmp_path)
-    store.record(
-        name="fact-a",
-        abstract="a durable claim worth injecting",
-        type="claim",
-        standing="accepted",
-    )
+    store.record(name="rule-one", abstract="never prune without approval", type="claim")
+    pinned_rules.set_pinned(store, "rule-one", pinned=True)
     provider.initialize("sess-1", hermes_home=str(tmp_path))
 
-    first = provider.prefetch("anything", session_id="sess-1")
-    second = provider.prefetch("anything", session_id="sess-1")
-    other = provider.prefetch("anything", session_id="sess-2")
+    block = provider.system_prompt_block()
 
-    assert "Standing claims:" in first
-    assert second == ""
-    assert "Standing claims:" in other  # a new session starts fresh
+    assert "never prune without approval" in block
+    assert "memory_verify" in block  # the tools blurb stays
+
+
+def test_system_prompt_block_is_quiet_without_pins(provider, tmp_path):
+    _store_ready(provider, tmp_path)
+    provider.initialize("sess-1", hermes_home=str(tmp_path))
+
+    block = provider.system_prompt_block()
+
+    assert "Standing claims:" not in block
+    assert block.count("Memory is available") == 1
+
+
+def test_prefetch_never_returns_a_pinned_claim(provider, tmp_path):
+    from mnemobun.core import pinned as pinned_rules
+
+    store = _store_ready(provider, tmp_path)
+    store.record(name="rule-one", abstract="never prune containers", type="claim")
+    pinned_rules.set_pinned(store, "rule-one", pinned=True)
+    provider.initialize("sess-1", hermes_home=str(tmp_path))
+
+    assert provider.prefetch("never prune containers", session_id="s1") == ""
+
+
+def test_prefetch_still_returns_unpinned_claims(provider, tmp_path):
+    store = _store_ready(provider, tmp_path)
+    store.record(name="fact-a", abstract="the gateway runs on port 9119", type="claim")
+    provider.initialize("sess-1", hermes_home=str(tmp_path))
+
+    assert "gateway runs on port 9119" in provider.prefetch("gateway port", session_id="s1")
 
 
 def test_events_are_never_recalled(provider, tmp_path):
@@ -126,19 +139,6 @@ def test_events_are_never_recalled(provider, tmp_path):
     provider.sync_turn("please remember the passphrase", "noted", session_id="sess-1")
 
     assert provider.prefetch("passphrase", session_id="sess-2") == ""
-
-
-def test_recall_indicator_counts_only_injected_lines(provider, tmp_path):
-    store = _store_ready(provider, tmp_path)
-    store.record(name="fact-a", abstract="alpha fact", type="claim", standing="accepted")
-    provider.initialize("sess-1", hermes_home=str(tmp_path))
-
-    first = provider.prefetch("alpha", session_id="sess-1")
-    second = provider.prefetch("alpha", session_id="sess-1")
-
-    assert first.startswith("Standing claims:")
-    assert first.count("fact-a") == 1  # block and recall do not duplicate the same record
-    assert second == ""
 
 
 def test_recall_status_counts_lines(provider, tmp_path):

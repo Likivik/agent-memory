@@ -25,7 +25,6 @@ from typing import Any, Protocol, runtime_checkable
 from mnemobun.core.audit import LABEL_ABSTAIN
 from mnemobun.core.audit import verify as audit_verify
 from mnemobun.core.recall import Recall
-from mnemobun.core.record import STANDING_ACCEPTED, STANDING_PROPOSED
 from mnemobun.core.store import Store
 
 PROVIDER_NAME = "mnemobun"
@@ -51,13 +50,13 @@ def _base_class() -> tuple[bool, type | None]:
     return True, MemoryProvider
 
 
-CLAIMS_SESSION_MEMORY = 64  # sessions whose injected-name sets we keep
-
-
-def _line_name(line: str) -> str:
-    """Record name carried by an injected line: "- name: abstract" or "- name (proposed): ..."."""
-    head = line.removeprefix("- ").split(":", 1)[0]
-    return head.replace(" (proposed)", "").strip()
+def _pinned(store, name: str) -> bool:
+    """True when this record is a pinned rule: delivered by the system-prompt channel instead."""
+    try:
+        record = store.find(name)
+    except Exception:
+        return False
+    return str((record.fields or {}).get("pinned", "")).strip().lower() in {"true", "yes", "1"}
 
 
 @dataclasses.dataclass
@@ -72,7 +71,6 @@ class HermesMemoryProvider:
         self._is_available = available or True  # usable standalone; Hermes just gets richer
         self._base = base
         self.last_recall_count = 0  # lines the last prefetch injected (recall indicator)
-        self._injected: dict[str, set[str]] = {}  # names already injected, per session
 
     # -- lifecycle ---------------------------------------------------------
     @property
@@ -124,62 +122,33 @@ class HermesMemoryProvider:
         return result
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
-        """Inject what is new to THIS session: the host calls this on every turn.
+        """Query recall only. Standing rules live in the system-prompt block, not here.
 
-        Standing claims are stable, so repeating them per turn is prompt noise. Every record
-        injected is remembered per session and never sent twice.
+        Rules are stable text; the host re-runs this on every turn, so carrying them here both
+        repeats them and delivers them through the channel compaction eats (a memory entry decays
+        +45 points, a preserved system message decays 0). Events are the raw log, not memory, and
+        pinned claims are excluded because they are already pinned.
         """
         settings = self.store.config.provider
         budget = settings.prefetch_budget_bytes or INJECTION_FLOOR_BYTES
-        key = session_id or "anon"
-        if len(self._injected) >= CLAIMS_SESSION_MEMORY:
-            self._injected.clear()  # bounded: name sets are not worth unbounded state
-        seen = self._injected.setdefault(key, set())
-        sections: list[tuple[str, str]] = []
-        claims = self._claims_block(settings.prefetch_top_k)
-        if claims:
-            header, lines = claims[0], claims[1:]
-            fresh = [(tag, line) for tag, line in lines if _line_name(line) not in seen]
-            if fresh:
-                sections.append(header)
-                sections.extend(fresh)
-                seen.update(_line_name(line) for _, line in fresh)
-        if query.strip():
-            for hit in Recall(self.store).recall(query, log=False):
-                if getattr(hit, "type", "") == "event":
-                    continue  # raw turns are the log, not memory
-                if hit.name in seen:
-                    continue  # already injected this session
-                sections.append(("recall", f"- {hit.name}: {hit.abstract}"))
-                seen.add(hit.name)
-        out: list[str] = []
+        if not query.strip():
+            self.last_recall_count = 0
+            return ""
+        lines: list[str] = []
         used = 0
-        for _, line in sections:
-            encoded = line.encode("utf-8")
-            if used + len(encoded) + 1 > budget:
+        for hit in Recall(self.store).recall(query, log=False):
+            if getattr(hit, "type", "") == "event":
+                continue
+            if _pinned(self.store, hit.name):
+                continue
+            line = f"- {hit.name}: {hit.abstract}"
+            size = len(line.encode("utf-8")) + 1
+            if used + size > budget:
                 break
-            out.append(line)
-            used += len(encoded) + 1
-        self.last_recall_count = len(out)
-        return "\n".join(out)
-
-    def _claims_block(self, top_k: int) -> list[tuple[str, str]]:
-        claims = [
-            record
-            for record in self.store.records()
-            if record.type == "claim"
-            and record.standing in (STANDING_ACCEPTED, STANDING_PROPOSED)
-        ]
-        claims.sort(key=lambda record: record.updated, reverse=True)
-        if not claims:  # no claims, no header: an empty block is noise on every turn
-            return []
-        lines = ["Standing claims:"]
-        for record in claims[:top_k]:
-            marker = "" if record.standing == STANDING_ACCEPTED else " (proposed)"
-            lines.append(f"- {record.name}{marker}: {record.abstract}")
-        return [("claims", line) for line in lines]
-
-    # -- write side --------------------------------------------------------
+            lines.append(line)
+            used += size
+        self.last_recall_count = len(lines)
+        return "\n".join(lines)
     def sync_turn(
         self, user_content: str, assistant_content: str, *, session_id: str = ""
     ) -> dict[str, Any]:

@@ -138,11 +138,26 @@ class AgentMemoryHermesProvider(_HOST_BASE):
 
     # -- read side -----------------------------------------------------------
     def system_prompt_block(self) -> str:
-        return (
+        """Tools blurb plus the pinned rules.
+
+        The pinned block rides here because this surface is rebuilt into the system prompt on
+        every turn, and a system message is the only place compaction does not drop (a rule as a
+        memory entry decays +45 points; here it decays 0).
+        """
+        blurb = (
             "Memory is available (mnemobun). Verify claims you rely on with"
             " memory_verify; record durable beliefs as claims (they start"
             " `proposed` and are accepted only after a ruling)."
         )
+        if not self._ensure_store():
+            return blurb
+        try:
+            from mnemobun.core import pinned as pinned_rules
+
+            block = pinned_rules.render(self._provider().store).strip()
+        except Exception:  # a broken store must not break the host's prompt
+            return blurb
+        return f"{blurb}\n\n{block}" if block else blurb
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
         if not self._ensure_store():
