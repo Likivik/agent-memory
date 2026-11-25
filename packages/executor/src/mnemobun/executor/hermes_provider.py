@@ -149,19 +149,12 @@ class HermesMemoryProvider:
     # -- write side --------------------------------------------------------
     def sync_turn(
         self, user_content: str, assistant_content: str, *, session_id: str = ""
-    ) -> None:
-        """Append the raw turn. No extraction: the agent writes claims explicitly."""
-        user = user_content.strip()
-        assistant = assistant_content.strip()
-        if not user and not assistant:
-            return
-        abstract = user[: self.store.config.storage.abstract_max_chars]
-        self.store.record(
-            abstract=abstract,
-            type="event",
-            body=f"USER: {user}\nASSISTANT: {assistant}",
-            name=f"turn-{session_id or 'anon'}-{self.store.clock.stamp().lower()}",
-            provenance=[PROVENANCE_TURN],
+    ) -> dict[str, Any]:
+        """Append the raw turn. Identity and dedupe live in TurnCaptureService."""
+        from mnemobun.executor.capture import TurnCaptureService
+
+        return TurnCaptureService(self.store).capture(
+            user_content, assistant_content, session_id=session_id
         )
 
     # -- audit side --------------------------------------------------------

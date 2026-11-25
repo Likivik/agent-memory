@@ -63,6 +63,7 @@ RECORD_FIELDS = frozenset(
 UPDATABLE_IN_PLACE = ("abstract", "links", "usage", "provenance")
 # Import-only spec fields (P9 D1): historical stamps accepted solely on the import path.
 IMPORT_FIELDS = frozenset({"created", "updated"})
+CONTROL_FIELDS = frozenset({"refuse_if_exists"})
 
 
 @dataclasses.dataclass(frozen=True)
@@ -157,6 +158,7 @@ class Store:
         nothing: each record is prepared and persisted exactly as a single write would be,
         and only the projection is shared.
         """
+        specs = [item.as_dict() if hasattr(item, "as_dict") else item for item in specs]
         self.layout.ensure()
         self.schemas.ensure_factory()
         written: list[MemoryRecord] = []
@@ -169,7 +171,10 @@ class Store:
                 for index, spec in enumerate(specs):
                     try:
                         record, changed = self._write_one(
-                            _known_fields(spec, IMPORT_FIELDS if import_stamps else frozenset()),
+                            _known_fields(
+                            spec,
+                            (IMPORT_FIELDS if import_stamps else frozenset()) | CONTROL_FIELDS,
+                        ),
                             assume_new=assume_new,
                             import_stamps=import_stamps,
                         )
@@ -193,7 +198,7 @@ class Store:
         rejected: list[Rejected] = []
         for index, spec in enumerate(specs):
             try:
-                self._prepare(_known_fields(spec), archive_excerpts=False)
+                self._prepare(_known_fields(spec, CONTROL_FIELDS), archive_excerpts=False)
             except ValidationError as error:
                 rejected.append(Rejected(index=index, errors=list(error.errors)))
         return rejected
@@ -279,6 +284,8 @@ class Store:
             elsewhere = self.find(placed.name)
             if elsewhere is not None and elsewhere.path is not None:
                 existing, moved_from = elsewhere, elsewhere.path
+        if spec.get("refuse_if_exists") and existing is not None:
+            raise ValidationError([FieldError("name", "already recorded (dedupe key present)")])
         if existing is not None and schema.mode == MODE_ADD_ONLY:
             placed = dataclasses.replace(
                 placed,

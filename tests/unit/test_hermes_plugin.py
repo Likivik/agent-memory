@@ -84,7 +84,9 @@ def test_sync_turn_writes_one_event(provider, tmp_path):
     provider.sync_turn("", "", session_id="sess-9")  # empty turn: no record
     events = [r for r in store.records() if r.type == "event"]
     assert len(events) == 1
-    assert events[0].name.startswith("turn-sess-9-")
+    assert events[0].name.startswith("turn-")
+    assert events[0].name == events[0].name.lower()
+    assert all(ch.isalnum() or ch == "-" for ch in events[0].name)
 
 
 def test_recall_status_counts_lines(provider, tmp_path):

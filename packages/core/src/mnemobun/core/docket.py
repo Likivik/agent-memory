@@ -45,6 +45,7 @@ from .errors import FieldError, MemoryStoreError, NotFoundError, ValidationError
 from .ledger import VERDICT_ACCEPTED, VERDICT_REJECTED, Decision, DecisionLedger
 from .record import MemoryRecord
 from .sessions import parse_pointer
+from .slug import Slug
 from .standing import STANDING_ACCEPTED, STANDING_PROPOSED, add_conflict, set_standing
 from .store import Store
 
@@ -303,7 +304,9 @@ class Docket:
                 continue
             written = self._store.record(
                 type=original.type,
-                name=f"{original.name}-{index}",
+                name=Slug.of(
+                    f"{original.name}-{index}", self._store.config.storage.slug_max_length
+                ).value,
                 fields=dict(original.fields),
                 abstract=part.abstract.strip(),
                 body=part.body.strip(),

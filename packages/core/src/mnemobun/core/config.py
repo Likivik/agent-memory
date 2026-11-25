@@ -14,6 +14,10 @@ CONFIG_FILENAME = "config.toml"
 STORE_ENV_VAR = "MNEMOBUN_STORE"
 EXECUTOR_ENV_VAR = "MNEMOBUN_EXECUTOR"
 MUSE_SETTINGS_ENV_VAR = "MNEMOBUN_MUSE_SETTINGS"
+DEFAULT_SLUG_MAX_LENGTH = 80
+SLUG_WIDEN_FACTOR = 4
+SLUG_DIGEST_LENGTH = 8
+SLUG_MIN_KEEP = 1
 REASONER_PLUGIN = "plugin"  # the Hermes plugin injects ctx.llm
 REASONER_DIALECTS = ("claude-code", "codex")  # an external CLI agent answers
 COORDINATION_LOCK_POLL_SECONDS = 0.02
@@ -193,7 +197,9 @@ class OperationExecutorConfig:
 
 @dataclasses.dataclass
 class ExecutorConfig:
-    reasoner: str = "claude-code"  # a CLI dialect, or "plugin" for ctx.llm
+    reasoner: str = "claude-code"
+    provider: str = ""
+    provider_source: str = "unset"  # a CLI dialect, or "plugin" for ctx.llm
     model: str = ""  # no silent default
     model_source: str = "unset"  # chat | cli | gui | unset
     timeout_seconds: float = 120.0

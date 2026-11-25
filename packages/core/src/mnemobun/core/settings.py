@@ -13,6 +13,7 @@ import json
 from mnemobun.core.store import Store
 
 SETTINGS_KEYS = (
+    "provider",
     "model",
     "max_calls_per_run",
     "max_tokens_per_day",
@@ -32,6 +33,12 @@ def apply_settings(store: Store, payload: dict[str, object], *, actor: str) -> d
         if brain.model != text:  # idempotent re-assert is a no-op
             brain.model_source = actor if text else "unset"
         brain.model = text
+    value = payload.get("provider")
+    if value is not None:
+        text = str(value).strip()
+        if brain.provider != text:
+            brain.provider_source = actor if text else "unset"
+        brain.provider = text
     for key in ("max_calls_per_run", "max_tokens_per_day"):
         value = payload.get(key)
         if value is None:
@@ -57,6 +64,8 @@ def effective_settings(store: Store) -> dict[str, object]:
     """Pull the current settings from the store. Every surface reads this."""
     brain = store.config.executor
     return {
+        "provider": brain.provider,
+        "provider_source": brain.provider_source,
         "model": brain.model,
         "model_source": brain.model_source,
         "max_calls_per_run": store.config.budget.max_calls_per_run,
