@@ -99,6 +99,48 @@ def test_prefetch_is_silent_without_memory(provider, tmp_path):
     assert store is not None
 
 
+def test_claims_are_sent_once_per_session(provider, tmp_path):
+    """The host prefetches every turn; a stable claims block must not repeat."""
+    store = _store_ready(provider, tmp_path)
+    store.record(
+        name="fact-a",
+        abstract="a durable claim worth injecting",
+        type="claim",
+        standing="accepted",
+    )
+    provider.initialize("sess-1", hermes_home=str(tmp_path))
+
+    first = provider.prefetch("anything", session_id="sess-1")
+    second = provider.prefetch("anything", session_id="sess-1")
+    other = provider.prefetch("anything", session_id="sess-2")
+
+    assert "Standing claims:" in first
+    assert second == ""
+    assert "Standing claims:" in other  # a new session starts fresh
+
+
+def test_events_are_never_recalled(provider, tmp_path):
+    """Raw turns are the log; recalling them is what repeated old messages every turn."""
+    _store_ready(provider, tmp_path)
+    provider.initialize("sess-1", hermes_home=str(tmp_path))
+    provider.sync_turn("please remember the passphrase", "noted", session_id="sess-1")
+
+    assert provider.prefetch("passphrase", session_id="sess-2") == ""
+
+
+def test_recall_indicator_counts_only_injected_lines(provider, tmp_path):
+    store = _store_ready(provider, tmp_path)
+    store.record(name="fact-a", abstract="alpha fact", type="claim", standing="accepted")
+    provider.initialize("sess-1", hermes_home=str(tmp_path))
+
+    first = provider.prefetch("alpha", session_id="sess-1")
+    second = provider.prefetch("alpha", session_id="sess-1")
+
+    assert first.startswith("Standing claims:")
+    assert first.count("fact-a") == 1  # block and recall do not duplicate the same record
+    assert second == ""
+
+
 def test_recall_status_counts_lines(provider, tmp_path):
     store = _store_ready(provider, tmp_path)
     _write(store, "fact-a", "something real to recall")

@@ -51,6 +51,15 @@ def _base_class() -> tuple[bool, type | None]:
     return True, MemoryProvider
 
 
+CLAIMS_SESSION_MEMORY = 64  # sessions whose injected-name sets we keep
+
+
+def _line_name(line: str) -> str:
+    """Record name carried by an injected line: "- name: abstract" or "- name (proposed): ..."."""
+    head = line.removeprefix("- ").split(":", 1)[0]
+    return head.replace(" (proposed)", "").strip()
+
+
 @dataclasses.dataclass
 class HermesMemoryProvider:
     """MemoryProvider implementation backed by this fork's core. See module docstring."""
@@ -63,6 +72,7 @@ class HermesMemoryProvider:
         self._is_available = available or True  # usable standalone; Hermes just gets richer
         self._base = base
         self.last_recall_count = 0  # lines the last prefetch injected (recall indicator)
+        self._injected: dict[str, set[str]] = {}  # names already injected, per session
 
     # -- lifecycle ---------------------------------------------------------
     @property
@@ -114,15 +124,34 @@ class HermesMemoryProvider:
         return result
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
+        """Inject what is new to THIS session: the host calls this on every turn.
+
+        Standing claims are stable, so repeating them per turn is prompt noise. Every record
+        injected is remembered per session and never sent twice.
+        """
         settings = self.store.config.provider
         budget = settings.prefetch_budget_bytes or INJECTION_FLOOR_BYTES
-        sections = self._claims_block(settings.prefetch_top_k)
+        key = session_id or "anon"
+        if len(self._injected) >= CLAIMS_SESSION_MEMORY:
+            self._injected.clear()  # bounded: name sets are not worth unbounded state
+        seen = self._injected.setdefault(key, set())
+        sections: list[tuple[str, str]] = []
+        claims = self._claims_block(settings.prefetch_top_k)
+        if claims:
+            header, lines = claims[0], claims[1:]
+            fresh = [(tag, line) for tag, line in lines if _line_name(line) not in seen]
+            if fresh:
+                sections.append(header)
+                sections.extend(fresh)
+                seen.update(_line_name(line) for _, line in fresh)
         if query.strip():
             for hit in Recall(self.store).recall(query, log=False):
                 if getattr(hit, "type", "") == "event":
-                    continue  # raw turns are the log, not memory; recalling them is noise
-                line = f"- {hit.name}: {hit.abstract}"
-                sections.append(("recall", line))
+                    continue  # raw turns are the log, not memory
+                if hit.name in seen:
+                    continue  # already injected this session
+                sections.append(("recall", f"- {hit.name}: {hit.abstract}"))
+                seen.add(hit.name)
         out: list[str] = []
         used = 0
         for _, line in sections:
