@@ -13,8 +13,10 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 _LIB = Path(__file__).resolve().parent / "lib"
 if str(_LIB) not in sys.path:
@@ -50,7 +52,10 @@ except Exception:  # pragma: no cover
     _HOST_BASE = object  # type: ignore[assignment]
 
 DEFAULT_STORE_DIRNAME = "mnemobun-store"
-CONFIG_FILENAME = "mnemobun-plugin.json"
+# The host's display reader (web_server_memory._read_memory_provider_existing_values)
+# looks at $HERMES_HOME/<name>/config.json - the mirror lives exactly there.
+CONFIG_DIRNAME = "mnemobun"
+CONFIG_FILENAME = "config.json"
 
 
 class AgentMemoryHermesProvider(_HOST_BASE):
@@ -72,7 +77,7 @@ class AgentMemoryHermesProvider(_HOST_BASE):
     # -- config (D2: config field store_path; env honoured, config wins) ----
     def _config_path(self, hermes_home: str | None) -> Path:
         base = Path(hermes_home) if hermes_home else _default_home()
-        return base / CONFIG_FILENAME
+        return base / CONFIG_DIRNAME / CONFIG_FILENAME
 
     def _resolve_store_path(self, hermes_home: str | None) -> Path:
         import os
@@ -196,12 +201,95 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             "store": self._store_path or self._resolve_store_path(self._hermes_home).as_posix(),
         }
 
+    # -- model suggestions (one read-only probe, cached; never on read) -------
+    def _models_cache_path(self, hermes_home: str | None = None) -> Path:
+        base = self._store_path or self._resolve_store_path(hermes_home)
+        return Path(base) / ".state" / "models.json"
+
+    @staticmethod
+    def _probe_models(endpoint: str, key_env: str) -> tuple[list[str], str]:
+        """One read-only GET ``{endpoint}/models`` (OpenAI-compatible).
+
+        Never raises; returns ``(models, error)``. The key comes from the env
+        var named by ``key_env`` and is never printed.
+        """
+        import urllib.request
+
+        base = (endpoint or "").strip().rstrip("/")
+        if not base:
+            return [], "no endpoint configured"
+        request = urllib.request.Request(
+            base + "/models", headers={"Accept": "application/json"}
+        )
+        key = os.environ.get(key_env.strip(), "") if (key_env or "").strip() else ""
+        if key:
+            request.add_header("Authorization", f"Bearer {key}")
+        try:
+            with urllib.request.urlopen(request, timeout=5) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except Exception as error:  # a probe failure is data, not an error
+            return [], f"{type(error).__name__}: {error}"
+        rows = payload.get("data") if isinstance(payload, dict) else payload
+        models = [
+            str(row["id"])
+            for row in rows or []
+            if isinstance(row, dict) and row.get("id")
+        ]
+        return models, ""
+
+    def _model_choices(self) -> list[str]:
+        """``""`` (unset) + cached endpoint models + a saved value outside them.
+
+        File reads only - the host calls this per request, so no network. An
+        empty return means "no list cached": the field falls back to typing,
+        because a select cannot hold values outside its options.
+        """
+        saved = ""
+        models: list[str] = []
+        with contextlib.suppress(Exception):
+            raw = json.loads(
+                self._config_path(self._hermes_home).read_text(encoding="utf-8")
+            )
+            saved = str(raw.get("model") or "")
+        with contextlib.suppress(Exception):
+            raw = json.loads(
+                self._models_cache_path(self._hermes_home).read_text(encoding="utf-8")
+            )
+            models = [str(m) for m in raw.get("models") or [] if m]
+        if not models:
+            return []
+        choices = ["", *dict.fromkeys(models)]
+        if saved and saved not in choices:
+            choices.append(saved)  # never drop a saved model the list lacks
+        return choices
+
+    def _refresh_model_choices(
+        self, hermes_home: str | None, endpoint: str, key_env: str
+    ) -> tuple[list[str], str]:
+        """Probe once and cache the list; called on save, never on read."""
+        models, error = self._probe_models(endpoint, key_env)
+        if models:
+            cache = self._models_cache_path(hermes_home)
+            with contextlib.suppress(OSError):
+                cache.parent.mkdir(parents=True, exist_ok=True)
+                cache.write_text(
+                    json.dumps({"models": models, "endpoint": (endpoint or "").strip()}),
+                    encoding="utf-8",
+                )
+        return models, error
+
+    @staticmethod
+    def _validate_endpoint(value: str) -> None:
+        parsed = urlparse((value or "").strip())
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError(f"endpoint is not an http(s) URL: {value!r}")
+
     # -- config surface --------------------------------------------------------
     def get_config_schema(self) -> list[dict]:
         # The host reads ``key`` (agent.memory_provider.MemoryProvider) and
         # drops any field without one - a schema using ``name`` renders an
         # empty panel ("does not expose dashboard settings").
-        return [
+        fields: list[dict] = [
             {
                 "key": "model",
                 "type": "text",
@@ -209,11 +297,13 @@ class AgentMemoryHermesProvider(_HOST_BASE):
                     "LLM model for memory work. Never inherited; "
                     "empty = deterministic-only"
                 ),
+                "placeholder": "unset - deterministic-only, jobs refuse loudly",
             },
             {
                 "key": "endpoint",
                 "type": "text",
                 "description": "OpenAI-compatible base URL for memory work",
+                "placeholder": "https://api.example.com/v1",
             },
             {
                 "key": "key_env",
@@ -246,14 +336,33 @@ class AgentMemoryHermesProvider(_HOST_BASE):
                 "description": "Filesystem path of the mnemobun store",
             },
         ]
+        choices = self._model_choices()
+        if choices:
+            # Non-empty choices render as a select (web_server_memory
+            # ._schema_field_kind). '' first = explicit unset; there is no
+            # default, so nothing is ever picked silently.
+            fields[0]["choices"] = choices
+        return fields
 
     def save_config(self, values: dict, hermes_home: str) -> None:
+        endpoint = "" if values.get("endpoint") is None else str(values.get("endpoint")).strip()
+        if "endpoint" in values and endpoint:
+            self._validate_endpoint(endpoint)
         path = self._config_path(hermes_home)
         current: dict = {}
         with contextlib.suppress(Exception):
             current = json.loads(path.read_text(encoding="utf-8"))
-        current.update({k: v for k, v in values.items() if k in {"store_path"}})
+        # Mirror every submitted non-secret field: the legacy display reader
+        # sees only this flat file, while the store stays the jobs' truth.
+        current.update(
+            {
+                k: ("" if v is None else v)
+                for k, v in values.items()
+                if k in SETTINGS_KEYS or k == "store_path"
+            }
+        )
         try:
+            path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(current, indent=2), encoding="utf-8")
         except OSError as error:
             raise ValueError(f"cannot write {path}: {error.strerror}") from error
@@ -262,6 +371,13 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             if not self._ensure_store(hermes_home):
                 raise ValueError(self._unavailable or "store not found")
             apply_settings(self._store, settings, actor="gui")
+        # Suggestions: one read-only probe when an endpoint is configured.
+        # A failed probe never fails the save (settings are already durable).
+        effective_endpoint = endpoint or str(current.get("endpoint") or "")
+        key_env = str(values.get("key_env") or current.get("key_env") or "")
+        if effective_endpoint:
+            with contextlib.suppress(Exception):
+                self._refresh_model_choices(hermes_home, effective_endpoint, key_env)
 
     def read_config_fields(self, hermes_home: str) -> dict:
         """Pull: display reads the store (single source), not a cached copy."""
@@ -280,6 +396,23 @@ class AgentMemoryHermesProvider(_HOST_BASE):
 
     def write_config_fields(self, values: dict, hermes_home: str) -> None:
         self.save_config(values, hermes_home)
+
+    def post_setup(self, hermes_home: str, config: dict) -> None:
+        """Wizard hook: probe the endpoint once, print model suggestions.
+
+        Nothing is ever selected for the user - the list is a suggestion only.
+        """
+        endpoint = str(config.get("endpoint") or "").strip()
+        key_env = str(config.get("key_env") or "").strip()
+        if not endpoint:
+            return
+        models, error = self._refresh_model_choices(hermes_home, endpoint, key_env)
+        if not models:
+            print(f"mnemobun: no model suggestions ({error})")
+            return
+        print(f"mnemobun: models at {endpoint} (set one in the 'model' field):")
+        for model in models[:20]:
+            print(f"  - {model}")
 
     def backup_paths(self) -> list[str]:
         return [self._store_path or self._resolve_store_path(self._hermes_home).as_posix()]
