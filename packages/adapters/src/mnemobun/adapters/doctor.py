@@ -13,6 +13,7 @@ import tomllib
 
 from mnemobun.core import health as health_events
 from mnemobun.core import prompts, timestamp, write_jobs
+from mnemobun.core.config import PINNED_REFUSED_STANDING
 from mnemobun.core.route import resolve_route
 from mnemobun.core.store import Store
 
@@ -212,7 +213,67 @@ def _store_checks(store: Store) -> list[Check]:
             required=False,
         )
     )
+    checks.extend(_pinned_checks(store))
     return checks
+
+
+def _pinned_checks(store: Store) -> list[Check]:
+    """The pinned floor: size, staleness, readability, and whether a host can honour it."""
+    from mnemobun.core import pinned as pinned_rules
+
+    out: list[Check] = []
+    try:
+        block = pinned_rules.block(store)
+    except Exception as error:  # unreadable roster or a vanished pinned record
+        out.append(Check("PINNED_UNREADABLE", False, str(error), required=False))
+        return out
+    budget = store.config.recall.pinned_max_bytes
+    out.append(
+        Check(
+            "PINNED_OVER_BUDGET" if block.omitted else "PINNED_WITHIN_BUDGET",
+            not block.omitted,
+            f"{len(block.rules)} rule(s), {block.omitted} omitted, cap {budget} bytes",
+            required=False,
+        )
+    )
+    stale = [
+        record.name
+        for record in store.records()
+        if pinned_rules.is_pinned(record) and record.standing in PINNED_REFUSED_STANDING
+    ]
+    out.append(
+        Check(
+            "PINNED_STALE" if stale else "PINNED_FRESH",
+            not stale,
+            ", ".join(stale) or "every pinned rule still stands",
+            required=False,
+        )
+    )
+    try:
+        from mnemobun.adapters import pin_channel
+
+        host = pin_channel.channel("hermes")
+        delivered = pin_channel.recorded(store.layout.state_dir).get(host.host, "")
+        current = block.digest
+        out.append(
+            Check(
+                "PIN_DIGEST_DRIFT" if delivered and delivered != current else "PIN_DIGEST_OK",
+                True,
+                f"delivered={delivered[:12] or 'never'} current={current[:12]}",
+                required=False,
+            )
+        )
+        out.append(
+            Check(
+                "PIN_UNPINNED_HOST" if host.degraded else "PIN_HOST_PRESERVED",
+                not host.degraded,
+                f"{host.host}: {host.surface} (preserved={host.preserved})",
+                required=False,
+            )
+        )
+    except Exception as error:  # the channel registry must never break doctor
+        out.append(Check("PIN_CHANNEL_UNREADABLE", False, str(error), required=False))
+    return out
 
 
 def _write_jobs_check(store: Store) -> Check:

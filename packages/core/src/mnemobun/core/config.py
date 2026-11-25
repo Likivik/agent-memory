@@ -133,6 +133,7 @@ class RecallConfig:
 
 @dataclasses.dataclass
 class ManageConfig:
+    pin_min_citations: int = 3  # a claim cited this often is worth a pin ruling
     auto_dream: bool = True
     claim_lease_seconds: float = 1800.0
     trigger_min_hours: float = 24.0

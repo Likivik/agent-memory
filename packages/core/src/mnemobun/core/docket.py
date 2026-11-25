@@ -16,8 +16,9 @@ import subprocess
 import tempfile
 import time
 
-from . import reasoning, timestamp
+from . import pinned, reasoning, timestamp
 from .clock import Clock
+from .config import PINNED_FIELD, PINNED_REFUSED_STANDING, PINNED_TYPES
 from .database import Database
 from .dream import (
     GIT,
@@ -27,8 +28,10 @@ from .dream import (
     PROPOSAL_CONFLICT_REVIEW,
     PROPOSAL_DELETE,
     PROPOSAL_MERGE,
+    PROPOSAL_PIN,
     PROPOSAL_SPLIT,
     PROPOSAL_SUPERSEDE,
+    PROPOSAL_UNPIN,
     REPORT_SUFFIX,
     SECTION_PREFIX,
     STAMP_FORMAT,
@@ -43,10 +46,10 @@ from .dream import (
 )
 from .errors import FieldError, MemoryStoreError, NotFoundError, ValidationError
 from .ledger import VERDICT_ACCEPTED, VERDICT_REJECTED, Decision, DecisionLedger
-from .record import MemoryRecord
+from .record import STANDING_ACCEPTED, STANDING_PROPOSED, MemoryRecord
 from .sessions import parse_pointer
 from .slug import Slug
-from .standing import STANDING_ACCEPTED, STANDING_PROPOSED, add_conflict, set_standing
+from .standing import add_conflict, set_standing
 from .store import Store
 
 
@@ -170,6 +173,8 @@ class Docket:
         drafted.extend(self._propose_splits(inspected))
         drafted.extend(self._propose_abstract_review(inspected))
         drafted.extend(self._propose_deletions(inspected, counts))
+        drafted.extend(self._propose_pins(inspected, counts))
+        drafted.extend(self._propose_unpins(inspected))
         drafted.extend(self._propose_standing_accepts(inspected))
         drafted.extend(self._propose_conflict_reviews(inspected))
         return [proposal for proposal in drafted if proposal.id not in decided]
@@ -234,7 +239,65 @@ class Docket:
             return self._accept_standing(proposal)
         if proposal.kind == PROPOSAL_CONFLICT_REVIEW:
             return self._apply_conflict_review(proposal)
+        if proposal.kind == PROPOSAL_PIN:
+            return self.pin(proposal.targets[0])
+        if proposal.kind == PROPOSAL_UNPIN:
+            return self.unpin(proposal.targets[0])
         return self._rewrite_abstract(proposal, verdict.text, expected)
+
+    def pin(self, name: str, *, order: int | None = None) -> str:
+        """Accept a pin ruling. Refuses when the block is already full; never truncates a rule."""
+        record = self._entry(name)
+        if record.type not in PINNED_TYPES:
+            allowed = sorted(PINNED_TYPES)
+            raise ValidationError([FieldError("type", f"only {allowed} can be pinned")])
+        pinned.set_pinned(self._store, name, pinned=True, order=order)
+        block = pinned.block(self._store)
+        if block.omitted:
+            pinned.set_pinned(self._store, name, pinned=False)
+            cap = self._store.config.recall.pinned_max_bytes
+            raise ValidationError([FieldError(PINNED_FIELD, f"pinned block full at {cap} bytes")])
+        return f"pinned {name}"
+
+    def unpin(self, name: str) -> str:
+        """Accept an unpin ruling: the claim stays, only its always-on delivery stops."""
+        pinned.set_pinned(self._store, name, pinned=False)
+        return f"unpinned {name}"
+
+    def _propose_pins(self, records: list[MemoryRecord], counts: dict[str, int]) -> list[Proposal]:
+        """A claim the agent keeps citing is a candidate for always-on delivery. Deterministic."""
+        threshold = self._store.config.manage.pin_min_citations
+        out: list[Proposal] = []
+        for record in sorted(records, key=lambda item: item.name):
+            if record.type not in PINNED_TYPES or pinned.is_pinned(record):
+                continue
+            if record.standing not in (STANDING_ACCEPTED, STANDING_PROPOSED):
+                continue
+            cited = counts.get(record.name, 0)
+            if cited < threshold:
+                continue
+            out.append(
+                Proposal(
+                    kind=PROPOSAL_PIN,
+                    targets=(record.name,),
+                    reason=f"cited {cited} times, threshold {threshold}",
+                    evidence=record.abstract,
+                )
+            )
+        return out
+
+    def _propose_unpins(self, records: list[MemoryRecord]) -> list[Proposal]:
+        """A pinned rule that lost its standing stops being always-on."""
+        return [
+            Proposal(
+                kind=PROPOSAL_UNPIN,
+                targets=(record.name,),
+                reason=f"standing is {record.standing}",
+                evidence=record.abstract,
+            )
+            for record in sorted(records, key=lambda item: item.name)
+            if pinned.is_pinned(record) and record.standing in PINNED_REFUSED_STANDING
+        ]
 
     def _accept_standing(self, proposal: Proposal) -> str:
         """Deterministic apply: the reasoner only chose the docket item."""

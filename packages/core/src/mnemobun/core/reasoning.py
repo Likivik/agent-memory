@@ -47,6 +47,8 @@ PROPOSAL_DELETE = "delete"
 PROPOSAL_ABSTRACT_REVIEW = "abstract-review"
 PROPOSAL_ACCEPT_STANDING = "accept-standing"
 PROPOSAL_CONFLICT_REVIEW = "conflict-review"
+PROPOSAL_PIN = "pin"
+PROPOSAL_UNPIN = "unpin"
 
 
 class Reasoner(Protocol):

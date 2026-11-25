@@ -66,3 +66,40 @@ def test_smoke_reports_failure_instead_of_raising_when_unconfigured(tmp_path):
     report = doctor.smoke(store)
 
     assert report["answered"] is False
+
+
+def test_pinned_block_over_budget_is_reported(tmp_path):
+    from mnemobun.core import pinned
+
+    store = _store(tmp_path)
+    store.config.recall.pinned_max_bytes = 60
+    store.record(name="rule-one", abstract="a rule long enough to overflow the pinned block",
+                 type="claim")
+    pinned.set_pinned(store, "rule-one", pinned=True)
+
+    codes = {check.code for check in doctor._store_checks(store)}
+
+    assert "PINNED_OVER_BUDGET" in codes
+
+
+def test_stale_pin_is_reported(tmp_path):
+    from mnemobun.core import pinned
+    from mnemobun.core.standing import set_standing
+
+    store = _store(tmp_path)
+    store.record(name="rule-one", abstract="always ask first", type="claim")
+    pinned.set_pinned(store, "rule-one", pinned=True)
+    set_standing(store, "rule-one", "contested", cause="test", force=True)
+
+    codes = {check.code for check in doctor._store_checks(store)}
+
+    assert "PINNED_STALE" in codes
+
+
+def test_unreadable_pinned_roster_is_reported(tmp_path):
+    store = _store(tmp_path)
+    (store.layout.state_dir / "pins.json").write_text("{not json")
+
+    codes = {check.code for check in doctor._store_checks(store)}
+
+    assert "PINNED_UNREADABLE" in codes

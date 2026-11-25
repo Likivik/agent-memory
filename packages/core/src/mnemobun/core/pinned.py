@@ -89,6 +89,10 @@ def _eligible(record: MemoryRecord) -> bool:
     return record.standing not in PINNED_REFUSED_STANDING
 
 
+def is_pinned(record: MemoryRecord) -> bool:
+    return _flagged(record)
+
+
 def block(store: Store) -> PinnedBlock:
     """Every pinned rule that may be rendered, in a stable order, capped by bytes.
 
