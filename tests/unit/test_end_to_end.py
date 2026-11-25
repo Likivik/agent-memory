@@ -75,7 +75,7 @@ def test_chain_feed_proposes_rules_and_recalls(tmp_path):
     # 1. settings round-trip and the model bridge
     apply_settings(
         store,
-        {"model": "mimo", "endpoint": "https://x.test/v1", "key_env": "K"},
+        {"model": "mimo"},
         actor="gui",
     )
     assert effective_settings(store)["model"] == "mimo"

@@ -27,10 +27,15 @@ from mnemobun.core import (
     write_trace,
 )
 from mnemobun.core import migrate as migrate_module
-from mnemobun.core.config import REASONER_ENDPOINT, ExecutorConfig
+from mnemobun.core.config import REASONER_DIALECTS, REASONER_PLUGIN, ExecutorConfig
 from mnemobun.core.docket import Docket
 from mnemobun.core.dream import Dream
-from mnemobun.core.errors import FieldError, MemoryStoreError, ValidationError
+from mnemobun.core.errors import (
+    FieldError,
+    MemoryStoreError,
+    ReasonerUnavailableError,
+    ValidationError,
+)
 from mnemobun.core.locking import file_lock
 from mnemobun.core.observation import invoke as observe_invocation
 from mnemobun.core.reasoning import Reasoner
@@ -40,7 +45,7 @@ from mnemobun.core.watermark import Watermark
 from mnemobun.executor import distiller, selection
 
 SESSION_FLAG = "--session"
-REASON_ENDPOINT = REASONER_ENDPOINT
+REASON_HOST = REASONER_DIALECTS[0]
 REASON_NONE = "none"
 EMIT_INDENT = 2
 FIELD_ERROR_KEYS = frozenset({"field", "reason"})
@@ -203,7 +208,7 @@ def _parser() -> argparse.ArgumentParser:
     still.add_argument(
         "--force", action="store_true", help="distill every backlog regardless of thresholds"
     )
-    still.add_argument("--reason", choices=(REASON_ENDPOINT,), default=None)
+    still.add_argument("--reason", choices=(REASON_HOST,), default=None)
     still.add_argument("--reason-model", default="")
     still.add_argument("--auto-dream", action="store_true", help=argparse.SUPPRESS)
     job_mode = still.add_mutually_exclusive_group()
@@ -252,7 +257,7 @@ def _parser() -> argparse.ArgumentParser:
 
     dreamer = subcommand("dream-worker", help=argparse.SUPPRESS)
     dreamer.add_argument("--claim", required=True)
-    dreamer.add_argument("--reason", choices=(REASON_ENDPOINT,), default=None)
+    dreamer.add_argument("--reason", choices=(REASON_HOST,), default=None)
     dreamer.add_argument("--reason-model", default="")
     dreamer.set_defaults(handler=_dream_worker)
 
@@ -370,10 +375,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     sleeper.add_argument(
         "--reason",
-        choices=(REASON_ENDPOINT, REASON_NONE),
+        choices=(REASON_HOST, REASON_NONE),
         default=None,
         help="who rules on the open proposals: the configured executor (default), "
-        "a model endpoint, or nobody",
+        "the host CLI, or nobody",
     )
     sleeper.add_argument("--reason-model", default="")
     sleeper.set_defaults(handler=_sleep)
@@ -464,16 +469,10 @@ def _parser() -> argparse.ArgumentParser:
     skiller = subcommand("skill", help="print the agent skill text")
     skiller.set_defaults(handler=_skill)
 
-    installer = subcommand("setup", help="configure the endpoint and run preflight")
+    installer = subcommand("setup", help="record the memory model and run preflight")
     installer.add_argument("--settings", default=None)
     installer.add_argument("--provider", default=None)
     installer.add_argument("--model", default=None)
-    installer.add_argument(
-        "--endpoint", default=None, help="model endpoint/base URL for the reasoner"
-    )
-    installer.add_argument(
-        "--key-env", default=None, help="env var name holding the endpoint API key"
-    )
     installer.add_argument("--mcp", action="store_true", help="also configure the stdio MCP server")
     installer.add_argument(
         "--no-live", action="store_true", help="skip live reasoner checks (never reports READY)"
@@ -729,9 +728,9 @@ def _owner() -> str:
 
 
 def _transport(executor: ExecutorConfig) -> str:
-    if executor.reasoner == REASONER_ENDPOINT:
-        return f"{REASONER_ENDPOINT}/{executor.model}"
-    return executor.reasoner
+    if executor.reasoner == REASONER_PLUGIN:
+        return REASONER_PLUGIN
+    return f"{executor.reasoner}/{executor.model}"
 
 
 def _dream_worker(store: Store, args: argparse.Namespace) -> dict[str, object]:
@@ -948,7 +947,13 @@ def _reasoner(
     if args.reason == REASON_NONE:
         return None
     executor = _executor(store, args, operation)
-    return distiller.distiller(executor, store=store)
+    from mnemobun.executor.reasoners import HostReasoner
+
+    host = getattr(args, "reason_host", "") or executor.reasoner
+    if host == REASONER_PLUGIN:  # the plugin injects ctx.llm; the CLI cannot
+        raise ReasonerUnavailableError("reasoner 'plugin' needs the Hermes plugin")
+    ask = HostReasoner.for_host(host, model=getattr(args, "reason_model", "") or executor.model)
+    return distiller.distiller(executor, store=store, ask=ask)
 
 
 def _executor(
@@ -1002,16 +1007,12 @@ def _setup(store: Store, args: argparse.Namespace) -> dict[str, object]:
     payload: dict[str, object] = {}
     if getattr(args, "model", None):
         payload["model"] = args.model
-    if getattr(args, "endpoint", None):
-        payload["endpoint"] = args.endpoint
-    if getattr(args, "key_env", None):
-        payload["key_env"] = args.key_env
     settings = apply_settings(store, payload, actor="cli") if payload else effective_settings(store)
     return {
         "status": "READY",
         "store": str(store.root),
         "settings": settings,
-        "note": "host wizards were removed: memory jobs use direct endpoints",
+        "note": "memory jobs reason through the host CLI or the Hermes plugin",
     }
 
 

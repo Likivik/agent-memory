@@ -59,10 +59,10 @@ def test_the_probe_token_is_read_through_stray_characters():
     assert not doctor._probe_matched("SORRY")
 
 
-def test_a_host_binary_is_only_required_when_a_channel_would_run_it(store):
-    store.config.executor.reasoner = "endpoint"
+def test_a_cli_dialect_is_what_runs_the_binary(store):
+    store.config.executor.reasoner = "plugin"
     assert not doctor._host_binary_needed(store)
-    store.config.executor.reasoner = "host"
+    store.config.executor.reasoner = "claude-code"
     assert doctor._host_binary_needed(store)
 
 

@@ -1,7 +1,6 @@
 """Executors: text out, text back, and silence whenever the outside world misbehaves."""
 
 import dataclasses
-import io
 import json
 import pathlib
 import subprocess
@@ -9,7 +8,7 @@ import subprocess
 import pytest
 from mnemobun.core.errors import ReasonerUnavailableError
 from mnemobun.executor.agents import HostResult
-from mnemobun.executor.reasoners import EndpointReasoner, HostReasoner
+from mnemobun.executor.reasoners import HostReasoner
 
 
 class FakeHost:
@@ -48,73 +47,6 @@ def test_an_empty_host_reply_is_reported():
     host = FakeHost(HostResult(text="", ok=True, seconds=0.1))
     with pytest.raises(ReasonerUnavailableError, match="empty response"):
         HostReasoner(host=host)("review this")
-
-
-def test_the_default_executor_is_refused_until_a_model_is_configured():
-    from mnemobun.core.config import Config
-    from mnemobun.core.errors import ReasonerUnavailableError
-    from mnemobun.executor import distiller
-
-    with pytest.raises(ReasonerUnavailableError) as excinfo:
-        distiller.distiller(Config.default().executor)
-    assert "no model configured" in str(excinfo.value)
-
-    host_config = Config.default().executor
-    host_config.reasoner = "host"
-    host_config.model = "m"
-    with pytest.raises(ReasonerUnavailableError) as host_excinfo:
-        distiller.distiller(host_config)
-    assert "unsupported reasoner" in str(host_excinfo.value)
-
-
-def test_an_endpoint_reasoner_reads_the_first_message(monkeypatch):
-    monkeypatch.setenv("GEMINI_BASE_URL", "https://example.invalid/openapi")
-    monkeypatch.setenv("GEMINI_API_KEY", "token")
-    sent = {}
-
-    def fake_urlopen(request, timeout=None):
-        sent["url"] = request.full_url
-        sent["body"] = json.loads(request.data.decode("utf-8"))
-        return io.BytesIO(_reply("verdict line"))
-
-    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-    assert EndpointReasoner()("review this") == "verdict line"
-    assert sent["url"].endswith("/chat/completions")
-    assert sent["body"]["messages"][0]["content"] == "review this"
-
-
-def test_an_endpoint_reasoner_without_credentials_is_reported(monkeypatch):
-    monkeypatch.delenv("GEMINI_BASE_URL", raising=False)
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
-    monkeypatch.delenv("VERTEX_LOCATION", raising=False)
-    with pytest.raises(ReasonerUnavailableError, match="Google Cloud project"):
-        EndpointReasoner()("review this")
-
-
-def test_an_endpoint_reply_of_the_wrong_shape_is_not_mistaken_for_an_answer(monkeypatch):
-    monkeypatch.setenv("GEMINI_BASE_URL", "https://example.invalid/openapi")
-    monkeypatch.setenv("GEMINI_API_KEY", "token")
-    monkeypatch.setattr(
-        "urllib.request.urlopen",
-        lambda request, timeout=None: io.BytesIO(b'{"error": "quota"}'),
-    )
-    with pytest.raises(ReasonerUnavailableError, match="valid message"):
-        EndpointReasoner()("review this")
-
-
-def test_an_endpoint_that_refuses_the_connection_is_reported_without_the_key(monkeypatch):
-    monkeypatch.setenv("GEMINI_BASE_URL", "https://example.invalid/openapi")
-    monkeypatch.setenv("GEMINI_API_KEY", "token")
-
-    def explode(request, timeout=None):
-        raise OSError("connection refused")
-
-    monkeypatch.setattr("urllib.request.urlopen", explode)
-    with pytest.raises(ReasonerUnavailableError) as raised:
-        EndpointReasoner()("review this")
-    assert "endpoint request failed" in str(raised.value)
-    assert "token" not in str(raised.value)
 
 
 def test_a_host_reasoner_is_named_by_dialect_and_runs_that_dialect_s_binary():
@@ -257,54 +189,6 @@ def test_a_host_reasoner_marks_its_session_as_the_executor_so_hooks_stand_down()
     host = FakeHost(HostResult(text="ok", ok=True, seconds=0.1))
     HostReasoner(host=host)("review this")
     assert host.calls[0][1]["environment"][EXECUTOR_ENV_VAR]
-
-
-def test_an_executor_configured_for_an_endpoint_uses_it():
-    from mnemobun.core.config import ExecutorConfig
-    from mnemobun.executor import distiller
-
-    configured = ExecutorConfig(
-        reasoner="endpoint", project="user-project", model="gemini-test"
-    )
-    assert isinstance(distiller.distiller(configured), EndpointReasoner)
-
-
-def test_an_explicit_openai_endpoint_does_not_require_a_google_cloud_project(monkeypatch):
-    from mnemobun.core.config import ExecutorConfig
-    from mnemobun.executor import distiller
-
-    monkeypatch.setenv("GEMINI_API_KEY", "user-key")
-    chosen = distiller.distiller(
-        ExecutorConfig(
-            reasoner="endpoint", endpoint="https://models.example/v1", model="gemini-test"
-        )
-    )
-    assert isinstance(chosen, EndpointReasoner)
-    assert chosen.base_url == "https://models.example/v1"
-
-
-def test_an_explicit_vertex_project_does_not_borrow_an_unrelated_api_key(monkeypatch):
-    from mnemobun.executor.credentials import VertexCredentials
-
-    class UserVertex(VertexCredentials):
-        def _mint(self):
-            return "user-vertex-token"
-
-    monkeypatch.setenv("GEMINI_API_KEY", "unrelated-api-key")
-    monkeypatch.delenv("GEMINI_BASE_URL", raising=False)
-    sent = {}
-
-    def fake_urlopen(request, timeout=None):
-        sent["url"] = request.full_url
-        sent["authorization"] = request.headers["Authorization"]
-        return io.BytesIO(_reply("verdict line"))
-
-    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-    reasoner = EndpointReasoner(credentials=UserVertex(project="user-project", location="global"))
-
-    assert reasoner("review this") == "verdict line"
-    assert "/projects/user-project/" in sent["url"]
-    assert sent["authorization"] == "Bearer user-vertex-token"
 
 
 def test_the_claude_host_falls_back_to_the_desktop_bundled_binary(monkeypatch):

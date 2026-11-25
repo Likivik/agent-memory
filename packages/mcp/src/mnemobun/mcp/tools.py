@@ -422,10 +422,6 @@ def _verify(store: Store, arguments: dict[str, object]) -> dict[str, object]:
 
 def _setup(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     brain = store.config.executor
-    value = _optional(arguments, "endpoint")
-    if value:
-        brain.reasoner = "endpoint"
-        brain.endpoint = str(value)
     if _optional(arguments, "model"):
         from mnemobun.core.settings import apply_settings
 
@@ -434,7 +430,6 @@ def _setup(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     return {
         "model": brain.model,
         "model_source": brain.model_source,
-        "endpoint": brain.endpoint,
     }
 
 
@@ -472,7 +467,6 @@ def _doctor(store: Store, arguments: dict[str, object]) -> dict[str, object]:
                 if store.config.executor.model
                 else "needs_model"
             ),
-            "endpoint": store.config.executor.endpoint,
         },
     }
     if bool(arguments.get("smoke")):

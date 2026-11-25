@@ -42,13 +42,13 @@ def test_unknown_reasoners_are_refused_for_memory_jobs():
     from mnemobun.executor import distiller
 
     config = Config.default().executor
-    config.reasoner = "host"
+    config.reasoner = "claude-code"
     config.host = "hermes"
     config.model = "m"
     with pytest.raises(ReasonerUnavailableError) as excinfo:
         distiller.distiller(config)
-    assert "unsupported reasoner" in str(excinfo.value)
-    assert "mnemobun setup" in str(excinfo.value)
+    assert "no reasoner configured" in str(excinfo.value)
+    assert "no reasoner configured" in str(excinfo.value)
 
 
 def test_extraction_prompt_marks_content_as_untrusted_data():

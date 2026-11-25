@@ -14,9 +14,8 @@ CONFIG_FILENAME = "config.toml"
 STORE_ENV_VAR = "MNEMOBUN_STORE"
 EXECUTOR_ENV_VAR = "MNEMOBUN_EXECUTOR"
 MUSE_SETTINGS_ENV_VAR = "MNEMOBUN_MUSE_SETTINGS"
-REASONER_ENDPOINT = "endpoint"
-TOOL_MODE_AUTO = "auto"
-TOOL_MODE_TEXT = "text"
+REASONER_PLUGIN = "plugin"  # the Hermes plugin injects ctx.llm
+REASONER_DIALECTS = ("claude-code", "codex")  # an external CLI agent answers
 COORDINATION_LOCK_POLL_SECONDS = 0.02
 DREAM_CLAIM_ID_LENGTH = 20
 DREAM_ERROR_MAX_CHARS = 1000
@@ -189,25 +188,15 @@ class WriteConfig:
 @dataclasses.dataclass
 class OperationExecutorConfig:
     reasoner: str = ""
-    model: str = ""
-    endpoint: str = ""
-    project: str = ""
-    location: str = ""
     timeout_seconds: float = 0.0
-    tool_mode: str = ""
 
 
 @dataclasses.dataclass
 class ExecutorConfig:
-    reasoner: str = REASONER_ENDPOINT  # memory jobs run one endpoint completion
+    reasoner: str = "claude-code"  # a CLI dialect, or "plugin" for ctx.llm
     model: str = ""  # no silent default
-    key_env: str = ""  # env var name holding the endpoint API key
     model_source: str = "unset"  # chat | cli | gui | unset
-    endpoint: str = ""
-    project: str = ""
-    location: str = "global"
     timeout_seconds: float = 120.0
-    tool_mode: str = TOOL_MODE_AUTO
     command: str = "mnemobun distill"
     attempts: int = 3
     write: OperationExecutorConfig = dataclasses.field(default_factory=OperationExecutorConfig)

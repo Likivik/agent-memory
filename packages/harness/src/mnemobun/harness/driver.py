@@ -13,7 +13,7 @@ import time
 import uuid
 
 from mnemobun.core import observation
-from mnemobun.core.config import REASONER_ENDPOINT, Config
+from mnemobun.core.config import REASONER_DIALECTS, Config
 from mnemobun.core.distill import Ask
 from mnemobun.executor import distiller
 from mnemobun.executor.agents import Host
@@ -73,7 +73,7 @@ class Driver:
         self._system = system or NativeSystem(config)
         self._ask = ask or distiller.distiller(
             dataclasses.replace(
-                (config or Config.default()).executor, reasoner=REASONER_ENDPOINT
+                (config or Config.default()).executor, reasoner=REASONER_DIALECTS[0]
             )
         )
         if exam_mode == exam_module.MODE_FIXED and not self._system.supports_fixed_exam:

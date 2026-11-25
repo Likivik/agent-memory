@@ -14,15 +14,11 @@ a tool does and which operations to believe stays in the core.
 from __future__ import annotations
 
 import dataclasses
-import json
 import os
 import pathlib
 import shutil
 import sys
 import tempfile
-import time
-import urllib.error
-import urllib.request
 
 from mnemobun.core.config import EXECUTOR_ENV_VAR
 from mnemobun.core.errors import ReasonerUnavailableError
@@ -31,7 +27,6 @@ from mnemobun.core.reasoning import ReviewRuntime
 from mnemobun.core.toolkit import WriteToolkit
 
 from .agents import BINARIES, HOST_CLAUDE_CODE, Host, HostResult, HostSpec, ToolServer
-from .credentials import API_KEY_ENV, BASE_URL_ENV, VertexCredentials
 
 CHAT_COMPLETIONS = "/chat/completions"
 DEFAULT_ENDPOINT_MODEL = "google/gemini-2.5-flash"
@@ -179,197 +174,3 @@ def _host_failure(host: Host, result: HostResult) -> ReasonerUnavailableError:
     return ReasonerUnavailableError(
         f"host reasoner failed for {name}{detail}; run mem doctor --host {name}"
     )
-
-
-@dataclasses.dataclass
-class EndpointReasoner:
-    """An OpenAI-shaped chat endpoint, credentialed the way the hosts already are."""
-
-    model: str = DEFAULT_ENDPOINT_MODEL
-    timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
-    credentials: VertexCredentials = dataclasses.field(default_factory=VertexCredentials)
-    base_url: str = EMPTY
-    key_env: str = EMPTY
-    attempts: int = DEFAULT_ENDPOINT_ATTEMPTS
-    last_usage: dict[str, object] | None = None
-
-    def __call__(self, prompt: str) -> str:
-        failure: Exception | None = None
-        for attempt in range(self._tries()):
-            try:
-                payload = self._post(
-                    {"model": self.model, "messages": [_message(ROLE_USER, prompt)]}
-                )
-                seen = _usage_of(payload)
-                if seen is not None:
-                    self.last_usage = seen
-                message = _first_message(payload)
-                if message.strip():
-                    return message
-                failure = ReasonerUnavailableError("endpoint returned no valid message")
-            except ReasonerUnavailableError as error:
-                failure = error
-            self._pause(attempt)
-        raise failure if failure else ReasonerUnavailableError("endpoint returned no valid message")
-
-    def converse(self, instructions: str, material: str, toolkit: WriteToolkit) -> None:
-        """The standard loop: call, run every requested tool, answer it, until no tool is asked."""
-        tools = [
-            {
-                "type": "function",
-                "function": {
-                    "name": spec.name,
-                    "description": spec.description,
-                    "parameters": spec.schema,
-                },
-            }
-            for spec in toolkit.catalogue()
-        ]
-        messages: list[dict[str, object]] = [
-            _message(ROLE_SYSTEM, instructions),
-            _message(ROLE_USER, material),
-        ]
-        while True:
-            body: dict[str, object] = {"model": self.model, "messages": messages, "tools": tools}
-            reply = self._reply(body)
-            messages.append(reply)
-            calls = reply.get("tool_calls")
-            if not isinstance(calls, list) or not calls:
-                return
-            for call in calls:
-                messages.append(_answer(call, toolkit))
-
-    def _reply(self, body: dict[str, object]) -> dict[str, object]:
-        """One assistant turn, retried only when the request itself failed.
-
-        A dropped connection or a truncated body is worth repeating. A turn that
-        arrives with the wrong shape is a protocol mismatch, and a tool call whose
-        arguments do not parse is the model's own mistake to correct: the loop
-        answers it and lets the model try again. Neither is retried here, so the
-        conversation stays exactly as the endpoint saw it.
-        """
-        failure: Exception | None = None
-        for attempt in range(self._tries()):
-            try:
-                payload = self._post(body)
-            except ReasonerUnavailableError as error:
-                failure = error
-                self._pause(attempt)
-                continue
-            seen = _usage_of(payload)
-            if seen is not None:
-                self.last_usage = seen
-            return _assistant(payload)
-        raise failure if failure else ReasonerUnavailableError("endpoint returned no valid message")
-
-    def _tries(self) -> int:
-        return max(1, self.attempts)
-
-    def _pause(self, attempt: int) -> None:
-        if attempt + 1 < self._tries():
-            time.sleep(min(2.0, 0.5 * (attempt + 1)))
-
-    def _post(self, body: dict[str, object]) -> object:
-        base, key = self._endpoint()
-        request = urllib.request.Request(
-            base.rstrip("/") + CHAT_COMPLETIONS,
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except json.JSONDecodeError as error:
-            raise ReasonerUnavailableError("endpoint returned invalid JSON") from error
-        except (urllib.error.URLError, TimeoutError, OSError) as error:
-            raise ReasonerUnavailableError("endpoint request failed") from error
-
-    def _endpoint(self) -> tuple[str, str]:
-        environment = dict(os.environ)
-        base = self.base_url or environment.get(BASE_URL_ENV, EMPTY)
-        key = environment.get(self.key_env or API_KEY_ENV, EMPTY)
-        if not base:
-            supplied = self.credentials.environment(preserve_api_key=False)
-            base = supplied.get(BASE_URL_ENV, EMPTY)
-            key = supplied.get(API_KEY_ENV, EMPTY)
-        elif not key:
-            supplied = self.credentials.environment()
-            key = supplied.get(API_KEY_ENV, EMPTY)
-        if not base:
-            raise ReasonerUnavailableError(
-                "endpoint reasoner requires executor.endpoint or a Google Cloud project"
-            )
-        if not key:
-            raise ReasonerUnavailableError(
-                "endpoint reasoner requires GEMINI_API_KEY or gcloud authentication"
-            )
-        return base, key
-
-
-@dataclasses.dataclass
-class EndpointTextReasoner:
-    """Text-only view of :class:`EndpointReasoner` for endpoints that ignore tool_choice.
-
-    ``negotiate`` treats any object lacking ``converse`` as a plain ``Reasoner`` and routes
-    it through the line protocol, where the model returns one JSON operation per line and
-    the core parses them. Flash-class endpoints (Zhipu glm-4-flash) answer in prose instead
-    of honouring a forced tool call, so the line protocol is the reliable path for them.
-    """
-
-    inner: EndpointReasoner
-
-    @property
-    def last_usage(self) -> dict[str, object] | None:
-        return self.inner.last_usage
-
-    def __call__(self, prompt: str) -> str:
-        return self.inner(prompt)
-
-
-def _message(role: str, content: str) -> dict[str, object]:
-    return {"role": role, "content": content}
-
-
-def _assistant(payload: object) -> dict[str, object]:
-    choices = payload.get("choices") if isinstance(payload, dict) else None
-    first = choices[0] if isinstance(choices, list) and choices else None
-    message = first.get("message") if isinstance(first, dict) else None
-    if not isinstance(message, dict):
-        raise ReasonerUnavailableError("endpoint returned no valid message")
-    reply: dict[str, object] = {"role": ROLE_ASSISTANT, "content": message.get("content")}
-    calls = message.get("tool_calls")
-    if isinstance(calls, list) and calls:
-        reply["tool_calls"] = calls
-    return reply
-
-
-def _answer(call: object, toolkit: WriteToolkit) -> dict[str, object]:
-    described = call if isinstance(call, dict) else {}
-    function = described.get("function")
-    function = function if isinstance(function, dict) else {}
-    try:
-        arguments = json.loads(str(function.get("arguments") or "{}"))
-    except json.JSONDecodeError:
-        arguments = None
-    text = (
-        toolkit.call(str(function.get("name") or EMPTY), arguments).text
-        if isinstance(arguments, dict)
-        else MALFORMED_ARGUMENTS
-    )
-    return {"role": ROLE_TOOL, "tool_call_id": described.get("id"), "content": text}
-
-
-def _first_message(payload: object) -> str:
-    if not isinstance(payload, dict):
-        return EMPTY
-    choices = payload.get("choices")
-    if not isinstance(choices, list) or not choices:
-        return EMPTY
-    message = choices[0].get("message") if isinstance(choices[0], dict) else None
-    content = message.get("content") if isinstance(message, dict) else None
-    return content if isinstance(content, str) else EMPTY
-
-
-def _usage_of(payload: object) -> dict[str, object] | None:
-    usage = payload.get("usage") if isinstance(payload, dict) else None
-    return usage if isinstance(usage, dict) else None

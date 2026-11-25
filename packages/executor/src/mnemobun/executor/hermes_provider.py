@@ -100,12 +100,15 @@ class HermesMemoryProvider:
             result["reason"] = model_resolution.NEEDS_MODEL
             return result
         ask = None
-        try:
-            ask = distiller_module.distiller(
-                selection.resolve(self.store.config.executor, "write"), store=self.store
-            )
-        except Exception:
-            ask = None  # decision-only report instead of a dead idle task
+        if self.reasoner is not None:  # host-injected (ctx.llm); None = decision-only
+            try:
+                ask = distiller_module.distiller(
+                    selection.resolve(self.store.config.executor, "write"),
+                    store=self.store,
+                    ask=self.reasoner,
+                )
+            except Exception:
+                ask = None  # decision-only report instead of a dead idle task
         result = feed.run(self.store, ask=ask).as_dict()
         result["model"] = route.label()
         return result

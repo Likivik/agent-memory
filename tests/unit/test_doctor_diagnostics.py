@@ -17,56 +17,23 @@ def _details(checks) -> str:
     return " | ".join(f"{check.code}: {check.detail}" for check in checks)
 
 
-def test_the_reasoner_check_names_an_explicit_endpoint(tmp_path):
+def test_the_reasoner_check_names_the_host(tmp_path):
     store = _store(tmp_path)
-    store.config.executor.model = "gemini-test"
-    store.config.executor.endpoint = "https://models.example/v1"
 
-    checks = doctor._reasoner_checks(store, "", {"GEMINI_API_KEY": "user-key"})
+    checks = doctor._reasoner_checks(store, "", {})
 
-    assert "explicit model endpoint" in _details(checks)
     assert all(check.ok for check in checks)
+    assert "claude-code CLI" in _details(checks)
 
 
-def test_the_reasoner_check_refuses_a_non_endpoint_reasoner(tmp_path):
+def test_the_reasoner_check_refuses_a_non_host_reasoner(tmp_path):
     store = _store(tmp_path)
-    store.config.executor.reasoner = "host"
-    store.config.executor.model = "m"
+    store.config.executor.reasoner = "endpoint"
 
     checks = doctor._reasoner_checks(store, "", {})
 
     assert any(not check.ok for check in checks)
     assert "unsupported reasoner" in _details(checks)
-
-
-def test_the_reasoner_check_reports_missing_credentials(tmp_path):
-    store = _store(tmp_path)
-
-    checks = doctor._reasoner_checks(store, "", {})
-
-    assert any(not check.ok for check in checks)
-    assert "requires a user-owned endpoint and API key" in _details(checks)
-
-
-def test_the_reasoner_check_honors_the_configured_key_env(tmp_path):
-    store = _store(tmp_path)
-    store.config.executor.endpoint = "https://models.example/v1"
-    store.config.executor.key_env = "MY_OWN_KEY"
-
-    checks = doctor._reasoner_checks(store, "", {"MY_OWN_KEY": "user-key"})
-
-    assert all(check.ok for check in checks)
-
-
-def test_the_reasoner_check_accepts_a_vertex_project(tmp_path):
-    store = _store(tmp_path)
-
-    checks = doctor._reasoner_checks(
-        store, "", {"GOOGLE_CLOUD_PROJECT": "user-project"}
-    )
-
-    assert all(check.ok for check in checks)
-    assert "Vertex AI project user-project" in _details(checks)
 
 
 def test_store_checks_confirm_the_store_is_initialized_and_writable(tmp_path):
@@ -98,4 +65,3 @@ def test_smoke_reports_failure_instead_of_raising_when_unconfigured(tmp_path):
     report = doctor.smoke(store)
 
     assert report["answered"] is False
-    assert "no model configured" in str(report["reason"])

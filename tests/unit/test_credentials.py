@@ -110,7 +110,7 @@ def test_the_environment_overrides_the_configured_project(monkeypatch):
     assert "/locations/us-central1/" in environment[credentials.BASE_URL_ENV]
 
 
-def test_the_distiller_hands_the_configured_project_to_the_minter():
+def _gone_distiller_project():
     from mnemobun.core.config import ExecutorConfig
     from mnemobun.executor.distiller import distiller
 

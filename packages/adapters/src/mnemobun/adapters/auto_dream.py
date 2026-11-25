@@ -149,8 +149,11 @@ def _manage_target(store: Store) -> tuple[str, str, str]:
     """Resolve the configured Dream target without borrowing the Write source Host."""
     executor = store.config.executor
     manage = executor.manage
+    from mnemobun.core.config import REASONER_DIALECTS
+
     reasoner = manage.reasoner or executor.reasoner
-    return reasoner, "", manage.model or executor.model
+    dialect = reasoner if reasoner in REASONER_DIALECTS else ""
+    return reasoner, dialect, executor.model
 
 
 def _reasoner_diagnostic(kind: str, model: str) -> dict[str, str]:

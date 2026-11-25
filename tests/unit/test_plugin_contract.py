@@ -7,7 +7,6 @@ loaders, not against the code's appearance).
 from __future__ import annotations
 
 import importlib.util
-import json
 import sys
 from pathlib import Path
 
@@ -42,19 +41,31 @@ def _home_with_store(plugin_module, tmp_path):
     return home, store_root
 
 
-def _flat_provider(plugin_module, tmp_path):
-    """Provider bound to a temp home/store - no engine work involved."""
+def _flat_provider(plugin_module, tmp_path, monkeypatch=None, menu=None, effective=None):
+    """Provider bound to a temp home/store with the host surfaces stubbed."""
     provider = plugin_module.AgentMemoryHermesProvider()
     provider._hermes_home = str(tmp_path)
     provider._store_path = str(tmp_path / "store")
+    if monkeypatch is not None:
+        monkeypatch.setattr(provider, "_model_menu", staticmethod(lambda: list(menu or [])))
+        monkeypatch.setattr(provider, "_effective", lambda: dict(effective or {}))
+        monkeypatch.setattr(provider, "_ensure_store", lambda *a, **k: True)
     return provider
 
 
-def test_model_choices_come_from_the_cached_endpoint_models(plugin_module, tmp_path):
-    provider = _flat_provider(plugin_module, tmp_path)
-    (tmp_path / "store" / ".state").mkdir(parents=True)
-    (tmp_path / "store" / ".state" / "models.json").write_text(
-        json.dumps({"models": ["alpha", "beta"]}), encoding="utf-8"
+def test_the_panel_offers_exactly_four_fields(plugin_module, tmp_path, monkeypatch):
+    provider = _flat_provider(plugin_module, tmp_path, monkeypatch)
+
+    keys = [field["key"] for field in provider.get_config_schema()]
+
+    assert keys == ["model", "max_calls_per_run", "max_tokens_per_day", "store_path"]
+
+
+def test_the_model_field_offers_the_host_menu_with_unset_first(
+    plugin_module, tmp_path, monkeypatch
+):
+    provider = _flat_provider(
+        plugin_module, tmp_path, monkeypatch, menu=["alpha", "beta"]
     )
 
     model = next(f for f in provider.get_config_schema() if f["key"] == "model")
@@ -62,91 +73,94 @@ def test_model_choices_come_from_the_cached_endpoint_models(plugin_module, tmp_p
     assert model["choices"] == ["", "alpha", "beta"]
 
 
-def test_model_choices_keep_a_saved_value_outside_the_list(plugin_module, tmp_path):
-    """A select cannot hold values outside its options - a saved model the
-    cache lacks joins the list or the panel would show a different model."""
-    provider = _flat_provider(plugin_module, tmp_path)
-    (tmp_path / "store" / ".state").mkdir(parents=True)
-    (tmp_path / "store" / ".state" / "models.json").write_text(
-        json.dumps({"models": ["alpha"]}), encoding="utf-8"
-    )
-    (tmp_path / "mnemobun").mkdir()
-    (tmp_path / "mnemobun" / "config.json").write_text(
-        json.dumps({"model": "custom-model"}), encoding="utf-8"
+def test_a_saved_model_outside_the_menu_joins_the_choices(
+    plugin_module, tmp_path, monkeypatch
+):
+    provider = _flat_provider(
+        plugin_module, tmp_path, monkeypatch, menu=["alpha"], effective={"model": "custom"}
     )
 
     model = next(f for f in provider.get_config_schema() if f["key"] == "model")
 
-    assert model["choices"] == ["", "alpha", "custom-model"]
+    assert model["choices"] == ["", "alpha", "custom"]
 
 
-def test_model_field_falls_back_to_typing_without_a_cached_list(plugin_module, tmp_path):
-    provider = _flat_provider(plugin_module, tmp_path)
+def test_without_a_menu_the_model_field_stays_typed(plugin_module, tmp_path, monkeypatch):
+    provider = _flat_provider(plugin_module, tmp_path, monkeypatch, menu=[])
 
     model = next(f for f in provider.get_config_schema() if f["key"] == "model")
 
     assert "choices" not in model
 
 
-def test_save_mirrors_settings_for_the_host_display_reader(plugin_module, tmp_path, monkeypatch):
-    """The deployed dashboard's GET reads only $HERMES_HOME/<name>/config.json;
-    settings kept just in the store would render as blank fields."""
-    provider = _flat_provider(plugin_module, tmp_path)
-    monkeypatch.setattr(provider, "_ensure_store", lambda *a, **k: True)
-    monkeypatch.setattr(plugin_module, "apply_settings", lambda *a, **k: None)
-    monkeypatch.setattr(
-        plugin_module.AgentMemoryHermesProvider, "_probe_models",
-        staticmethod(lambda _e, _k: ([], "")),
+def test_field_defaults_come_from_the_store(plugin_module, tmp_path, monkeypatch):
+    provider = _flat_provider(
+        plugin_module,
+        tmp_path,
+        monkeypatch,
+        effective={"model": "m1", "max_calls_per_run": 7.0, "max_tokens_per_day": 999.0},
     )
 
-    provider.save_config({"model": "m1", "endpoint": "https://x.example/v1"}, str(tmp_path))
+    fields = {field["key"]: field["default"] for field in provider.get_config_schema()}
 
-    mirror = json.loads((tmp_path / "mnemobun" / "config.json").read_text(encoding="utf-8"))
-    assert mirror["model"] == "m1"
-    assert mirror["endpoint"] == "https://x.example/v1"
-
-
-def test_save_refuses_a_malformed_endpoint(plugin_module, tmp_path):
-    provider = _flat_provider(plugin_module, tmp_path)
-
-    with pytest.raises(ValueError, match="not an http"):
-        provider.save_config({"endpoint": "not a url"}, str(tmp_path))
+    assert fields["model"] == "m1"
+    assert fields["max_calls_per_run"] == 7.0
+    assert fields["max_tokens_per_day"] == 999.0
 
 
-def test_save_refreshes_the_model_cache_with_one_probe(plugin_module, tmp_path, monkeypatch):
-    provider = _flat_provider(plugin_module, tmp_path)
-    monkeypatch.setattr(provider, "_ensure_store", lambda *a, **k: True)
-    monkeypatch.setattr(plugin_module, "apply_settings", lambda *a, **k: None)
+def test_save_refuses_a_model_the_providers_do_not_offer(
+    plugin_module, tmp_path, monkeypatch
+):
+    provider = _flat_provider(
+        plugin_module, tmp_path, monkeypatch, menu=["alpha", "beta"]
+    )
+
+    with pytest.raises(ValueError, match="not offered"):
+        provider.save_config({"model": "not-in-menu"}, str(tmp_path))
+
+
+def test_save_writes_the_store_and_nothing_else(plugin_module, tmp_path, monkeypatch):
+    provider = _flat_provider(plugin_module, tmp_path, monkeypatch, menu=["alpha"])
+    recorded: list = []
+    monkeypatch.setattr(
+        plugin_module,
+        "apply_settings",
+        lambda store, payload, actor: recorded.append((payload, actor)),
+    )
+
+    provider.save_config({"model": "alpha"}, str(tmp_path))
+
+    assert recorded == [({"model": "alpha"}, "gui")]
+    assert not (tmp_path / "mnemobun").exists()  # no mirror file
+
+
+def test_the_ask_uses_the_recorded_model_and_refuses_without_one(
+    plugin_module, tmp_path, monkeypatch
+):
+    provider = _flat_provider(plugin_module, tmp_path, monkeypatch)
+    provider._store = object()
     calls: list = []
 
-    def fake_probe(endpoint, key_env):
-        calls.append((endpoint, key_env))
-        return ["alpha", "beta"], ""
+    class FakeResult:
+        text = "reply"
+
+    class FakeLlm:
+        def complete(self, messages, **kwargs):
+            calls.append(kwargs.get("model"))
+            return FakeResult()
 
     monkeypatch.setattr(
-        plugin_module.AgentMemoryHermesProvider, "_probe_models", staticmethod(fake_probe)
+        plugin_module, "effective_settings", lambda store: {"model": "alpha"}
     )
+    monkeypatch.setattr(plugin_module, "provider", provider)
+    ask = plugin_module._make_plugin_ask(FakeLlm())
 
-    provider.save_config({"endpoint": "https://x.example/v1", "key_env": "X_KEY"}, str(tmp_path))
+    assert ask("hello") == "reply"
+    assert calls == ["alpha"]
 
-    assert calls == [("https://x.example/v1", "X_KEY")]
-    model = next(f for f in provider.get_config_schema() if f["key"] == "model")
-    assert model["choices"] == ["", "alpha", "beta"]
-
-
-def test_save_survives_a_failed_model_probe(plugin_module, tmp_path, monkeypatch):
-    provider = _flat_provider(plugin_module, tmp_path)
-    monkeypatch.setattr(provider, "_ensure_store", lambda *a, **k: True)
-    monkeypatch.setattr(plugin_module, "apply_settings", lambda *a, **k: None)
-    monkeypatch.setattr(
-        plugin_module.AgentMemoryHermesProvider, "_probe_models",
-        staticmethod(lambda _e, _k: ([], "URLError: down")),
-    )
-
-    provider.save_config({"model": "m1", "endpoint": "https://x.example/v1"}, str(tmp_path))
-
-    mirror = json.loads((tmp_path / "mnemobun" / "config.json").read_text(encoding="utf-8"))
-    assert mirror["model"] == "m1"
+    monkeypatch.setattr(plugin_module, "effective_settings", lambda store: {"model": ""})
+    with pytest.raises(Exception, match="no model configured"):
+        ask("hello")
 
 
 def test_get_config_schema_uses_the_host_key_contract(plugin_module):
@@ -160,10 +174,6 @@ def test_get_config_schema_uses_the_host_key_contract(plugin_module):
         assert str(field.get("key") or "").strip(), f"field missing key: {field}"
     assert {field["key"] for field in fields} == {
         "model",
-        "endpoint",
-        "key_env",
-        "distill_model",
-        "dream_model",
         "max_calls_per_run",
         "max_tokens_per_day",
         "store_path",
@@ -215,13 +225,10 @@ def test_config_fields_honor_the_given_home_and_the_contract_shape(plugin_module
     home, store_root = _home_with_store(plugin_module, tmp_path)
     provider = plugin_module.AgentMemoryHermesProvider()
 
-    provider.write_config_fields(
-        {"model": "m-param", "endpoint": "https://models.example/v1"}, str(home)
-    )
+    provider.write_config_fields({"model": "m-param"}, str(home))
     shape = provider.read_config_fields(str(home))
     assert set(shape) == {"values", "placeholders"}
     assert shape["values"]["model"] == "m-param"
-    assert shape["values"]["endpoint"] == "https://models.example/v1"
     assert str(store_root).startswith(str(home))
 
     # values live on disk under the GIVEN home (fresh reopen)

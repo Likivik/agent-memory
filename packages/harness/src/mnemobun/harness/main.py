@@ -42,7 +42,6 @@ from .judge import Judge
 from .metrics import STATUS_OK, MetricsSink, RunMetadata, RunMetadataSink
 
 REASON_HOST = "host"
-REASON_ENDPOINT = "endpoint"
 EXIT_OK = 0
 EXIT_ERROR = 1
 DEFAULT_ARMS = "W0,W1,W2,W3,W4"
@@ -197,7 +196,7 @@ def _parser() -> argparse.ArgumentParser:
         default=0.0,
         help="sleep as if this many days have passed, so decay and staleness can fire",
     )
-    sleeper.add_argument("--reason", choices=(REASON_HOST, REASON_ENDPOINT), default=None)
+    sleeper.add_argument("--reason", choices=(REASON_HOST,), default=None)
     sleeper.add_argument("--reason-host", default=HOST_CLAUDE_CODE)
     sleeper.add_argument("--reason-model", default="")
     sleeper.add_argument(
@@ -639,9 +638,6 @@ def _reasoner(args: argparse.Namespace) -> Reasoner | None:
     """The experiment's own borrowed intelligence, spoken to exactly as the CLI speaks to it."""
     if args.reason == REASON_HOST:
         return reasoners.HostReasoner(host=_host(args.reason_host, args.reason_model))
-    if args.reason == REASON_ENDPOINT:
-        model = args.reason_model or reasoners.DEFAULT_ENDPOINT_MODEL
-        return reasoners.EndpointReasoner(model=model)
     return None
 
 
