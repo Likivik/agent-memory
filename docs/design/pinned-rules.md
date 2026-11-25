@@ -147,9 +147,14 @@ deserves its own soak test before it is trusted.
 ## Not wired yet
 
 `adapters/pin_channel.py` is a registry with a digest test. Hermes delivers through
-`system_prompt_block()`; Claude Code, Codex and Muse deliver through `pin_channel.sync(store, host,
-path)`, which renders and splices the block into their prompt file. The executor does not call
-`sync()` yet — that hook is the remaining increment.
+`system_prompt_block()`; the headless hosts are served by `HostAgent._with_pins()`, which asks
+`pin_channel.executor_block(store, host)` for the block and prepends it to the system prompt the
+executor hands the host (the same text that becomes Claude Code's `--system-prompt-file`, Codex's
+`model_instructions_file`, Muse's prompt file). Hermes is skipped there because its own block would
+otherwise arrive twice. A store fault degrades to "no pins" and is logged.
+
+The converse path (Write negotiation) carries no store root, so it gets no pinned block today —
+the tool path (`_attempt`) is the one that matters for agent runs.
 
 ## Open questions
 

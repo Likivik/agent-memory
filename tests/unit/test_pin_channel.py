@@ -124,3 +124,27 @@ def test_sync_writes_the_block_into_a_host_file(store, tmp_path):
     assert delivery.wrote is True
     assert "never prune without approval" in target.read_text()
     assert target.read_text().startswith("# project")
+
+
+def test_executor_block_is_empty_for_hermes(store):
+    from mnemobun.core import pinned
+
+    store.record(name="rule-one", abstract="never prune without approval", type="claim")
+    pinned.set_pinned(store, "rule-one", pinned=True)
+
+    assert pin_channel.executor_block(store, "hermes") == ""
+
+
+def test_executor_block_carries_the_rule_for_headless_hosts(store):
+    from mnemobun.core import pinned
+
+    store.record(name="rule-one", abstract="never prune without approval", type="claim")
+    pinned.set_pinned(store, "rule-one", pinned=True)
+
+    for host in ("claude-code", "codex", "muse-code"):
+        block = pin_channel.executor_block(store, host)
+        assert "never prune without approval" in block
+
+
+def test_executor_block_survives_an_unknown_host(store):
+    assert pin_channel.executor_block(store, "some-future-host") == ""

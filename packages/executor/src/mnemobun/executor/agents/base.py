@@ -16,6 +16,7 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import json
+import logging
 import os
 import pathlib
 import shutil
@@ -92,6 +93,9 @@ MUSE_NATIVE_TOOL_REQUIREMENT = "Muse native tools require Muse Code 1.4.4 or new
 MUSE_RUNTIME_TMPDIR = "/var/tmp"
 MUSE_NATIVE_MAX_MODEL_STEPS = 8
 
+
+
+LOGGER = logging.getLogger(__name__)
 
 @dataclasses.dataclass(frozen=True)
 class HostResult:
@@ -349,7 +353,8 @@ class Host:
         """One headless run in which the host's own loop calls only the server's tools."""
         return self._retrying(
             lambda: self._converse_attempt(
-                prompt, system_prompt, server, environment or {}, timeout_seconds
+                # no store root on the converse path: pinned rules ride the tool path (_attempt)
+                prompt, system_prompt, server, environment or {}, timeout_seconds, None
             )
         )
 
@@ -373,7 +378,9 @@ class Host:
         server: ToolServer,
         environment: dict[str, str],
         timeout_seconds: float | None,
+        store_root: pathlib.Path | None = None,
     ) -> HostResult:
+        system_prompt = self._with_pins(system_prompt, store_root)
         with tempfile.TemporaryDirectory() as scratch:
             scratch_path = pathlib.Path(scratch)
             answer_file = scratch_path / ANSWER_FILENAME
@@ -495,6 +502,27 @@ class Host:
         user_home = pathlib.Path(environment.get("HOME", str(pathlib.Path.home()))).expanduser()
         return user_home / f".hermes{suffix}"
 
+    def _with_pins(self, system_prompt: str, store_root: pathlib.Path | None) -> str:
+        """Prepend the pinned-rules block for a headless host. Never breaks a run.
+
+        The pinned floor only survives if it reaches the host's own instructions, so it is
+        delivered per run here. A memory fault degrades to "no pins" and is logged, because a
+        lost rule must never cost the caller its work.
+        """
+        if store_root is None:
+            return system_prompt
+        try:
+            from mnemobun.adapters import pin_channel
+            from mnemobun.core.config import Config
+            from mnemobun.core.store import Store
+
+            store = Store(store_root, config=Config.default(), agent="executor")
+            block = pin_channel.executor_block(store, self.spec.name)
+        except Exception as error:  # noqa: BLE001 - a broken store must not abort the host run
+            LOGGER.warning("mnemobun: pinned block skipped for %s: %s", self.spec.name, error)
+            return system_prompt
+        return f"{block}\n\n{system_prompt}" if block else system_prompt
+
     def _attempt(
         self,
         prompt: str,
@@ -506,6 +534,7 @@ class Host:
         environment: dict[str, str],
         tool_pattern: str,
     ) -> HostResult:
+        system_prompt = self._with_pins(system_prompt, store_root)
         with tempfile.TemporaryDirectory() as scratch:
             scratch_path = pathlib.Path(scratch)
             answer_file = scratch_path / ANSWER_FILENAME

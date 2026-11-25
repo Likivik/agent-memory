@@ -171,3 +171,30 @@ def sync(store, host: str, target: pathlib.Path) -> Delivery:
     if not block:
         return Delivery(host=host, digest=digest_of(""), wrote=False, degraded=channel_.degraded)
     return deliver(channel_, block, target=target, state_dir=store.layout.state_dir)
+
+
+HOST_ALIASES = {"muse-code": "muse", "claude": "claude-code"}
+
+
+def host_name(spec_name: str) -> str:
+    return HOST_ALIASES.get(spec_name, spec_name)
+
+
+def executor_block(store, spec_name: str) -> str:
+    """The block a headless host needs prepended to its system prompt, or "" when it has none.
+
+    Hermes is skipped: its block rides `system_prompt_block()` inside the host itself, so
+    appending here would deliver the same rules twice.
+    """
+    from mnemobun.core import pinned as pinned_rules
+
+    try:
+        channel_ = channel(host_name(spec_name))
+    except KeyError:
+        return ""
+    if channel_.surface == SURFACE_SYSTEM_BLOCK:
+        return ""
+    block = pinned_rules.render(store)
+    if not block:
+        return ""
+    return wrap(channel_, block)
