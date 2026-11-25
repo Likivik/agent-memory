@@ -230,7 +230,7 @@ def _pinned_checks(store: Store) -> list[Check]:
     budget = store.config.recall.pinned_max_bytes
     out.append(
         Check(
-            "PINNED_OVER_BUDGET" if block.omitted else "PINNED_WITHIN_BUDGET",
+            "PINNED_BUDGET",
             not block.omitted,
             f"{len(block.rules)} rule(s), {block.omitted} omitted, cap {budget} bytes",
             required=False,
@@ -243,7 +243,7 @@ def _pinned_checks(store: Store) -> list[Check]:
     ]
     out.append(
         Check(
-            "PINNED_STALE" if stale else "PINNED_FRESH",
+            "PINNED_STANDING",
             not stale,
             ", ".join(stale) or "every pinned rule still stands",
             required=False,
@@ -257,15 +257,15 @@ def _pinned_checks(store: Store) -> list[Check]:
         current = block.digest
         out.append(
             Check(
-                "PIN_DIGEST_DRIFT" if delivered and delivered != current else "PIN_DIGEST_OK",
-                True,
+                "PIN_DIGEST",
+                delivered == current,
                 f"delivered={delivered[:12] or 'never'} current={current[:12]}",
                 required=False,
             )
         )
         out.append(
             Check(
-                "PIN_UNPINNED_HOST" if host.degraded else "PIN_HOST_PRESERVED",
+                "PIN_HOST",
                 not host.degraded,
                 f"{host.host}: {host.surface} (preserved={host.preserved})",
                 required=False,

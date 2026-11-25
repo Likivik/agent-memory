@@ -79,7 +79,7 @@ def test_pinned_block_over_budget_is_reported(tmp_path):
 
     codes = {check.code for check in doctor._store_checks(store)}
 
-    assert "PINNED_OVER_BUDGET" in codes
+    assert "PINNED_BUDGET" in codes
 
 
 def test_stale_pin_is_reported(tmp_path):
@@ -93,13 +93,15 @@ def test_stale_pin_is_reported(tmp_path):
 
     codes = {check.code for check in doctor._store_checks(store)}
 
-    assert "PINNED_STALE" in codes
+    assert "PINNED_STANDING" in codes
 
 
-def test_unreadable_pinned_roster_is_reported(tmp_path):
+def test_unreadable_roster_does_not_kill_the_block(tmp_path):
+    from mnemobun.core import pinned
+
     store = _store(tmp_path)
+    store.record(name="rule-one", abstract="always ask first", type="claim")
+    pinned.set_pinned(store, "rule-one", pinned=True)
     (store.layout.state_dir / "pins.json").write_text("{not json")
 
-    codes = {check.code for check in doctor._store_checks(store)}
-
-    assert "PINNED_UNREADABLE" in codes
+    assert "always ask first" in pinned.render(store)

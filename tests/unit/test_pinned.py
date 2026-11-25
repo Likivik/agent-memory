@@ -66,15 +66,19 @@ def test_contested_pin_is_refused(store):
     assert pinned.render(store) == ""
 
 
-def test_missing_record_is_dropped_loudly(store):
+def test_deleting_a_pinned_claim_does_not_kill_the_block(store):
     _claim(store, "rule-one", "always ask first")
-    pinned.set_pinned(store, "rule-one", pinned=True)
+    _claim(store, "rule-two", "never prune")
+    for name in ("rule-one", "rule-two"):
+        pinned.set_pinned(store, name, pinned=True)
     for path in store.layout.truth_files():
         if path.stem.startswith("rule-one"):
             path.unlink()
 
-    with pytest.raises(ValidationError):
-        pinned.render(store)
+    text = pinned.render(store)
+
+    assert "never prune" in text  # one deleted rule cannot blank the rest
+    assert "always ask first" not in text
 
 
 def test_empty_store_renders_empty_string(store):

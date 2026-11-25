@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -56,6 +57,9 @@ MODEL_LABEL_SEP = " \u00b7 "  # display only: "Provider - model"
 # looks at $HERMES_HOME/<name>/config.json - the mirror lives exactly there.
 CONFIG_DIRNAME = "mnemobun"
 CONFIG_FILENAME = "config.json"
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class AgentMemoryHermesProvider(_HOST_BASE):
@@ -155,7 +159,8 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             from mnemobun.core import pinned as pinned_rules
 
             block = pinned_rules.render(self._provider().store).strip()
-        except Exception:  # a broken store must not break the host's prompt
+        except Exception as error:  # a broken store must not break the host's prompt
+            _LOGGER.warning("mnemobun: pinned block unavailable: %s", error)
             return blurb
         return f"{blurb}\n\n{block}" if block else blurb
 

@@ -47,3 +47,11 @@ def test_pin_refuses_a_non_claim(store):
 
     with pytest.raises(ValidationError):
         Docket(store).pin("a-fact")
+
+
+def test_pin_and_unpin_have_sleep_caps(store):
+    """Without a cap entry the review loop withholds the proposal silently."""
+    caps = Docket(store)._caps()
+
+    assert caps["pin"] > 0
+    assert caps["unpin"] > 0

@@ -76,8 +76,8 @@ def _roster(store: Store) -> dict[str, str]:
         return {}
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as error:
-        raise ValidationError([FieldError(PINNED_FIELD, f"roster unreadable: {path}")]) from error
+    except (OSError, ValueError):
+        return {}  # advisory only: unreadable roster means "no remembered order", not a dead block
     return {str(k): str(v) for k, v in dict(raw).items()}
 
 
@@ -101,11 +101,11 @@ def block(store: Store) -> PinnedBlock:
     """
     roster = _roster(store)
     records = {record.name: record for record in store.records()}
-    missing = sorted(name for name in roster if name not in records)
-    if missing:
-        raise ValidationError(
-            [FieldError(PINNED_FIELD, f"pinned record missing: {', '.join(missing)}")]
-        )
+    orphans = {name: order for name, order in roster.items() if name not in records}
+    if orphans:  # a deleted claim: the roster is a side file, so it must not outlive the record
+        for name in orphans:
+            roster.pop(name, None)
+        _write_roster(store, roster)
     rules = sorted(
         (PinnedRule(name=r.name, line=_line(r), order=_order(r))
          for r in records.values() if _eligible(r)),
@@ -154,13 +154,18 @@ def set_pinned(store: Store, name: str, *, pinned: bool, order: int | None = Non
     return written
 
 
+def _write_roster(store: Store, roster: dict[str, str]) -> None:
+    """Advisory side file: remembered order only, never the source of truth."""
+    path = _roster_path(store)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(roster, indent=PINNED_ROSTER_INDENT, sort_keys=True)
+    path.write_text(payload + "\n", encoding="utf-8")
+
+
 def _record_roster(store: Store, name: str, order: int | None, *, pinned: bool) -> None:
     roster = _roster(store)
     if pinned:
         roster[name] = str(order if order is not None else PIN_ORDER_DEFAULT)
     else:
         roster.pop(name, None)
-    path = _roster_path(store)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(roster, indent=PINNED_ROSTER_INDENT, sort_keys=True)
-    path.write_text(payload + "\n", encoding="utf-8")
+    _write_roster(store, roster)

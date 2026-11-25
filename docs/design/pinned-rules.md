@@ -1,6 +1,6 @@
 # Pinned rules: the always-on floor for standing constraints
 
-Status: design, not implemented. Supersedes the ad-hoc "claims block" in `prefetch`.
+Status: implemented (P1-P9). Supersedes the ad-hoc "claims block" in `prefetch`.
 
 ## The problem, measured
 
@@ -38,8 +38,9 @@ Rules get their own track, separate from recall, and are pinned into the system 
   context, restoring violation to 0%.
 - Ten rules therefore cost ~470 tokens. Default `pinned_max_bytes = 2048` (~500 tokens, ≈10
   rules), hard cap; `PINNED_OVER_BUDGET` is a doctor check, not a silent truncation.
-- Truncation, when it happens, is explicit in the rendered file (a trailing marker naming what was
-  dropped). Silent clipping is how a rule disappears while looking present.
+- Truncation, when it happens, is explicit: the block ends with a trailing marker counting what was
+  dropped, and `PINNED_BUDGET` fails in the doctor. Silent clipping is how a rule disappears while
+  looking present.
 - **Stability beats freshness.** A block that changes per turn invalidates the prompt cache, so
   edits happen only when a `pin`/`unpin` proposal is accepted — never on a turn.
 
@@ -130,7 +131,7 @@ deserves its own soak test before it is trusted.
 ## Test plan
 
 - `test_pinned.py`: render order is deterministic; over-budget truncation is explicit; unflagged
-  claims never appear; a pinned claim with `standing=contradicted` is refused.
+  claims never appear; a pinned claim with `standing=contested` is refused.
 - `test_system_prompt_block.py`: the plugin returns the rendered block, and returns `""` when no
   claim is pinned (no empty header).
 - `test_prefetch.py`: prefetch never returns a pinned claim (they belong to the other channel).
@@ -140,6 +141,12 @@ deserves its own soak test before it is trusted.
   an unchanged block is not rewritten; a `preserved: false` channel reports `PIN_UNPINNED_HOST`.
 - Doctor: `PINNED_OVER_BUDGET`, `PINNED_STALE`, `PINNED_UNREADABLE`, `PIN_UNPINNED_HOST`,
   `PIN_DIGEST_DRIFT`.
+
+## Not wired yet
+
+`adapters/pin_channel.py` is a registry with a digest test; only Hermes delivers today (through
+`system_prompt_block()`). Claude Code, Codex and Muse have their channels declared and no production
+caller. Wiring them is the next increment, not a claim this note can make.
 
 ## Open questions
 

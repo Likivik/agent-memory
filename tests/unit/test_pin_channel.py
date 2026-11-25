@@ -86,3 +86,26 @@ def test_oversized_block_is_refused(tmp_path):
 def test_unknown_channel_names_itself():
     with pytest.raises(KeyError, match="unknown pin channel"):
         pin_channel.channel("nope")
+
+
+def test_muse_prompt_file_is_not_clobbered(tmp_path):
+    target = tmp_path / "prompt.md"
+    target.write_text("# my prompt\nimportant instruction\n")
+
+    deliver(pin_channel.channel("muse"), BLOCK, target=target)
+
+    text = target.read_text()
+    assert text.startswith("# my prompt")
+    assert "important instruction" in text
+    assert BLOCK.split(" (")[0] in text
+
+
+def test_reversed_markers_do_not_corrupt_the_file(tmp_path):
+    target = tmp_path / "CLAUDE.md"
+    target.write_text(f"{MARKER_END}\noops\n{MARKER_START}\n")
+
+    deliver(pin_channel.channel("claude-code"), BLOCK, target=target)
+
+    text = target.read_text()
+    assert "oops" in text
+    assert text.count(BLOCK) == 1

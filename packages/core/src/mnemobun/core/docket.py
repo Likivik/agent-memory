@@ -150,6 +150,8 @@ class Docket:
             PROPOSAL_DELETE: manage.max_deletes_per_sleep,
             PROPOSAL_ACCEPT_STANDING: manage.max_accepts_per_sleep,
             PROPOSAL_CONFLICT_REVIEW: manage.max_conflicts_per_sleep,
+            PROPOSAL_PIN: self._config.manage.max_pins_per_sleep,
+            PROPOSAL_UNPIN: self._config.manage.max_unpins_per_sleep,
             PROPOSAL_ABSTRACT_REVIEW: len(self._store.records()),
         }
 

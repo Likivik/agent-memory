@@ -102,6 +102,8 @@ def splice(existing: str, block: str) -> str:
     wrapped = f"{MARKER_START}\n{block}\n{MARKER_END}"
     start = existing.find(MARKER_START)
     end = existing.find(MARKER_END)
+    if start >= 0 and end >= 0 and end < start:
+        start = end = -1  # reversed markers: treat the file as having no region
     if start < 0 or end < 0:
         separator = "" if not existing or existing.endswith("\n") else "\n"
         return f"{existing}{separator}{wrapped}\n"
@@ -120,7 +122,7 @@ def deliver(channel_: PinChannel, block: str, *, target: pathlib.Path | None = N
     wrote = False
     if target is not None:
         current = target.read_text(encoding="utf-8") if target.exists() else ""
-        updated = splice(current, block) if channel_.surface != SURFACE_PROMPT_PREFIX else block
+        updated = splice(current, block)
         if updated != current:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(updated, encoding="utf-8")
