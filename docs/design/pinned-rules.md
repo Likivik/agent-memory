@@ -61,28 +61,64 @@ The mechanism already exists; it needs one new proposal kind.
   `EDIT` / `UPVOTE` / `DOWNVOTE`, removed at zero, and are injected every episode rather than
   retrieved.
 
-## Host attachment, verified per host
+## Delivery channels: one renderer, many transports
 
-| Host | Surface | Preserved as system message |
-|---|---|---|
-| Hermes | `system_prompt_block()` → `build_system_prompt()` | yes |
-| Claude Code | `--system-prompt-file` (already used, `executor/agents/claude_code.py:42`) | yes |
-| Codex | `model_instructions_file` in config, else prepended to the prompt | yes |
-| Muse | `--prompt-file`, system prompt prepended to stdin | no — prompt file, not a system message |
+Pinning is not a Hermes feature. It is a **channel contract**: the store renders one block, and a
+per-host transport delivers it to whatever surface that host offers. The bytes are identical across
+hosts — same rules, same order, same digest — so a rule cannot mean different things in different
+harnesses.
 
-Correction to an earlier claim: only Muse lacks a preserved system-message surface. Claude Code,
-Codex and Hermes all have one, and the adapters already use theirs for Write negotiation.
+`adapters/pin_channel.py` holds the registry. A channel declares four things:
+
+| Field | Meaning |
+|---|---|
+| `surface` | where the text goes (`system_block`, `system_prompt_file`, `instructions_file`, `prompt_prefix`) |
+| `preserved` | survives compaction (a system message) or not |
+| `refresh` | `per_turn` (rebuilt each call) or `per_run` (written before the host starts) |
+| `max_bytes` | what this host accepts before it truncates us |
+
+Verified surfaces today:
+
+| Host | Surface | Preserved | Refresh |
+|---|---|---|---|
+| Hermes | `system_prompt_block()` → `build_system_prompt()` (`agent/system_prompt.py:568`) | yes | per_turn |
+| Claude Code | `--system-prompt-file` (`executor/agents/claude_code.py:42`) | yes | per_run |
+| Codex | `model_instructions_file`, else prepended to the prompt | yes | per_run |
+| Muse | `--prompt-file`, system prompt prepended to stdin | **no** — prompt file, not a system message | per_run |
+
+Invariants:
+
+1. **One render.** `core/pinned.py` produces the block; transports never reformat it, only place it.
+2. **Delimited writes.** A file-based channel writes between `<!-- mnemobun:pinned:start -->` and
+   `<!-- mnemobun:pinned:end -->`, replacing only that region. The host's own instructions are
+   never clobbered.
+3. **Digest on every delivery.** The channel records `pin_digest` (sha256 of the block) after each
+   write, so a host running stale rules is detectable instead of invisible.
+4. **Degraded mode is loud.** A channel with `preserved: false` gets one fallback — the block is
+   prepended to the prompt of each run — and the doctor reports `PIN_UNPINNED_HOST` naming the host.
+   Silence here is how a rule quietly stops applying.
+5. **Deterministic output.** Same store state ⇒ same bytes, so a per_run channel that rewrites an
+   unchanged block does not churn the file or the prompt cache.
+6. **No host-specific syntax inside the block.** Markdown lines only; each transport adapts the
+   wrapper, never the content.
+
+Adding a host is therefore a registry entry plus a test that the same fixture store renders the same
+digest through the new channel.
 
 ## Known failure mode
 
 Naive pinning is not unconditional. The same corpus reports operator impersonation in recent
-context defeating it (0% → 17% violation, 10% with provenance hardening), and non-English
-constraints decaying worst (+42 points Chinese). Consequences for us:
+context defeating it — 0% → 17% violation, **10% with provenance hardening**. That residual is
+acceptable for a reminder layer; it is not acceptable for a safety control, so the split stays:
 
-- pinned text carries an explicit provenance marker (source record, accepted date);
+- pinned text carries an explicit provenance marker (source record, accepted date), which is the
+  mitigation that bought the 17% → 10%;
 - a pinned rule is re-validated against its record at render time; a rule whose record is gone is
   dropped loudly, not silently;
 - the block is never the only defence for a destructive action — tool-level approval stays.
+
+Non-English constraints decay worst (+42 points Chinese), so a rule language other than English
+deserves its own soak test before it is trusted.
 
 ## Non-goals
 
@@ -99,7 +135,11 @@ constraints decaying worst (+42 points Chinese). Consequences for us:
   claim is pinned (no empty header).
 - `test_prefetch.py`: prefetch never returns a pinned claim (they belong to the other channel).
 - `test_docket_pin.py`: `pin`/`unpin` proposals require a ruling; `_apply` respects the budget.
-- Doctor: `PINNED_OVER_BUDGET`, `PINNED_STALE`, `PINNED_UNREADABLE`.
+- `test_pin_channel.py`: every registered channel renders the **same digest** for one fixture store;
+  a file channel replaces only its delimited region and leaves surrounding lines byte-identical;
+  an unchanged block is not rewritten; a `preserved: false` channel reports `PIN_UNPINNED_HOST`.
+- Doctor: `PINNED_OVER_BUDGET`, `PINNED_STALE`, `PINNED_UNREADABLE`, `PIN_UNPINNED_HOST`,
+  `PIN_DIGEST_DRIFT`.
 
 ## Open questions
 
