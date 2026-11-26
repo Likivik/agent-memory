@@ -60,9 +60,11 @@ def test_the_probe_token_is_read_through_stray_characters():
 
 
 def test_a_cli_dialect_is_what_runs_the_binary(store):
+    store.config.executor.write.reasoner = ""
+    store.config.executor.manage.reasoner = ""
     store.config.executor.reasoner = "plugin"
     assert not doctor._host_binary_needed(store)
-    store.config.executor.reasoner = "claude-code"
+    store.config.executor.reasoner = "codex"
     assert doctor._host_binary_needed(store)
 
 

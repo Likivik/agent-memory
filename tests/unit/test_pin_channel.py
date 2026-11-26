@@ -18,7 +18,7 @@ BLOCK = "- never prune containers without approval (rule-one, 2026-11-25)"
 def test_every_channel_renders_the_same_digest(tmp_path):
     digests = {
         deliver(pin_channel.channel(host), BLOCK, state_dir=tmp_path).digest
-        for host in ("hermes", "claude-code", "codex", "muse")
+        for host in ("hermes", "codex", "codex", "muse")
     }
 
     assert len(digests) == 1
@@ -29,8 +29,8 @@ def test_file_channel_replaces_only_its_region(tmp_path):
     target = tmp_path / "CLAUDE.md"
     target.write_text("# House rules\nkeep me\n")
 
-    deliver(pin_channel.channel("claude-code"), BLOCK, target=target)
-    deliver(pin_channel.channel("claude-code"), "- changed rule", target=target)
+    deliver(pin_channel.channel("codex"), BLOCK, target=target)
+    deliver(pin_channel.channel("codex"), "- changed rule", target=target)
 
     text = target.read_text()
     assert text.startswith("# House rules\nkeep me\n")
@@ -41,10 +41,10 @@ def test_file_channel_replaces_only_its_region(tmp_path):
 
 def test_unchanged_block_is_not_rewritten(tmp_path):
     target = tmp_path / "CLAUDE.md"
-    deliver(pin_channel.channel("claude-code"), BLOCK, target=target)
+    deliver(pin_channel.channel("codex"), BLOCK, target=target)
     first = target.stat().st_mtime_ns
 
-    result = deliver(pin_channel.channel("claude-code"), BLOCK, target=target)
+    result = deliver(pin_channel.channel("codex"), BLOCK, target=target)
 
     assert result.wrote is False
     assert target.stat().st_mtime_ns == first
@@ -104,7 +104,7 @@ def test_reversed_markers_do_not_corrupt_the_file(tmp_path):
     target = tmp_path / "CLAUDE.md"
     target.write_text(f"{MARKER_END}\noops\n{MARKER_START}\n")
 
-    deliver(pin_channel.channel("claude-code"), BLOCK, target=target)
+    deliver(pin_channel.channel("codex"), BLOCK, target=target)
 
     text = target.read_text()
     assert "oops" in text
@@ -141,7 +141,7 @@ def test_executor_block_carries_the_rule_for_headless_hosts(store):
     store.record(name="rule-one", abstract="never prune without approval", type="claim")
     pinned.set_pinned(store, "rule-one", pinned=True)
 
-    for host in ("claude-code", "codex", "muse-code"):
+    for host in ("codex", "codex", "muse-code"):
         block = pin_channel.executor_block(store, host)
         assert "never prune without approval" in block
 

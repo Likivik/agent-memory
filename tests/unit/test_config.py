@@ -30,8 +30,8 @@ def test_defaults_are_complete_and_self_consistent():
     assert config.recall.default_limit > 0
     assert config.recall.recency_half_life_days > 0
     assert config.storage.max_depth >= len(("type", "file"))
-    assert config.executor.reasoner == "claude-code"
-    assert config.executor.reasoner == "claude-code"
+    assert config.executor.reasoner == ""
+    assert config.executor.reasoner == ""
     assert config.executor.model == ""
     assert config.executor.write.reasoner == ""
     assert config.executor.manage.reasoner == ""

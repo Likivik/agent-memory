@@ -100,7 +100,7 @@ def test_the_distill_command_runs_the_executor_over_a_named_session(store, monke
 
 def test_write_keeps_source_session_provenance(store, monkeypatch, capsys):
     capture_module.capture(store, "codex-source", LINES)
-    store.config.executor.write = OperationExecutorConfig(reasoner="claude-code")
+    store.config.executor.write = OperationExecutorConfig(reasoner="codex")
     store.config.executor.model = "write-model"
     store.config.save(store.root)
     selected = []

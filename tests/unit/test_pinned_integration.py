@@ -13,7 +13,7 @@ def test_rendered_block_survives_the_channel_round_trip(store, tmp_path):
     target = tmp_path / "AGENTS.md"
     target.write_text("# project rules\n")
 
-    delivery = pin_channel.deliver(pin_channel.channel("claude-code"), block, target=target)
+    delivery = pin_channel.deliver(pin_channel.channel("codex"), block, target=target)
 
     text = target.read_text()
     assert block in text

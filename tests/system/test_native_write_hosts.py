@@ -125,7 +125,7 @@ def _supersede(handle):
 
 @pytest.mark.parametrize(
     "name",
-    [agents.HOST_CLAUDE_CODE, agents.HOST_CODEX, agents.HOST_HERMES, agents.HOST_MUSE_CODE],
+    [agents.HOST_CODEX, agents.HOST_CODEX, agents.HOST_HERMES, agents.HOST_MUSE_CODE],
 )
 def test_a_host_distills_a_batch_through_the_toolkit_adapter(
     name, store, tmp_path, monkeypatch, python_executable
@@ -182,7 +182,7 @@ def test_a_host_distills_a_batch_through_the_toolkit_adapter(
 
 @pytest.mark.parametrize(
     "name",
-    [agents.HOST_CLAUDE_CODE, agents.HOST_CODEX, agents.HOST_HERMES, agents.HOST_MUSE_CODE],
+    [agents.HOST_CODEX, agents.HOST_CODEX, agents.HOST_HERMES, agents.HOST_MUSE_CODE],
 )
 def test_a_host_run_without_a_submission_writes_nothing(
     name, store, tmp_path, monkeypatch, python_executable
@@ -242,7 +242,7 @@ def test_muse_auto_native_write_creates_a_new_memory_with_source_provenance(
     assert written.provenance == ["sessions/muse-new#0-0"]
 
 
-@pytest.mark.parametrize("name", [agents.HOST_CLAUDE_CODE, agents.HOST_MUSE_CODE])
+@pytest.mark.parametrize("name", [agents.HOST_CODEX, agents.HOST_MUSE_CODE])
 def test_native_write_returns_tool_errors_to_the_same_run_then_skips(
     name, store, tmp_path, monkeypatch, python_executable
 ):

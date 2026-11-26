@@ -23,7 +23,7 @@ from mnemobun.executor import reasoners
 from mnemobun.executor.agents import (
     BINARIES,
     DIALECTS,
-    HOST_CLAUDE_CODE,
+    HOST_CODEX,
     HOST_MUSE_CODE,
     Host,
     HostSpec,
@@ -117,7 +117,7 @@ def _parser() -> argparse.ArgumentParser:
         metavar="SECTION.KNOB=VALUE",
         help="override one config knob for every run in this matrix",
     )
-    runner.add_argument("--host", default=HOST_CLAUDE_CODE, choices=sorted(DIALECTS))
+    runner.add_argument("--host", default=HOST_CODEX, choices=sorted(DIALECTS))
     runner.add_argument(
         "--system",
         default=systems.NATIVE,
@@ -129,7 +129,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     runner.add_argument("--model", default="")
     runner.add_argument("--reasoning-effort", default="")
-    runner.add_argument("--judge-host", default=HOST_CLAUDE_CODE, choices=sorted(DIALECTS))
+    runner.add_argument("--judge-host", default=HOST_CODEX, choices=sorted(DIALECTS))
     runner.add_argument("--judge-model", default="")
     runner.add_argument("--judge-reasoning-effort", default="")
     runner.add_argument("--concurrency", type=int, default=4)
@@ -150,7 +150,7 @@ def _parser() -> argparse.ArgumentParser:
         "regrade", help="re-judge stored answers without re-running the hosts"
     )
     regrader.add_argument("--workspace", required=True)
-    regrader.add_argument("--judge-host", default=HOST_CLAUDE_CODE, choices=sorted(DIALECTS))
+    regrader.add_argument("--judge-host", default=HOST_CODEX, choices=sorted(DIALECTS))
     regrader.add_argument("--judge-model", default="")
     regrader.add_argument("--judge-reasoning-effort", default="")
     regrader.add_argument("--concurrency", type=int, default=8)
@@ -161,7 +161,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     calibrator.add_argument("--cases", required=True)
     calibrator.add_argument("--output", help="write calibration labels and vote evidence as JSON")
-    calibrator.add_argument("--judge-host", default=HOST_CLAUDE_CODE, choices=sorted(DIALECTS))
+    calibrator.add_argument("--judge-host", default=HOST_CODEX, choices=sorted(DIALECTS))
     calibrator.add_argument("--judge-model", default="")
     calibrator.add_argument("--judge-reasoning-effort", default="")
     calibrator.add_argument("--concurrency", type=int, default=8)
@@ -197,7 +197,7 @@ def _parser() -> argparse.ArgumentParser:
         help="sleep as if this many days have passed, so decay and staleness can fire",
     )
     sleeper.add_argument("--reason", choices=(REASON_HOST,), default=None)
-    sleeper.add_argument("--reason-host", default=HOST_CLAUDE_CODE)
+    sleeper.add_argument("--reason-host", default=HOST_CODEX)
     sleeper.add_argument("--reason-model", default="")
     sleeper.add_argument(
         "--set",
@@ -580,7 +580,7 @@ def _available(host: Host, role: str) -> bool:
 def _judge_host(name: str, model: str = "", reasoning_effort: str = "") -> Host:
     # Retain the historical Claude judge model and retry policy. The tested host
     # never implicitly selects the judge; other dialects use their own defaults.
-    selected = model or (JUDGE_MODEL if name == HOST_CLAUDE_CODE else "")
+    selected = model or (JUDGE_MODEL if name == HOST_CODEX else "")
     return _host(name, selected, attempts=3, reasoning_effort=reasoning_effort)
 
 

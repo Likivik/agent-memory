@@ -42,7 +42,7 @@ def test_unknown_reasoners_are_refused_for_memory_jobs():
     from mnemobun.executor import distiller
 
     config = Config.default().executor
-    config.reasoner = "claude-code"
+    config.reasoner = "codex"
     config.host = "hermes"
     config.model = "m"
     with pytest.raises(ReasonerUnavailableError) as excinfo:

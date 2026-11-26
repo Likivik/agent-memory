@@ -11,19 +11,19 @@ from mnemobun.executor import selection
 
 
 def test_write_merges_the_operation_policy_over_the_executor_policy():
-    executor = ExecutorConfig(reasoner="claude-code", timeout_seconds=30.0)
+    executor = ExecutorConfig(reasoner="codex", timeout_seconds=30.0)
     resolved = selection.resolve(executor, selection.WRITE)
-    assert resolved.reasoner == "claude-code"
+    assert resolved.reasoner == "codex"
     assert resolved.timeout_seconds == 30.0
 
 
 def test_operation_policy_can_override_the_reasoner():
     executor = dataclasses.replace(
         ExecutorConfig(),
-        write=OperationExecutorConfig(reasoner="claude-code", timeout_seconds=5.0),
+        write=OperationExecutorConfig(reasoner="codex", timeout_seconds=5.0),
     )
     resolved = selection.resolve(executor, selection.WRITE)
-    assert resolved.reasoner == "claude-code"
+    assert resolved.reasoner == "codex"
     assert resolved.timeout_seconds == 5.0
 
 
@@ -43,6 +43,6 @@ def test_an_unsupported_operation_is_refused():
 
 
 def test_explicit_cli_fields_override_the_selected_operation_policy():
-    executor = ExecutorConfig(reasoner="claude-code", model="")
+    executor = ExecutorConfig(reasoner="codex", model="")
     resolved = selection.resolve(executor, selection.MANAGE, model="m1")
     assert resolved.model == "m1"

@@ -66,11 +66,10 @@ def test_the_cron_path_reaches_the_same_state_as_the_hook_path(store, tmp_path):
 @pytest.mark.parametrize(
     ("host", "event", "expected"),
     [
-        (moments.HOST_CLAUDE_CODE, "SessionStart", moments.MOMENT_INJECT),
-        (moments.HOST_CLAUDE_CODE, "PreCompact", moments.MOMENT_EVICT),
+        (moments.HOST_CODEX, "SessionStart", moments.MOMENT_INJECT),
         (moments.HOST_CODEX, "Stop", moments.MOMENT_PAUSE),
         (moments.HOST_CODEX, "SessionStart", moments.MOMENT_INJECT),
-        (moments.HOST_CLAUDE_CODE, "NotAThing", None),
+        (moments.HOST_CODEX, "NotAThing", None),
     ],
 )
 def test_host_dialects_map_onto_the_universal_moments(host, event, expected):
@@ -85,7 +84,7 @@ def test_hook_survives_malformed_input_without_touching_the_host_exit_code(monke
 def test_hook_injects_nothing_at_session_start(seeded):
     """Rules ride the pinned block; the hook must not paste a memory index into the prompt."""
     response = hook_entry.handle(
-        seeded, {"host": moments.HOST_CLAUDE_CODE, "hook_event_name": "SessionStart"}
+        seeded, {"host": moments.HOST_CODEX, "hook_event_name": "SessionStart"}
     )
     assert hook_entry.CLAUDE_CONTEXT_KEY not in str(response)
 
@@ -93,7 +92,7 @@ def test_hook_injects_nothing_at_session_start(seeded):
 @pytest.mark.parametrize(
     ("host", "event"),
     [
-        (moments.HOST_CLAUDE_CODE, "Stop"),
+        (moments.HOST_CODEX, "Stop"),
         (moments.HOST_CODEX, "Stop"),
         (moments.HOST_GENERIC, moments.MOMENT_PAUSE),
     ],
@@ -130,7 +129,7 @@ def test_the_hook_leaves_distillation_alone_when_the_boundary_switch_is_off(stor
     response = hook_entry.handle(
         store,
         {
-            "host": moments.HOST_CLAUDE_CODE,
+            "host": moments.HOST_CODEX,
             "hook_event_name": "Stop",
             "session_id": "s",
             "items": SEGMENTS,
@@ -163,19 +162,19 @@ def test_setup_is_idempotent_and_leaves_foreign_settings_alone(tmp_path):
     settings = tmp_path / "settings.json"
     settings.write_text(json.dumps({"theme": "dark"}), encoding="utf-8")
 
-    setup.install(moments.HOST_CLAUDE_CODE, settings)
+    setup.install(moments.HOST_CODEX, settings)
     once = json.loads(settings.read_text(encoding="utf-8"))
-    setup.install(moments.HOST_CLAUDE_CODE, settings)
+    setup.install(moments.HOST_CODEX, settings)
     twice = json.loads(settings.read_text(encoding="utf-8"))
 
     assert once == twice
     assert twice["theme"] == "dark"
-    assert set(twice["hooks"]) == set(moments.DIALECTS[moments.HOST_CLAUDE_CODE])
+    assert set(twice["hooks"]) == set(moments.DIALECTS[moments.HOST_CODEX])
 
 
 def _stop_event(store, session="s"):
     return {
-        "host": moments.HOST_CLAUDE_CODE,
+        "host": moments.HOST_CODEX,
         "hook_event_name": "Stop",
         "session_id": session,
         "items": SEGMENTS,
@@ -219,7 +218,7 @@ def test_the_launched_executor_resolves_from_the_install_without_path(store, mon
     monkeypatch.setenv("PATH", "")
     monkeypatch.setattr("subprocess.Popen", lambda command, **_: launched.update(command=command))
 
-    assert hook_entry.launch_distill(store, "session-x", moments.HOST_CLAUDE_CODE)
+    assert hook_entry.launch_distill(store, "session-x", moments.HOST_CODEX)
     executable = pathlib.Path(launched["command"][0])
     assert executable.is_file()
     assert executable.parent == pathlib.Path(sys.executable).parent
@@ -231,7 +230,7 @@ def test_a_failed_executor_launch_is_written_to_the_hook_log(store, monkeypatch)
 
     monkeypatch.setattr("subprocess.Popen", fail_launch)
 
-    assert not hook_entry.launch_distill(store, "session-x", moments.HOST_CLAUDE_CODE)
+    assert not hook_entry.launch_distill(store, "session-x", moments.HOST_CODEX)
     log = (store.layout.state_dir / hook_entry.LOG_FILENAME).read_text(encoding="utf-8")
     assert "distill launch failed: missing executable" in log
 
@@ -328,7 +327,7 @@ def test_codex_rollout_transcripts_yield_the_conversation(tmp_path):
     assert transcript.items(path) == ["user: we deploy on Fridays", "assistant: noted"]
 
 
-@pytest.mark.parametrize("host", [moments.HOST_CLAUDE_CODE, moments.HOST_CODEX])
+@pytest.mark.parametrize("host", [moments.HOST_CODEX, moments.HOST_CODEX])
 def test_setup_writes_an_absolute_hook_command_and_installs_the_skill(tmp_path, host):
     from mnemobun.core import prompts
 

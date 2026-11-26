@@ -8,7 +8,9 @@ from mnemobun.core.store import Store
 
 
 def _store(tmp_path):
-    store = Store(tmp_path / "store", config=Config.default(), agent="doctor-test")
+    config = Config.default()
+    config.executor.reasoner = "codex"  # no production default exists; doctor needs one named
+    store = Store(tmp_path / "store", config=config, agent="doctor-test")
     store.init()
     return store
 
@@ -23,7 +25,7 @@ def test_the_reasoner_check_names_the_host(tmp_path):
     checks = doctor._reasoner_checks(store, "", {})
 
     assert all(check.ok for check in checks)
-    assert "claude-code CLI" in _details(checks)
+    assert "codex CLI" in _details(checks)
 
 
 def test_the_reasoner_check_refuses_a_non_host_reasoner(tmp_path):

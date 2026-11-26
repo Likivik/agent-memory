@@ -52,7 +52,7 @@ def test_first_claim_counts_distinct_completed_sessions_not_boundary_events(stor
     _complete(store, "second")
     _complete(store, "third")
     first = dreaming.claim_due(store, moments.HOST_CODEX)
-    duplicate = dreaming.claim_due(store, moments.HOST_CLAUDE_CODE)
+    duplicate = dreaming.claim_due(store, moments.HOST_CODEX)
 
     assert first.claim is not None
     assert first.claim.sessions == ("same", "second", "third")
@@ -181,7 +181,7 @@ def test_expired_lease_does_not_replace_a_worker_holding_the_run_lock(store, clo
     clock.advance(seconds=store.config.manage.claim_lease_seconds + 1)
 
     with file_lock(store.layout.dream_run_lock, timeout=None):
-        result = dreaming.claim_due(store, moments.HOST_CLAUDE_CODE)
+        result = dreaming.claim_due(store, moments.HOST_CODEX)
 
     assert result.claim is None
     assert result.reason == "dream worker still running"
@@ -204,7 +204,7 @@ def test_duplicate_worker_lock_timeout_does_not_mark_the_owner_failed(store):
 
 def test_detached_launcher_uses_manage_host_and_executor_environment(store, monkeypatch):
     _enough(store)
-    store.config.executor.manage = OperationExecutorConfig(reasoner="claude-code")
+    store.config.executor.manage = OperationExecutorConfig(reasoner="codex")
     store.config.executor.model = "muse-test"
     store.config.save(store.root)
     launched = {}
@@ -216,12 +216,12 @@ def test_detached_launcher_uses_manage_host_and_executor_environment(store, monk
     result = auto_dream.launch(store, trigger_source="hook")
 
     assert result.claim is not None
-    assert result.claim.host == "claude-code"
+    assert result.claim.host == "codex"
     assert result.claim.trigger_source == "hook"
-    assert result.claim.reasoner == "claude-code"
+    assert result.claim.reasoner == "codex"
     assert launched["command"][-4:] == [
         "--reason",
-        "claude-code",
+        "codex",
         "--reason-model",
         "muse-test",
     ]
@@ -232,7 +232,7 @@ def test_detached_launcher_uses_manage_host_and_executor_environment(store, monk
 def test_detached_launcher_does_not_fallback_to_the_default_dialect(store, monkeypatch):
     _enough(store)
     store.config.executor.model = "managed-model"
-    store.config.executor.manage = OperationExecutorConfig(reasoner="claude-code")
+    store.config.executor.manage = OperationExecutorConfig(reasoner="codex")
     store.config.save(store.root)
     launched = {}
     monkeypatch.setattr(
@@ -244,12 +244,12 @@ def test_detached_launcher_does_not_fallback_to_the_default_dialect(store, monke
     result = auto_dream.launch(store, trigger_source="hook")
 
     assert result.claim is not None
-    assert result.claim.host == "claude-code"
-    assert result.claim.reasoner == "claude-code"
+    assert result.claim.host == "codex"
+    assert result.claim.reasoner == "codex"
     assert "--reason-host" not in launched["command"]
     assert launched["command"][-4:] == [
         "--reason",
-        "claude-code",
+        "codex",
         "--reason-model",
         "managed-model",
     ]
@@ -310,7 +310,7 @@ def test_sleep_if_due_runs_t0_t1_and_records_the_actual_manage_reasoner(
             valid_from="2000-01-01",
         )
     _enough(store)
-    store.config.executor.manage = OperationExecutorConfig(reasoner="claude-code")
+    store.config.executor.manage = OperationExecutorConfig(reasoner="codex")
     store.config.executor.model = "codex-test"
     store.config.save(store.root)
     proposal = next(
@@ -346,7 +346,7 @@ def test_sleep_if_due_runs_t0_t1_and_records_the_actual_manage_reasoner(
     assert payload["slept"] is True
     assert payload["status"] == "succeeded"
     assert payload["trigger_source"] == "cron"
-    assert payload["reasoner"] == {"kind": "claude-code", "model": "codex-test"}
+    assert payload["reasoner"] == {"kind": "codex", "model": "codex-test"}
     assert selected[-1].model == "codex-test"
     assert any(action["kind"] == "duplicate-merged" for action in payload["actions"])
     assert [decision["proposal"] for decision in payload["decisions"]] == [proposal.id]
@@ -360,7 +360,7 @@ def test_sleep_if_due_reasoner_failure_is_persisted_without_a_report(
 ):
     _twins(store)
     _enough(store)
-    store.config.executor.manage = OperationExecutorConfig(reasoner="claude-code")
+    store.config.executor.manage = OperationExecutorConfig(reasoner="codex")
     store.config.save(store.root)
 
     def unavailable(_prompt: str) -> str:
@@ -382,7 +382,7 @@ def test_sleep_if_due_reasoner_failure_is_persisted_without_a_report(
     status = dreaming.state(store)
     assert status["status"] == dreaming.STATUS_FAILED
     assert status["host"] == ""
-    assert status["reasoner"] == "claude-code"
+    assert status["reasoner"] == "codex"
     assert "configured Codex unavailable" in str(status["last_error"])
     assert not list(store.layout.dream_reports.glob("auto-*.md"))
 
@@ -479,7 +479,7 @@ def test_hook_distill_checks_dream_only_after_watermark_settles(
 
 def test_hook_distill_uses_manage_model_instead_of_the_source(store, monkeypatch, capsys):
     store.config.manage.trigger_min_sessions = 1
-    store.config.executor.manage = OperationExecutorConfig(reasoner="claude-code")
+    store.config.executor.manage = OperationExecutorConfig(reasoner="codex")
     store.config.executor.model = "muse-test"
     store.config.save(store.root)
     capture.capture(store, "boundary", ["user: remember the green queue"], source="pause")
@@ -517,9 +517,9 @@ def test_hook_distill_uses_manage_model_instead_of_the_source(store, monkeypatch
     )
     payload = json.loads(capsys.readouterr().out)
 
-    assert payload["auto_dream"]["reasoner"] == "claude-code"
-    assert payload["auto_dream"]["host"] == "claude-code"
+    assert payload["auto_dream"]["reasoner"] == "codex"
+    assert payload["auto_dream"]["host"] == "codex"
     assert launched["command"][-2:] == ["--reason-model", "muse-test"]
     state = dreaming.state(store)
-    assert state["host"] == "claude-code"
+    assert state["host"] == "codex"
     assert state["trigger_source"] == "hook"

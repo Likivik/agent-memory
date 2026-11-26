@@ -68,7 +68,7 @@ def test_duplicate_boundaries_coalesce_into_one_job_and_extend_its_target(store,
     clock.advance(seconds=1)
     _capture(store, "boundary", total=4)
 
-    second = queue.enqueue("boundary", "claude-code")
+    second = queue.enqueue("boundary", "codex")
 
     assert second.id == first.id
     assert second.target == 4
@@ -286,7 +286,7 @@ def test_enqueue_during_a_run_records_a_follow_up_job_instead_of_extending_it(st
     clock.advance(seconds=1)
     _capture(store, "boundary", total=4)
 
-    follow_up = queue.enqueue("boundary", "claude-code")
+    follow_up = queue.enqueue("boundary", "codex")
 
     assert follow_up.id != running.id
     assert follow_up.state == STATE_QUEUED

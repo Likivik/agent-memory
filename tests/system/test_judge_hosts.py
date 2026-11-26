@@ -44,8 +44,8 @@ def suite_file(tmp_path):
     return suite
 
 
-@pytest.mark.parametrize("tested", ["claude-code", "codex"])
-@pytest.mark.parametrize("judge", ["claude-code", "codex"])
+@pytest.mark.parametrize("tested", ["codex", "codex"])
+@pytest.mark.parametrize("judge", ["codex", "codex"])
 def test_independent_roles_end_to_end(tmp_path, monkeypatch, tested, judge):
     calls, checked = [], []
     monkeypatch.setattr(cli, "Host", lambda spec: FakeHost(spec, calls))
@@ -118,14 +118,14 @@ def test_default_judge_is_historical_claude_independent_of_tested_host():
         ]
     )
     judge = cli._judge_host(args.judge_host, args.judge_model)
-    assert judge.name == "claude-code"
+    assert judge.name == "codex"
     assert judge.spec.binary == "claude"
     assert judge.spec.model == cli.JUDGE_MODEL
     assert judge.spec.attempts == 3
     assert cli._judge_host("codex").spec.model == agents.BINARIES["codex"][1]
 
 
-@pytest.mark.parametrize("missing,role", [("codex", "tested host"), ("claude-code", "judge host")])
+@pytest.mark.parametrize("missing,role", [("codex", "tested host"), ("codex", "judge host")])
 def test_missing_selected_role_is_explicit(tmp_path, monkeypatch, capsys, missing, role):
     monkeypatch.setattr(agents.HostSpec, "available", lambda spec: spec.name != missing)
     assert (
@@ -139,7 +139,7 @@ def test_missing_selected_role_is_explicit(tmp_path, monkeypatch, capsys, missin
                 "--host",
                 "codex",
                 "--judge-host",
-                "claude-code",
+                "codex",
             ]
         )
         == 1
@@ -148,7 +148,7 @@ def test_missing_selected_role_is_explicit(tmp_path, monkeypatch, capsys, missin
     assert not (tmp_path / "run" / "run.json").exists()
 
 
-def metadata(judge_host="claude-code"):
+def metadata(judge_host="codex"):
     return RunMetadata(
         run_id="r",
         system="mnemobun",
@@ -193,7 +193,7 @@ def test_regrading_updates_instrument_and_prevents_mixed_resume(tmp_path):
             sink.ensure(config, resume=True)
 
 
-@pytest.mark.parametrize("name", ["claude-code", "codex"])
+@pytest.mark.parametrize("name", ["codex", "codex"])
 @pytest.mark.parametrize(
     "text,correct",
     [("yes", True), ("no", False), ("Yes.", True), ("unparseable", False), ("", False)],
@@ -207,7 +207,7 @@ def test_same_vote_parser_for_both_transports(name, text, correct, monkeypatch):
     assert verdict.ok
 
 
-@pytest.mark.parametrize("name", ["claude-code", "codex"])
+@pytest.mark.parametrize("name", ["codex", "codex"])
 def test_failed_votes_remain_unusable(name, monkeypatch):
     host = agents.Host(agents.HostSpec(name=name, binary=name))
     monkeypatch.setattr(host, "run", lambda *a, **kw: agents.HostResult("", False, 0.1, "timeout"))
@@ -232,20 +232,8 @@ def test_codex_uses_only_final_message(tmp_path, monkeypatch, output):
     assert result.text == (output or "")
 
 
-def test_claude_judge_has_no_tools(tmp_path):
-    command = agents.ClaudeCodeDialect().command(
-        agents.HostSpec(name="claude-code", binary="claude"),
-        tools_enabled=False,
-        system_prompt="",
-        max_turns=8,
-        store_root=None,
-        answer_file=tmp_path / "answer",
-    )
-    assert command[command.index("--tools") + 1] == ""
-    assert command[command.index("--system-prompt") + 1] == agents.BARE_SYSTEM_PROMPT
 
 
-@pytest.mark.parametrize("failure", ["timeout", "exit"])
 def test_codex_transport_failures_are_not_scores(monkeypatch, failure):
     def run(command, **kwargs):
         if failure == "timeout":

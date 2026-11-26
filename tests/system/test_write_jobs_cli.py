@@ -206,7 +206,7 @@ def test_a_killed_worker_leaves_the_job_to_the_next_run(
     root = tmp_path / "store"
     store = _real_store(root, lease_seconds=1.5, heartbeat_seconds=0.4)
     _capture(store)
-    job = WriteJobs(store).enqueue("boundary", "claude-code")
+    job = WriteJobs(store).enqueue("boundary", "codex")
     blocking = python_executable(
         tmp_path / "bin-block" / "claude", BLOCKING_HOST.format(python=sys.executable)
     )
@@ -257,7 +257,7 @@ def test_a_crash_between_settle_and_complete_is_recovered_by_the_next_run(
     root = tmp_path / "store"
     store = _real_store(root, lease_seconds=1.0)
     _capture(store)
-    job = WriteJobs(store).enqueue("boundary", "claude-code")
+    job = WriteJobs(store).enqueue("boundary", "codex")
     first: list[str] = []
 
     def crash_on_complete(self, job, now=None):
@@ -323,7 +323,7 @@ def test_the_host_transport_traces_its_tool_calls_end_to_end(
     store, tmp_path, monkeypatch, python_executable, capsys
 ):
     _capture(store)
-    job = WriteJobs(store).enqueue("boundary", "claude-code")
+    job = WriteJobs(store).enqueue("boundary", "codex")
     binary = _fake_host(python_executable, tmp_path)
     monkeypatch.setenv("PATH", f"{binary.parent}{os.pathsep}{os.environ.get('PATH', '')}")
     monkeypatch.setenv(
@@ -444,7 +444,7 @@ def test_mem_distill_job_runs_one_job_end_to_end_with_the_deterministic_host(
     store, tmp_path, monkeypatch, python_executable, capsys
 ):
     _capture(store)
-    job = WriteJobs(store).enqueue("boundary", "claude-code")
+    job = WriteJobs(store).enqueue("boundary", "codex")
     binary = _fake_host(python_executable, tmp_path)
     monkeypatch.setenv("PATH", f"{binary.parent}{os.pathsep}{os.environ.get('PATH', '')}")
     monkeypatch.setenv(
@@ -479,9 +479,9 @@ def test_mem_distill_drain_claims_and_runs_every_due_job(
 ):
     _capture(store, "first")
     _capture(store, "second")
-    WriteJobs(store).enqueue("first", "claude-code")
+    WriteJobs(store).enqueue("first", "codex")
     store.clock.advance(seconds=1)
-    WriteJobs(store).enqueue("second", "claude-code")
+    WriteJobs(store).enqueue("second", "codex")
     binary = _fake_host(python_executable, tmp_path)
     monkeypatch.setenv("PATH", f"{binary.parent}{os.pathsep}{os.environ.get('PATH', '')}")
     monkeypatch.setenv(
@@ -556,7 +556,7 @@ def test_doctor_reports_an_unhealthy_job_queue(cli, clock):
         current = queue.claim("worker").job
         assert current is not None
 
-    payload = cli("doctor", "--host", "claude-code", "--no-live", expect=EXIT_ERROR)
+    payload = cli("doctor", "--host", "codex", "--no-live", expect=EXIT_ERROR)
 
     checks = {check["code"]: check for check in payload["checks"]}
     assert checks["WRITE_JOBS_DEGRADED"]["ok"] is False

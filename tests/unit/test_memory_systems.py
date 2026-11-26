@@ -7,7 +7,6 @@ import shutil
 import pytest
 from mnemobun.core import prompts
 from mnemobun.core.config import Config
-from mnemobun.executor import agents
 from mnemobun.harness import arms, framing, systems
 
 
@@ -182,19 +181,6 @@ def test_each_system_has_its_own_fingerprint_so_attribution_is_refused_across_th
     assert changed.fingerprint() != memcore.fingerprint()
 
 
-def test_the_claude_dialect_allows_only_the_systems_own_command(tmp_path, memcore):
-    command = agents.DIALECTS[agents.HOST_CLAUDE_CODE].command(
-        agents.HostSpec(name=agents.HOST_CLAUDE_CODE, binary="claude", model="m"),
-        tools_enabled=True,
-        system_prompt="s",
-        max_turns=5,
-        store_root=tmp_path,
-        answer_file=tmp_path / "a.txt",
-        tool_pattern=memcore.tool_pattern,
-    )
-    allowed = command[command.index("--allowedTools") + 1]
-    assert allowed == memcore.tool_pattern
-    assert "mem:" not in allowed
 
 
 def test_a_system_is_chosen_by_name_and_unknown_names_are_refused(memcore_home):

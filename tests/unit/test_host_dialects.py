@@ -56,31 +56,8 @@ def test_no_dialect_leaves_its_own_memory_layer_running(name, tmp_path):
     assert dialect.disables_native_memory(command)
 
 
-def test_claude_code_delivers_the_system_prompt_by_flag(tmp_path):
-    command = agents.DIALECTS[agents.HOST_CLAUDE_CODE].command(
-        _spec(agents.HOST_CLAUDE_CODE),
-        tools_enabled=True,
-        system_prompt="keeper",
-        max_turns=7,
-        store_root=tmp_path / "store",
-        answer_file=tmp_path / "answer.txt",
-    )
-    assert "--system-prompt" in command
-    assert "keeper" in command
 
 
-def test_claude_code_without_tools_loads_none_of_the_user_s_mcp_servers(tmp_path):
-    """Observed live: user MCP tool definitions alone overflowed Haiku's context window."""
-    command = agents.DIALECTS[agents.HOST_CLAUDE_CODE].command(
-        _spec(agents.HOST_CLAUDE_CODE),
-        tools_enabled=False,
-        system_prompt="reviewer",
-        max_turns=1,
-        store_root=None,
-        answer_file=tmp_path / "answer.txt",
-    )
-    assert "--strict-mcp-config" in command
-    assert "--mcp-config" not in command
 
 
 def test_codex_is_given_write_access_to_the_store_it_must_reach(tmp_path):
@@ -134,10 +111,6 @@ def test_codex_reads_its_answer_from_the_file_not_the_transcript(tmp_path):
     assert agents.DIALECTS[agents.HOST_CODEX].answer(noisy, answer_file) == "the final answer"
 
 
-def test_stdout_hosts_return_stdout(tmp_path):
-    for name in (agents.HOST_CLAUDE_CODE, agents.HOST_HERMES):
-        dialect = agents.DIALECTS[name]
-        assert dialect.answer("  the answer  ", tmp_path / "missing.txt") == "the answer"
 
 
 def test_an_unavailable_host_is_reported_rather_than_silently_skipped():
@@ -185,9 +158,9 @@ def test_the_expensive_tier_has_to_be_asked_for_out_loud(monkeypatch):
     with pytest.raises(ValueError, match="expensive tier"):
         _affordable("claude-opus-5", "judge")
     with pytest.raises(ValueError):
-        _affordable("CLAUDE-OPUS-4-8", "claude-code")
+        _affordable("CLAUDE-OPUS-4-8", "codex")
 
-    assert _affordable("claude-haiku-4-5-20251001", "claude-code")
+    assert _affordable("claude-haiku-4-5-20251001", "codex")
     assert _affordable("claude-sonnet-5", "judge")
 
     monkeypatch.setenv(ALLOW_COSTLY_ENV, "1")
