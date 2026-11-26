@@ -21,8 +21,6 @@
 
 - Render setup/doctor checks as code, status and detail in text mode; the recall-hit line
   renderer prints them as empty `name — abstract · path · score=None` rows on every platform.
-- Pass the Claude Code text-protocol system prompt by file as the tool posture already does;
-  an inline argument can exceed the Windows command-line limit for long prompts.
 - Confirm on a live Codex Windows install which shell runs user hooks and that the rendered
   hook command executes there after the one-time trust review.
 
@@ -32,47 +30,3 @@
 - Keep the authenticated Hermes/OpenRouter native Write matrix in the release checks; ordinary CI
   exercises the same process, stdio MCP, Store, provenance, Watermark, and fail-closed path with a
   deterministic Host.
-- Harness Claude Code runs with tools enabled still load the user's MCP servers; on a machine
-  with many servers their tool definitions alone overflow Haiku's context, and any memory-like
-  server contaminates attribution. Decide strict MCP for harness runs and record the change in
-  the experiment ledger.
-- An announced future effective date ("from Saturday") is refused as a valid_from later than its
-  evidence; Haiku 4.5 and Gemini 2.5 Flash set one on about half their first submissions, which
-  costs a turn. Decide whether the Store accepts announced effective dates; a schema description
-  alone did not change model behaviour.
-- A decision and a fact with the same key fields derive the same name: the second write is
-  refused, and the text repair folded the decision into the fact (observed live with Codex,
-  2026-10-14). Names, or the collision rule, need to account for type.
-- Measure native-tool distillation on real boundaries and a write-side benchmark round. On one
-  fixed supersede scenario, Haiku took a median 14 s in one process against 33 s for the text
-  protocol (evidence: experiments/runs/native-tools-latency).
-- Haiku 4.5 sometimes closes a batch with nothing worth keeping in plain text instead of
-  submitting a Skip; the batch fails closed and succeeds on a later run (observed twice in three
-  Windows runs, 2026-10-22; one Linux run submitted Skip, 2026-11-09). Decide whether a
-  no-submission answer should count as Skip; until then it stays a failure.
-- Keep the authenticated Claude Code native matrix in the release checks:
-  `MNEMOBUN_LIVE_CLAUDE_NATIVE=1 uv run pytest -q tests/system/test_live_claude_native_write.py
-  tests/system/test_live_claude_native_manage.py` (model override:
-  `MNEMOBUN_LIVE_CLAUDE_MODEL`).
-- Claude executor runs (Write and Manage) still load Claude's settings sources and instruction
-  files and persist a session transcript. Decide whether `--setting-sources` and
-  `--no-session-persistence` can tighten that without losing OAuth.
-- A supersede that omits key fields derives the successor's project and subject afresh instead of
-  inheriting the predecessor's (observed live with Claude Haiku 4.5, 2026-11-09: project aurora
-  became default). Decide whether supersede inherits identity fields.
-- Verify the Codex lifecycle hooks end to end, including the one-time hook trust review; the
-  Codex Write executor is verified live, the hooks by unit tests only.
-
-## Muse Code follow-ups
-
-- Muse Code 1.4.9 passed the OpenRouter/pproxy native Write matrix on 2026-10-16: New,
-  Recall/Read/Supersede, Skip, tool-error observation, Store/Provenance, and Watermark. The live
-  test is `MNEMOBUN_LIVE_MUSE_NATIVE=1 uv run pytest -q
-  tests/system/test_live_muse_native_write.py`. Keep this opt-in credentialed check in the release
-  matrix; ordinary CI covers the same MCP/Store chain with the deterministic Host.
-- Run Muse-to-Muse, Muse-to-Codex, and Codex-to-Muse portability smoke before the full four-host
-  matrix.
-- Map `MUSE_SESSION_ID` into shared MCP source context only if provenance can accept it without a
-  Muse-specific Store field.
-- Validate the isolated root-session fixture against an exported log from the supported Muse
-  version before treating raw-log fallback as release-ready.
