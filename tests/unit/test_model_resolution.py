@@ -16,7 +16,7 @@ from mnemobun.mcp.tools import dispatch
 
 
 def _store(tmp_path):
-    store = Store(tmp_path / "s", config=Config.default(), agent="t")
+    store = Store(tmp_path / "s", config=Config.default(), writer="t")
     store.init()
     return store
 
@@ -51,7 +51,7 @@ def test_one_writer_all_actors_produce_identical_state(tmp_path):
         assert settings["model"] == "m1"
         assert settings["model_source"] == actor
         assert settings["max_calls_per_run"] == 7.0
-        reloaded = Store(store.root, config=Config.load(store.root), agent="t")
+        reloaded = Store(store.root, config=Config.load(store.root), writer="t")
         assert route_for(reloaded).label() == f"m1 (source: {actor})"
 
 
@@ -60,7 +60,7 @@ def _gone_test_endpoint_and_key_env_are_settings_not_side_channels(tmp_path):
     from mnemobun.core.settings import apply_settings, effective_settings
     from mnemobun.core.store import Store
 
-    store = Store(tmp_path / "s", config=Config.default(), agent="t")
+    store = Store(tmp_path / "s", config=Config.default(), writer="t")
     store.init()
     apply_settings(
         store,
@@ -79,7 +79,7 @@ def _gone_test_the_settings_model_reaches_the_endpoint_reasoner(tmp_path):
     from mnemobun.core.store import Store
     from mnemobun.executor import distiller, selection
 
-    store = Store(tmp_path / "s", config=Config.default(), agent="t")
+    store = Store(tmp_path / "s", config=Config.default(), writer="t")
     store.init()
     apply_settings(
         store,

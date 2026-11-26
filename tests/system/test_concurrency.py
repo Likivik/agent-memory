@@ -9,7 +9,7 @@ DECISIONS_PER_WRITER = 6
 
 
 def _write(root: str, name: str) -> None:
-    store = Store(root, agent=name)
+    store = Store(root, writer=name)
     store.record(
         abstract=f"Concurrent write from {name} about the shared memory store",
         type="fact",

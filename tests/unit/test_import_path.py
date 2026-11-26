@@ -205,7 +205,7 @@ def test_replay_writes_history_with_provenance_and_dreams_deterministically(stor
     # D6: synthetic access entries present
     with store._database.connect() as connection:
         rows = connection.execute(
-            "SELECT count(*) FROM access_log WHERE agent = 'import'"
+            "SELECT count(*) FROM access_log WHERE writer = 'import'"
         ).fetchone()
     assert rows[0] == 2
 

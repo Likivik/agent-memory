@@ -17,7 +17,7 @@ from .paths import StoreLayout
 SURFACE_ACTIVE = "chunks"
 SURFACE_HISTORY = "history"
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 WRITER_VERSION = "0.3.0"
 HANDSHAKE_FILENAME = "handshake.json"
 
@@ -45,7 +45,7 @@ SCHEMA = (
         standing TEXT NOT NULL,
         usage REAL NOT NULL,
         importance REAL NOT NULL DEFAULT 0,
-        author TEXT NOT NULL,
+        writer TEXT NOT NULL,
         links TEXT NOT NULL,
         provenance TEXT NOT NULL
     )
@@ -93,7 +93,7 @@ SCHEMA = (
         name TEXT NOT NULL,
         query TEXT NOT NULL,
         kind TEXT NOT NULL,
-        agent TEXT NOT NULL
+        writer TEXT NOT NULL
     )
     """,
     """

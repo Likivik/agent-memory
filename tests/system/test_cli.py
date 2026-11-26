@@ -610,7 +610,7 @@ def test_global_flags_are_accepted_after_the_subcommand(tmp_path, capsys):
         "flag-order",
     ]) == EXIT_OK
     payload = json.loads(capsys.readouterr().out)
-    assert Store(root).find(payload["name"]).author == "flag-order"
+    assert Store(root).find(payload["name"]).writer == "flag-order"
 
 
 def test_global_flags_keep_working_before_the_subcommand(tmp_path, capsys):
@@ -635,4 +635,4 @@ def test_global_flags_are_accepted_after_a_nested_subcommand(subcommands):
 
     assert args.store == "/tmp/store"
     assert args.json is True
-    assert args.agent == "nested-flags"
+    assert args.writer == "nested-flags"

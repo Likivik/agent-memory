@@ -7,7 +7,7 @@ from mnemobun.core.store import Store
 
 
 def _store(tmp_path):
-    store = Store(tmp_path / "s", config=Config.default(), agent="t")
+    store = Store(tmp_path / "s", config=Config.default(), writer="t")
     store.init()
     return store
 

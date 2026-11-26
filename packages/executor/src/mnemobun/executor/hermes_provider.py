@@ -160,13 +160,13 @@ class HermesMemoryProvider:
         )
 
     # -- audit side --------------------------------------------------------
-    def verify(self, draft: str, query: str, *, agent: str = PROVIDER_NAME) -> dict[str, Any]:
+    def verify(self, draft: str, query: str, *, writer: str = PROVIDER_NAME) -> dict[str, Any]:
         if self.reasoner is None:
-            result = audit_verify(self.store, draft, query, labeler=None, agent=agent)
+            result = audit_verify(self.store, draft, query, labeler=None, writer=writer)
             if result["label"] == LABEL_ABSTAIN and result["reason"] is None:
                 result["reason"] = "no labeler bound"
             return result
-        return audit_verify(self.store, draft, query, labeler=self.reasoner, agent=agent)
+        return audit_verify(self.store, draft, query, labeler=self.reasoner, writer=writer)
 
     # -- sleep / dream wiring (P6) ------------------------------------------
     def sleep_due(self, sessions_since: int) -> bool:

@@ -10,7 +10,7 @@ from typing import Any
 
 
 def options() -> dict[str, Any]:
-    """Windows workers also run without a console, so their host subprocesses open no window."""
+    """Windows workers also run without a console, so their harness subprocesses open no window."""
     if sys.platform == "win32":
         return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW}
     return {"start_new_session": True}

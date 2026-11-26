@@ -35,7 +35,7 @@ def is_valid_slug(text: str) -> bool:
 class Slug:
     """A name the store will always accept: kebab, bounded, never empty.
 
-    Identity-bearing text (host session ids, turn keys) carries a short digest of the
+    Identity-bearing text (harness session ids, turn keys) carries a short digest of the
     *full* text, so two hints that normalise to the same prefix cannot share a name.
     """
 

@@ -43,7 +43,7 @@ def test_unknown_reasoners_are_refused_for_memory_jobs():
 
     config = Config.default().executor
     config.reasoner = "codex"
-    config.host = "hermes"
+    config.harness = "hermes"
     config.model = "m"
     with pytest.raises(ReasonerUnavailableError) as excinfo:
         distiller.distiller(config)

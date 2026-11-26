@@ -1,13 +1,13 @@
 """Two ways to supply the reading a sleep needs, both outside the core (Invariant 5).
 
-They fail differently, which is why both exist. A host reasoner spends the agent the user is
+They fail differently, which is why both exist. A driver reasoner spends the agent the user is
 already running: no key, no second bill, and the reasoning shows up in that agent's own
 transcript where it can be read. An endpoint reasoner answers on a cron at three in the
 morning when no agent session exists, at the cost of a credential and a network hop.
 
 Neither carries algorithm. For Write negotiation both run as standard tool-use agents over the
 core's Write toolkit — the endpoint through native function calling in a loop the executor
-drives, the host through its own loop with the toolkit served over MCP. Everything about what
+drives, the driver through its own loop with the toolkit served over MCP. Everything about what
 a tool does and which operations to believe stays in the core.
 """
 
@@ -46,25 +46,25 @@ MALFORMED_ARGUMENTS = "tool arguments must be a JSON object"
 class DriverReasoner:
     """The consuming agent's own CLI, run headless for one turn."""
 
-    host: Driver
+    driver: Driver
     max_turns: int = 1
 
     def __call__(self, prompt: str) -> str:
-        result = self.host.run(
+        result = self.driver.run(
             prompt,
             tools_enabled=False,
             max_turns=self.max_turns,
             environment={EXECUTOR_ENV_VAR: "1"},
         )
         if not result.ok:
-            raise _host_failure(self.host, result)
+            raise _driver_failure(self.driver, result)
         if not result.text.strip():
-            name = getattr(self.host, "name", "configured host")
-            raise ReasonerUnavailableError(f"host reasoner returned an empty response for {name}")
+            name = getattr(self.driver, "name", "configured driver")
+            raise ReasonerUnavailableError(f"driver reasoner returned an empty response for {name}")
         return result.text
 
     @classmethod
-    def for_host(
+    def for_harness(
         cls,
         name: str,
         model: str = EMPTY,
@@ -73,10 +73,10 @@ class DriverReasoner:
     ) -> DriverReasoner:
         """A harness is named by its driver, not by its binary."""
         if name not in BINARIES:
-            raise ReasonerUnavailableError(f"unsupported host reasoner {name!r}")
+            raise ReasonerUnavailableError(f"unsupported driver reasoner {name!r}")
         binary, default_model = BINARIES[name]
         return cls(
-            host=Driver(
+            driver=Driver(
                 DriverSpec(
                     name=name,
                     binary=binary,
@@ -90,7 +90,7 @@ class DriverReasoner:
 
 @dataclasses.dataclass
 class ToolDriverReasoner(DriverReasoner):
-    """The host CLI as a tool-use agent: one run per batch, the toolkit served over MCP."""
+    """The driver CLI as a tool-use agent: one run per batch, the toolkit served over MCP."""
 
     def converse(self, instructions: str, material: str, toolkit: WriteToolkit) -> None:
         self._converse(
@@ -149,7 +149,7 @@ class ToolDriverReasoner(DriverReasoner):
                 tools=tuple(spec.name for spec in toolkit.catalogue()),
                 host_analytics_enabled=host_analytics_enabled,
             )
-            result = self.host.converse(
+            result = self.driver.converse(
                 material,
                 system_prompt=instructions,
                 server=server,
@@ -157,14 +157,14 @@ class ToolDriverReasoner(DriverReasoner):
                 timeout_seconds=timeout_seconds,
             )
             if not result.ok:
-                raise _host_failure(self.host, result)
+                raise _driver_failure(self.driver, result)
             toolkit.absorb_directory(directory)
             return result
 
 
-def _host_failure(host: Driver, result: DriverResult) -> ReasonerUnavailableError:
-    name = getattr(host, "name", "configured host")
+def _driver_failure(driver: Driver, result: DriverResult) -> ReasonerUnavailableError:
+    name = getattr(driver, "name", "configured driver")
     detail = f": {result.error.strip()}" if result.error.strip() else ""
     return ReasonerUnavailableError(
-        f"host reasoner failed for {name}{detail}; run mem doctor --host {name}"
+        f"driver reasoner failed for {name}{detail}; run mem doctor --driver {name}"
     )

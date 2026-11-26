@@ -26,7 +26,6 @@ from mnemobun.core import (
     write_run,
     write_trace,
 )
-from mnemobun.core import migrate as migrate_module
 from mnemobun.core.config import REASONER_DRIVERS, REASONER_PLUGIN, ExecutorConfig
 from mnemobun.core.docket import Docket
 from mnemobun.core.dream import Dream
@@ -62,7 +61,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not getattr(args, "handler", None):
         parser.print_help()
         return EXIT_OK
-    store = Store(args.store, agent=args.agent)
+    store = Store(args.store, writer=args.writer)
     try:
         payload = observe_invocation(args.handler, store, args)
     except ValidationError as error:
@@ -105,7 +104,7 @@ def _parser() -> argparse.ArgumentParser:
             "command groups:\n"
             "  records  record · read · correct · supersede · merge · delete\n"
             "           trace · feedback · recall|search\n"
-            "  data     import <format> <path> · export · migrate\n"
+            "  data     import <format> <path> · export\n"
             "  index    index sync · index rebuild\n"
             "  court    docket · case show · case decide · dream run/status/worker\n"
             "           distill · jobs\n"
@@ -116,7 +115,7 @@ def _parser() -> argparse.ArgumentParser:
     _global_options(parser)
     # A subparser would overwrite values parsed before the subcommand with its own
     # defaults, so the shared options suppress theirs and the main parser sets them.
-    parser.set_defaults(store=None, agent="cli", json=False)
+    parser.set_defaults(store=None, writer="cli", json=False)
     subparsers = parser.add_subparsers(dest="command")
 
     def subcommand(name: str, **kwargs: Any) -> argparse.ArgumentParser:
@@ -270,10 +269,6 @@ def _parser() -> argparse.ArgumentParser:
     remover.add_argument("name")
     remover.set_defaults(handler=_delete)
 
-    migrator = subcommand("migrate", help="upgrade a four-domain store to the schema layout"
-    )
-    migrator.set_defaults(handler=_migrate)
-
     voter = subcommand("feedback", help="explicit boost or penalty")
     voter.add_argument("name")
     voter.add_argument("--boost", action="store_true")
@@ -286,12 +281,6 @@ def _parser() -> argparse.ArgumentParser:
     index_sync.set_defaults(handler=_index_sync)
     index_rebuild = index_actions.add_parser("rebuild", help="drop and rebuild the index")
     index_rebuild.set_defaults(handler=_rebuild)
-
-    rebuilder = subcommand("rebuild", help="deprecated: use index rebuild")
-    rebuilder.set_defaults(handler=_rebuild)
-
-    inspector = subcommand("inspect", help="deprecated: store health — use doctor")
-    inspector.set_defaults(handler=_inspect)
 
     dream_status = subcommand(
         "dream-status", help="show automatic Dream claim, failure, and progress state"
@@ -695,7 +684,7 @@ def _auto_dream_payload(store: Store) -> dict[str, object]:
             {
                 "claim": scheduled.claim.id,
                 "reasoner": scheduled.claim.reasoner,
-                "host": scheduled.claim.host,
+                "harness": scheduled.claim.harness,
             }
             if scheduled.claim
             else {}
@@ -758,10 +747,6 @@ def _trace(store: Store, args: argparse.Namespace) -> dict[str, object]:
 def _delete(store: Store, args: argparse.Namespace) -> dict[str, object]:
     removed = store.delete(args.name)
     return {"name": removed.name, "status": removed.status, "invalid_at": removed.invalid_at}
-
-
-def _migrate(store: Store, args: argparse.Namespace) -> dict[str, object]:
-    return migrate_module.migrate(store.root).as_dict()
 
 
 def _fields(pairs: list[str]) -> dict[str, str]:
@@ -908,7 +893,7 @@ def _sleep(store: Store, args: argparse.Namespace) -> dict[str, object]:
             store,
             distiller.distiller(executor, store=store),
             reasoner_kind=executor.reasoner,
-            host="",
+            harness="",
             model=model,
             trigger_source=args.trigger_source,
         )
@@ -949,10 +934,11 @@ def _reasoner(
     executor = _executor(store, args, operation)
     from mnemobun.executor.reasoners import DriverReasoner
 
-    host = getattr(args, "reason_host", "") or executor.reasoner
-    if host == REASONER_PLUGIN:  # the plugin injects ctx.llm; the CLI cannot
+    harness = getattr(args, "reason_harness", "") or executor.reasoner
+    if harness == REASONER_PLUGIN:  # the plugin injects ctx.llm; the CLI cannot
         raise ReasonerUnavailableError("reasoner 'plugin' needs the Hermes plugin")
-    ask = DriverReasoner.for_host(host, model=getattr(args, "reason_model", "") or executor.model)
+    model = getattr(args, "reason_model", "") or executor.model
+    ask = DriverReasoner.for_harness(harness, model=model)
     return distiller.distiller(executor, store=store, ask=ask)
 
 

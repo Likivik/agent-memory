@@ -16,7 +16,7 @@ class AccessEntry:
     name: str
     query: str
     kind: str
-    agent: str
+    writer: str
 
 
 class AccessLog:
@@ -25,8 +25,8 @@ class AccessLog:
 
     def append(self, entries: list[AccessEntry]) -> None:
         self._connection.executemany(
-            "INSERT INTO access_log(at, name, query, kind, agent) VALUES(?, ?, ?, ?, ?)",
-            [(entry.at, entry.name, entry.query, entry.kind, entry.agent) for entry in entries],
+            "INSERT INTO access_log(at, name, query, kind, writer) VALUES(?, ?, ?, ?, ?)",
+            [(entry.at, entry.name, entry.query, entry.kind, entry.writer) for entry in entries],
         )
 
     def entries(self) -> list[sqlite3.Row]:

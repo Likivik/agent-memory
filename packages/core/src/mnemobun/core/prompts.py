@@ -1,10 +1,10 @@
-"""Instructions handed to the host agent. The core borrows intelligence; it never owns it.
+"""Instructions handed to the harness. The core borrows intelligence; it never owns it.
 
 One authoritative copy: hooks and the skill render from here,
 so a wording change is a single edit and a single rerun of the P2 core subset.
 
 Wording is an experiment variable, not a detail. Two failure modes seen in P2 traces shape
-what follows. A host arrives with a purpose of its own — a coding agent reads an ambiguous
+what follows. A harness arrives with a purpose of its own — a coding agent reads an ambiguous
 instruction as being about code — so these say what counts as durable in terms that hold for
 any conversation. And a model told to "distil" writes a table of contents: topic labels with
 the specifics compressed out, which index a conversation without preserving it.
@@ -205,7 +205,7 @@ def distill(segment: str, command_hint: str, discipline: str = WRITE_DISCIPLINE)
 
 
 def memory_keeper(batch: bool = True) -> str:
-    """Batching is a write option (ADR-006), so whether the host is told about it is a knob."""
+    """Batching is a write option (ADR-006), so whether the harness is told about it is a knob."""
     return MEMORY_KEEPER + ("\n\n" + BATCH_HINT if batch else "")
 
 
@@ -345,8 +345,8 @@ A shared memory store on disk. Markdown files are the truth; `mem` is the way in
 
 ## Host setup
 
-Use the deterministic installer for the active harness: `mem setup --host <harness>`,
-`mem setup --host codex`, or `mem setup --host muse-code --provider openrouter`. If setup
+Use the deterministic installer for the active harness: `mem setup --harness <harness>`,
+`mem setup --harness codex`, or `mem setup --harness muse-code --provider openrouter`. If setup
 reports FAILED, run `mem doctor --host <host>` with the same provider options. Do not edit
 mnemobun-managed hooks, Store paths, provider routing, or MCP entries yourself. Ask the user
 for a credential only when doctor reports a credential-missing code; ask before replacing a

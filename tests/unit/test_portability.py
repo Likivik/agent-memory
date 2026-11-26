@@ -13,7 +13,7 @@ from mnemobun.core.store import Store
 def source_store(tmp_path):
     config = Config.default()
     clock = FrozenClock(dt.datetime(2026, 1, 15, 9, 0, tzinfo=dt.UTC))
-    store = Store(tmp_path / "src-store", config=config, clock=clock, agent="test")
+    store = Store(tmp_path / "src-store", config=config, clock=clock, writer="test")
     store.init()
     store.record(
         abstract="A memory about queues",
@@ -27,7 +27,7 @@ def source_store(tmp_path):
 def target_store(tmp_path):
     config = Config.default()
     clock = FrozenClock(dt.datetime(2026, 1, 15, 9, 0, tzinfo=dt.UTC))
-    store = Store(tmp_path / "dst-store", config=config, clock=clock, agent="test")
+    store = Store(tmp_path / "dst-store", config=config, clock=clock, writer="test")
     store.init()
     return store
 

@@ -64,7 +64,7 @@ def test_the_cron_path_reaches_the_same_state_as_the_hook_path(store, tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("host", "event", "expected"),
+    ("harness", "event", "expected"),
     [
         (moments.HARNESS_CODEX, "SessionStart", moments.MOMENT_INJECT),
         (moments.HARNESS_CODEX, "Stop", moments.MOMENT_PAUSE),
@@ -72,8 +72,8 @@ def test_the_cron_path_reaches_the_same_state_as_the_hook_path(store, tmp_path):
         (moments.HARNESS_CODEX, "NotAThing", None),
     ],
 )
-def test_harness_transports_map_onto_the_universal_moments(host, event, expected):
-    assert moments.moment_for(host, event) == expected
+def test_harness_transports_map_onto_the_universal_moments(harness, event, expected):
+    assert moments.moment_for(harness, event) == expected
 
 
 def test_hook_survives_malformed_input_without_touching_the_host_exit_code(monkeypatch, store):
@@ -84,21 +84,21 @@ def test_hook_survives_malformed_input_without_touching_the_host_exit_code(monke
 def test_hook_injects_nothing_at_session_start(seeded):
     """Rules ride the pinned block; the hook must not paste a memory index into the prompt."""
     response = hook_entry.handle(
-        seeded, {"host": moments.HARNESS_CODEX, "hook_event_name": "SessionStart"}
+        seeded, {"harness": moments.HARNESS_CODEX, "hook_event_name": "SessionStart"}
     )
     assert hook_entry.HOOK_CONTEXT_KEY not in str(response)
 
 
 @pytest.mark.parametrize(
-    ("host", "event"),
+    ("harness", "event"),
     [
         (moments.HARNESS_CODEX, "Stop"),
         (moments.HARNESS_CODEX, "Stop"),
         (moments.HARNESS_GENERIC, moments.MOMENT_PAUSE),
     ],
 )
-def test_every_host_hook_archives_the_increment_and_launches_the_same_executor_call(
-    store, host, event
+def test_every_harness_hook_archives_the_increment_and_launches_the_same_executor_call(
+    store, harness, event
 ):
     launches = []
 
@@ -109,19 +109,19 @@ def test_every_host_hook_archives_the_increment_and_launches_the_same_executor_c
     response = hook_entry.handle(
         store,
         {
-            "host": host,
+            "harness": harness,
             "event": event,
             "hook_event_name": event,
-            "session_id": host,
+            "session_id": harness,
             "items": SEGMENTS,
         },
         launch=launch,
     )
     assert response["pending"] == len(SEGMENTS)
     assert response[hook_entry.KEY_DISTILL] == hook_entry.DISTILL_LAUNCHED
-    assert launches == [(store.root, host, host)]
+    assert launches == [(store.root, harness, harness)]
     assert hook_entry.HOOK_CONTEXT_KEY not in response
-    assert len(sessions.read(store.layout, host)) == len(SEGMENTS)
+    assert len(sessions.read(store.layout, harness)) == len(SEGMENTS)
 
 
 def test_the_hook_leaves_distillation_alone_when_the_boundary_switch_is_off(store):
@@ -129,7 +129,7 @@ def test_the_hook_leaves_distillation_alone_when_the_boundary_switch_is_off(stor
     response = hook_entry.handle(
         store,
         {
-            "host": moments.HARNESS_CODEX,
+            "harness": moments.HARNESS_CODEX,
             "hook_event_name": "Stop",
             "session_id": "s",
             "items": SEGMENTS,
@@ -174,7 +174,7 @@ def test_setup_is_idempotent_and_leaves_foreign_settings_alone(tmp_path):
 
 def _stop_event(store, session="s"):
     return {
-        "host": moments.HARNESS_CODEX,
+        "harness": moments.HARNESS_CODEX,
         "hook_event_name": "Stop",
         "session_id": session,
         "items": SEGMENTS,
@@ -205,7 +205,7 @@ def test_the_launched_executor_call_is_one_the_cli_accepts(store, monkeypatch):
     job = WriteJobs(store).get(args.job)
     assert job.state == STATE_QUEUED
     assert job.session == "session-x"
-    assert job.host == moments.HARNESS_CODEX
+    assert job.harness == moments.HARNESS_CODEX
     assert launched["env"][STORE_ENV_VAR] == str(store.root)
     assert launched["env"][EXECUTOR_ENV_VAR]
     expected_log = store.layout.state_dir / hook_entry.LOG_FILENAME
@@ -255,8 +255,11 @@ def test_a_boundary_hook_prints_nothing_for_the_host_to_parse(store, monkeypatch
 
 def test_the_hook_takes_its_host_from_the_command_line(store, monkeypatch):
     hosts = []
-    monkeypatch.setattr(hook_entry, "launch_distill", lambda s, session, host: hosts.append(host))
-    event = {key: value for key, value in _stop_event(store).items() if key != "host"}
+    def launch(launched_store, session, harness):
+        hosts.append(harness)
+
+    monkeypatch.setattr(hook_entry, "launch_distill", launch)
+    event = {key: value for key, value in _stop_event(store).items() if key != "harness"}
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(event)))
     hook_entry.main(["--harness", moments.HARNESS_CODEX])
     assert hosts == [moments.HARNESS_CODEX]
@@ -327,19 +330,19 @@ def test_codex_rollout_transcripts_yield_the_conversation(tmp_path):
     assert transcript.items(path) == ["user: we deploy on Fridays", "assistant: noted"]
 
 
-@pytest.mark.parametrize("host", [moments.HARNESS_CODEX, moments.HARNESS_CODEX])
-def test_setup_writes_an_absolute_hook_command_and_installs_the_skill(tmp_path, host):
+@pytest.mark.parametrize("harness", [moments.HARNESS_CODEX, moments.HARNESS_CODEX])
+def test_setup_writes_an_absolute_hook_command_and_installs_the_skill(tmp_path, harness):
     from mnemobun.core import prompts
 
-    settings = tmp_path / host / "hooks.json"
-    setup.install(host, settings)
+    settings = tmp_path / harness / "hooks.json"
+    setup.install(harness, settings)
     hooks = json.loads(settings.read_text(encoding="utf-8"))["hooks"]
-    assert set(hooks) == set(moments.MOMENTS[host])
+    assert set(hooks) == set(moments.MOMENTS[harness])
     command = hooks["Stop"][0]["hooks"][0]["command"]
     executable, *arguments = shlex.split(command)
     assert pathlib.Path(executable).stem == setup.HOOK_COMMAND
     assert pathlib.Path(executable).is_absolute() and pathlib.Path(executable).exists()
-    assert arguments == [setup.HARNESS_FLAG, host]
+    assert arguments == [setup.HARNESS_FLAG, harness]
     skill = settings.parent / "skills" / "mnemobun" / "SKILL.md"
     assert skill.read_text(encoding="utf-8") == prompts.skill()
 

@@ -253,7 +253,7 @@ class Driver:
             from mnemobun.core.config import Config
             from mnemobun.core.store import Store
 
-            store = Store(store_root, config=Config.default(), agent="executor")
+            store = Store(store_root, config=Config.default(), writer="executor")
             block = channels.executor_block(store, self.spec.name)
         except Exception as error:  # noqa: BLE001 - a broken store must not abort the host run
             LOGGER.warning("mnemobun: pinned block skipped for %s: %s", self.spec.name, error)

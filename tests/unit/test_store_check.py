@@ -66,8 +66,8 @@ def _verdicts(rejected):
 
 
 def test_checking_gives_the_verdicts_writing_would(tmp_path, config, clock):
-    checked = Store(tmp_path / "checked", config=config, clock=clock, agent="t")
-    written = Store(tmp_path / "written", config=config, clock=clock, agent="t")
+    checked = Store(tmp_path / "checked", config=config, clock=clock, writer="t")
+    written = Store(tmp_path / "written", config=config, clock=clock, writer="t")
     for store in (checked, written):
         store.init()
     specs_checked = _specs(_seed(checked))

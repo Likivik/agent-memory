@@ -39,7 +39,7 @@ RESERVED_FIELDS = frozenset(
         "invalid_at",
         "superseded_by",
         "usage",
-        "author",
+        "writer",
         "links",
         "provenance",
         "body",

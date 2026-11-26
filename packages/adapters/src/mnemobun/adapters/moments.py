@@ -37,9 +37,9 @@ MOMENTS: dict[str, dict[str, str]] = {
 }
 
 
-def moment_for(host: str, event: str) -> str | None:
-    return MOMENTS.get(host, {}).get(event)
+def moment_for(harness: str, event: str) -> str | None:
+    return MOMENTS.get(harness, {}).get(event)
 
 
-def hosts() -> tuple[str, ...]:
+def harnesses() -> tuple[str, ...]:
     return tuple(MOMENTS)

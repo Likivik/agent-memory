@@ -24,8 +24,8 @@ MAX_TEXT = 8192
 MAX_ITEMS = 128
 DIRECTORY_MODE = 0o700
 FILE_MODE = 0o600
-HOST_TEXT_LIMIT = 65536
-HOST_EVENT_BYTES = 1024 * 1024
+HARNESS_TEXT_LIMIT = 65536
+HARNESS_EVENT_BYTES = 1024 * 1024
 TOOL_EVENT_BYTES = 65536
 LIMIT_MARKER_RESERVE = 128
 _call = contextvars.ContextVar("memory_observation_call", default="")
@@ -69,10 +69,10 @@ def emit(kind: str, *, directory: str | None = None, channel: str = "tools", **d
                 "attempt_id": os.environ.get(ATTEMPT_ENV, ""),
                 **data,
             },
-            text_limit=HOST_TEXT_LIMIT if channel == "host" else MAX_TEXT,
+            text_limit=HARNESS_TEXT_LIMIT if channel == "harness" else MAX_TEXT,
         )
         encoded = (json.dumps(event, ensure_ascii=True) + "\n").encode()
-        if len(encoded) > (HOST_EVENT_BYTES if channel == "host" else TOOL_EVENT_BYTES):
+        if len(encoded) > (HARNESS_EVENT_BYTES if channel == "harness" else TOOL_EVENT_BYTES):
             encoded = (
                 json.dumps(
                     {
@@ -124,7 +124,7 @@ def invoke(handler, store, args):
             "scope",
             "as_of",
             "json",
-            "agent",
+            "writer",
             "pointer",
         }
     }

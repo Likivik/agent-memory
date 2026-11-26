@@ -11,7 +11,7 @@ from mnemobun.executor.drivers import DriverResult
 from mnemobun.executor.reasoners import DriverReasoner
 
 
-class FakeHost:
+class FakeDriver:
     def __init__(self, result):
         self.result = result
         self.calls = []
@@ -25,42 +25,42 @@ def _reply(content):
     return json.dumps({"choices": [{"message": {"content": content}}]}).encode("utf-8")
 
 
-def test_a_host_reasoner_passes_the_prompt_through_and_returns_the_answer():
-    host = FakeHost(DriverResult(text="verdict line", ok=True, seconds=0.1))
-    assert DriverReasoner(host=host)("review this") == "verdict line"
-    assert host.calls[0][0] == "review this"
+def test_a_driver_reasoner_passes_the_prompt_through_and_returns_the_answer():
+    driver = FakeDriver(DriverResult(text="verdict line", ok=True, seconds=0.1))
+    assert DriverReasoner(driver=driver)("review this") == "verdict line"
+    assert driver.calls[0][0] == "review this"
 
 
-def test_a_host_reasoner_asks_for_no_tools():
-    host = FakeHost(DriverResult(text="ok", ok=True, seconds=0.1))
-    DriverReasoner(host=host)("review this")
-    assert host.calls[0][1]["tools_enabled"] is False
+def test_a_driver_reasoner_asks_for_no_tools():
+    driver = FakeDriver(DriverResult(text="ok", ok=True, seconds=0.1))
+    DriverReasoner(driver=driver)("review this")
+    assert driver.calls[0][1]["tools_enabled"] is False
 
 
-def test_a_failed_host_is_reported():
-    host = FakeHost(DriverResult(text="usage: claude ...", ok=False, seconds=0.1, error="boom"))
-    with pytest.raises(ReasonerUnavailableError, match="host reasoner failed.*boom"):
-        DriverReasoner(host=host)("review this")
+def test_a_failed_driver_is_reported():
+    driver = FakeDriver(DriverResult(text="usage: codex ...", ok=False, seconds=0.1, error="boom"))
+    with pytest.raises(ReasonerUnavailableError, match="driver reasoner failed.*boom"):
+        DriverReasoner(driver=driver)("review this")
 
 
-def test_an_empty_host_reply_is_reported():
-    host = FakeHost(DriverResult(text="", ok=True, seconds=0.1))
+def test_an_empty_driver_reply_is_reported():
+    driver = FakeDriver(DriverResult(text="", ok=True, seconds=0.1))
     with pytest.raises(ReasonerUnavailableError, match="empty response"):
-        DriverReasoner(host=host)("review this")
+        DriverReasoner(driver=driver)("review this")
 
 
 def test_a_driver_is_named_by_harness_and_runs_that_harness_s_binary():
     from mnemobun.executor.drivers import BINARIES, HARNESS_CODEX
     from mnemobun.executor.reasoners import DriverReasoner
 
-    reasoner = DriverReasoner.for_host(HARNESS_CODEX)
-    assert reasoner.host.spec.binary == BINARIES[HARNESS_CODEX][0]
-    assert reasoner.host.spec.model == BINARIES[HARNESS_CODEX][1]
+    reasoner = DriverReasoner.for_harness(HARNESS_CODEX)
+    assert reasoner.driver.spec.binary == BINARIES[HARNESS_CODEX][0]
+    assert reasoner.driver.spec.model == BINARIES[HARNESS_CODEX][1]
 
 
 def test_an_unknown_driver_fails_closed_instead_of_using_another_harness():
-    with pytest.raises(ReasonerUnavailableError, match="unsupported host reasoner"):
-        DriverReasoner.for_host("not-a-host")
+    with pytest.raises(ReasonerUnavailableError, match="unsupported driver reasoner"):
+        DriverReasoner.for_harness("not-a-harness")
 
 
 def test_codex_jsonl_usage_is_retained_for_native_review_metrics(tmp_path, monkeypatch):
@@ -130,12 +130,12 @@ def test_codex_jsonl_trace_separates_startup_model_mcp_and_shutdown():
     assert sum(dataclasses.astuple(phases)) == 10.0
 
 
-def test_a_host_reasoner_marks_its_session_as_the_executor_so_hooks_stand_down():
+def test_a_driver_reasoner_marks_its_session_as_the_executor_so_hooks_stand_down():
     from mnemobun.core.config import EXECUTOR_ENV_VAR
 
-    host = FakeHost(DriverResult(text="ok", ok=True, seconds=0.1))
-    DriverReasoner(host=host)("review this")
-    assert host.calls[0][1]["environment"][EXECUTOR_ENV_VAR]
+    driver = FakeDriver(DriverResult(text="ok", ok=True, seconds=0.1))
+    DriverReasoner(driver=driver)("review this")
+    assert driver.calls[0][1]["environment"][EXECUTOR_ENV_VAR]
 
 
 

@@ -67,7 +67,7 @@ class WriteJob:
     not_before: str
     lease_until: str
     owner: str
-    host: str
+    harness: str
     trigger_source: str
     last_error: str
     trace: str
@@ -92,7 +92,7 @@ class WriteJobs:
         self._store = store
         self._quarantined: list[str] = []
 
-    def enqueue(self, session: str, host: str, trigger_source: str = "") -> WriteJob:
+    def enqueue(self, session: str, harness: str, trigger_source: str = "") -> WriteJob:
         sessions.session_path(self._store.layout, session)
         with self._lock():
             now = self._now()
@@ -111,11 +111,11 @@ class WriteJobs:
                     )
                 )
             return self._store_job(
-                self._new_job(session, host, trigger_source, target, now),
+                self._new_job(session, harness, trigger_source, target, now),
             )
 
     def _new_job(
-        self, session: str, host: str, trigger_source: str, target: int, now: dt.datetime
+        self, session: str, harness: str, trigger_source: str, target: int, now: dt.datetime
     ) -> WriteJob:
         rendered = timestamp.render(now)
         job_id = uuid.uuid4().hex
@@ -131,7 +131,7 @@ class WriteJobs:
             not_before="",
             lease_until="",
             owner="",
-            host=host,
+            harness=harness,
             trigger_source=trigger_source,
             last_error="",
             trace=str(self.trace_path(job_id)),
@@ -456,7 +456,7 @@ def _job_from_payload(payload: object, path: pathlib.Path) -> WriteJob:
         not_before=str(payload["not_before"]),
         lease_until=str(payload["lease_until"]),
         owner=str(payload["owner"]),
-        host=str(payload["host"]),
+        harness=str(payload["harness"]),
         trigger_source=str(payload["trigger_source"]),
         last_error=str(payload["last_error"]),
         trace=str(payload["trace"]),

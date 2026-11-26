@@ -1,4 +1,4 @@
-"""Compatibility bridge for Muse's namespaced MCP tools over OpenRouter.
+"""Bridge for Muse's namespaced MCP tool names over OpenRouter.
 
 Muse sends Responses API namespace tools to the model, but Muse Code 1.4.9 dispatches a
 returned call by its scalar name. OpenRouter preserves the namespace separately, so a correct

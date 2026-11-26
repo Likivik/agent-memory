@@ -100,9 +100,14 @@ and the old low-level `deliver` is `place(channel, block, ...)`; one function, o
 `host_name` became `channel_name`. Doctor's `PIN_HOST` code is `PIN_CHANNEL`.
 Test: digest parity across harnesses still holds.
 
-**R5 — writer, data half.** Accept `writer:` on read, write `writer:` on write, reject a record with neither. Add `manage migrate-writer` and a test that a legacy file round-trips with provenance intact.
+**R5 — writer, data half.** Done without the compatibility half: this project is pre-release, so
+the disk key is `writer:` and nothing else. A record whose standing is missing or unknown is
+refused rather than defaulted, and `manage migrate-writer` is not written — there is no old store
+to migrate. `author` is gone from the record, the index column and the search text.
 
-**R6 — writer, code half.** `record.agent` → `record.writer`, `Store(agent=)` → `Store(writer=)`, audit and access-log columns follow. Test: provenance and audit output name the writer.
+**R6 — writer, code half.** Done. `Store(agent=)` is `Store(writer=)`, `store.agent` is
+`store.writer`, the access-log column and every audit parameter follow, and `SCHEMA_VERSION` moved
+from 3 to 4 because the column name changed. The index is a cache: it is rebuilt, not migrated.
 
 **R7 — no defaults.** `--harness` requires a value; `write.reasoner` empty means deterministic-only with a loud refusal (already true); `channels.deliver` refuses an unknown harness. Test: each of the three refuses explicitly.
 

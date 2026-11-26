@@ -97,7 +97,7 @@ def _fake_host(install, tmp_path, name):
 
 def _reasoner(name, binary):
     spec = drivers.DriverSpec(name=name, binary=str(binary), model="a-model", attempts=1)
-    return ToolDriverReasoner(host=drivers.Driver(spec))
+    return ToolDriverReasoner(harness=drivers.Driver(spec))
 
 
 def _batch(store):
@@ -236,7 +236,7 @@ def test_muse_auto_native_write_creates_a_new_memory_with_source_provenance(
     monkeypatch.setenv("FAKE_HOST_LOG", str(log))
     binary = _fake_host(python_executable, tmp_path, drivers.BINARIES[drivers.HARNESS_MUSE_CODE][0])
     monkeypatch.setenv("PATH", str(binary.parent) + os.pathsep + os.environ["PATH"])
-    reasoner = executor_distiller.distiller(ExecutorConfig(host=drivers.HARNESS_MUSE_CODE))
+    reasoner = executor_distiller.distiller(ExecutorConfig(harness=drivers.HARNESS_MUSE_CODE))
     assert isinstance(reasoner, ToolDriverReasoner)
 
     report = distill.distill(

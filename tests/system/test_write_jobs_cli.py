@@ -69,7 +69,7 @@ def test_a_boundary_hook_enqueues_the_job_and_spawns_its_worker(store, monkeypat
     response = hook_entry.handle(
         store,
         {
-            "host": "codex",
+            "harness": "codex",
             "hook_event_name": "Stop",
             "session_id": "boundary",
             "items": ["user: one"],
@@ -99,7 +99,7 @@ def test_a_failed_spawn_leaves_the_job_queued(store, monkeypatch):
     response = hook_entry.handle(
         store,
         {
-            "host": "codex",
+            "harness": "codex",
             "hook_event_name": "Stop",
             "session_id": "boundary",
             "items": ["user: one"],
@@ -120,7 +120,7 @@ def test_session_start_drains_due_jobs_through_one_detached_worker(store, monkey
         launched.update(command=command, kwargs=kwargs)
 
     monkeypatch.setattr(hook_entry.subprocess, "Popen", popen)
-    hook_entry.handle(store, {"host": "codex", "hook_event_name": "SessionStart"})
+    hook_entry.handle(store, {"harness": "codex", "hook_event_name": "SessionStart"})
 
     assert launched["command"][-2:] == ["distill", "--drain"]
     assert launched["kwargs"]["stdin"] is hook_entry.subprocess.DEVNULL
@@ -131,7 +131,7 @@ def test_an_undrained_queue_launches_no_drain_worker(store, monkeypatch):
 
     hook_entry.handle(
         store,
-        {"host": "codex", "hook_event_name": "SessionStart"},
+        {"harness": "codex", "hook_event_name": "SessionStart"},
         dream_launch=lambda *_: None,
         drain_launch=lambda _target: drains.append(_target),
     )
@@ -146,7 +146,7 @@ def test_a_capturing_boundary_offers_no_drain_but_an_empty_one_does(store):
     hook_entry.handle(
         store,
         {
-            "host": "codex",
+            "harness": "codex",
             "hook_event_name": "Stop",
             "session_id": "boundary",
             "items": ["user: one"],
@@ -157,7 +157,7 @@ def test_a_capturing_boundary_offers_no_drain_but_an_empty_one_does(store):
     )
     hook_entry.handle(
         store,
-        {"host": "codex", "hook_event_name": "Stop", "session_id": "boundary", "items": []},
+        {"harness": "codex", "hook_event_name": "Stop", "session_id": "boundary", "items": []},
         launch=lambda *_: pytest.fail("an empty boundary launches no distiller"),
         dream_launch=lambda *_: None,
         drain_launch=drains.append,

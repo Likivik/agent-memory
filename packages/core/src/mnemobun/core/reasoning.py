@@ -2,10 +2,10 @@
 
 Merging two entries, or writing an abstract that reads well, needs a reader; deciding *which*
 entries are worth a second look does not. So the deterministic pass drafts, this module puts
-the draft into words and reads the answer back, and something outside the core — a host agent,
+the draft into words and reads the answer back, and something outside the core — a harness agent,
 or a model endpoint — supplies the reading. The core still contains no LLM client: a reasoner
 is any callable that takes text and returns text.  The review request and outcome below are the
-boundary shared by that compatibility path and native tool execution; neither grants mutation
+boundary shared by the text path and native tool execution; neither grants mutation
 authority.
 
 The reply is a grammar, not a conversation. Anything that does not parse as a verdict on an
@@ -252,7 +252,7 @@ def prepare(
 
 
 def review_text(request: ReviewRequest, reasoner: Reasoner) -> ReviewOutcome:
-    """Compatibility implementation: one prompt in, line-oriented verdicts out."""
+    """One prompt in, line-oriented verdicts out."""
     started = time.monotonic()
     reply = reasoner(render(request))
     verdicts = tuple(parse(reply))
@@ -283,22 +283,10 @@ def native_material(request: ReviewRequest) -> str:
     )
 
 
-def render(
-    request_or_proposals: ReviewRequest | Sequence[Draft],
-    records: Sequence[MemoryRecord] | None = None,
-) -> str:
-    """Render the legacy full-evidence prompt.
-
-    The two-argument form remains for callers outside Dream while the one-argument form consumes
-    the shared review request used by both execution modes.
-    """
-    if isinstance(request_or_proposals, ReviewRequest):
-        review_proposals: Sequence[Draft] = request_or_proposals.proposals
-        review_sources: Sequence[ReviewSource] = request_or_proposals.sources
-    else:
-        review_proposals = request_or_proposals
-        named = {name for proposal in review_proposals for name in proposal.targets}
-        review_sources = [_source(record) for record in (records or ()) if record.name in named]
+def render(request: ReviewRequest) -> str:
+    """Render the full-evidence prompt for one review request."""
+    review_proposals: Sequence[Draft] = request.proposals
+    review_sources: Sequence[ReviewSource] = request.sources
     lines = [
         f"- {proposal.id} ({proposal.kind}): {', '.join(proposal.targets)} — "
         f"{proposal.reason} [{proposal.evidence}]"

@@ -26,7 +26,7 @@ from .indexer import Indexer, IndexReport
 from .locking import store_lock
 from .paths import StoreLayout
 from .record import (
-    STANDING_DEFAULT,
+    STANDING_ACCEPTED,
     STANDING_PROPOSED,
     STANDING_STATES,
     MemoryRecord,
@@ -40,7 +40,7 @@ LEVEL_OUTLINE = "outline"
 LEVEL_FULL = "full"
 FIRST_SUCCESSOR_ORDINAL = 2
 LEVELS = (LEVEL_ABSTRACT, LEVEL_OUTLINE, LEVEL_FULL)
-UNKNOWN_AGENT = "unknown"
+UNKNOWN_WRITER = "unknown"
 
 RECORD_FIELDS = frozenset(
     {
@@ -49,7 +49,7 @@ RECORD_FIELDS = frozenset(
         "fields",
         "body",
         "name",
-        "author",
+        "writer",
         "links",
         "valid_from",
         "provenance",
@@ -112,7 +112,7 @@ class Store:
         root: str | pathlib.Path | None = None,
         config: Config | None = None,
         clock: Clock | None = None,
-        agent: str = UNKNOWN_AGENT,
+        writer: str = UNKNOWN_WRITER,
         embedder: Embedder | None = None,
     ):
         self.root = resolve_store_root(root)
@@ -120,7 +120,7 @@ class Store:
         self.config.validate_index()
         self.layout = StoreLayout(self.root, self.config)
         self.clock = clock or Clock()
-        self.agent = agent
+        self.writer = writer
         self.archive = Archive(self.layout, self.clock)
         self.schemas = SchemaRegistry(self.layout)
         if self.config.index.vector_enabled and embedder is None:
@@ -319,7 +319,7 @@ class Store:
             name=placed.name,
             abstract=str(spec.get("abstract") or "").strip(),
             type=schema.type,
-            author=str(spec.get("author") or self.agent),
+            writer=str(spec.get("writer") or self.writer),
             created=existing.created if existing else import_created,
             updated=import_updated,
             body=str(spec.get("body") or ""),
@@ -409,7 +409,7 @@ class Store:
     def _store_provenance(self, name: str, item: str) -> str:
         if parse_pointer(item) is not None:
             return item.strip()
-        stored = self.archive.append_provenance(name, item, source=self.agent)
+        stored = self.archive.append_provenance(name, item, source=self.writer)
         return stored.relative_to(self.root).as_posix()
 
     def _reject_facts_dated_after_their_evidence(self, record: MemoryRecord) -> None:
@@ -426,7 +426,7 @@ class Store:
             )
 
     def trace(self, name: str, pointer: str | None = None) -> list[Message]:
-        """Read cited messages without changing the store; legacy list return type."""
+        """Read cited messages without changing the store. Messages, not evidence."""
         return [
             message
             for evidence in self.trace_evidence(name, pointer).evidence
@@ -826,7 +826,7 @@ class Store:
         else:
             text = current.body
         stamp = self.clock.now().isoformat()
-        self._log_access([AccessEntry(stamp, name, "", KIND_READ, self.agent)])
+        self._log_access([AccessEntry(stamp, name, "", KIND_READ, self.writer)])
         observation.emit("read_return", name=name, level=level, text=text, outline=headings)
         return ReadResult(record=current, level=level, text=text, outline=headings)
 
@@ -895,7 +895,7 @@ def _known_fields(spec: object, extra: frozenset[str] = frozenset()) -> dict[str
 def _spec_standing(spec: dict[str, object], existing: MemoryRecord | None) -> str:
     """New claims enter the standing machine as `proposed` (design decision 4): acceptance
     is a docket ruling or a user confirmation, never a write side-effect. Explicit writes
-    keep their value; legacy non-claim writes keep `accepted`."""
+    keep their value; a non-claim write with no standing enters as `accepted`."""
     raw = str(spec.get("standing") or "").strip()
     if raw in STANDING_STATES:
         return raw
@@ -903,7 +903,7 @@ def _spec_standing(spec: dict[str, object], existing: MemoryRecord | None) -> st
         return existing.standing
     if str(spec.get("type") or "") == "claim":
         return STANDING_PROPOSED
-    return STANDING_DEFAULT
+    return STANDING_ACCEPTED
 
 
 def _as_sequence(value: object) -> list[object]:

@@ -33,7 +33,7 @@ def config() -> Config:
 
 @pytest.fixture
 def store(tmp_path, config, clock) -> Store:
-    store = Store(tmp_path / "store", config=config, clock=clock, agent="test-agent")
+    store = Store(tmp_path / "store", config=config, clock=clock, writer="test-agent")
     # No harness default exists in production, so a test that needs a reasoner names one here.
     store.config.executor.reasoner = "codex"
     store.config.executor.write.reasoner = "codex"

@@ -39,11 +39,11 @@ def test_a_batch_writes_every_record_in_one_call(store):
 def test_a_batch_leaves_the_same_store_as_records_written_one_by_one(tmp_path, config, clock):
     from mnemobun.core.store import Store
 
-    batched = Store(tmp_path / "batched", config=config, clock=clock, agent="t")
+    batched = Store(tmp_path / "batched", config=config, clock=clock, writer="t")
     batched.init()
     batched.record_many(SPECS)
 
-    sequential = Store(tmp_path / "sequential", config=config, clock=clock, agent="t")
+    sequential = Store(tmp_path / "sequential", config=config, clock=clock, writer="t")
     sequential.init()
     for spec in SPECS:
         sequential.record(**spec)

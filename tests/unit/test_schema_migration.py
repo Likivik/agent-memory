@@ -29,7 +29,7 @@ def test_old_frontmatter_weight_still_reads():
 
 
 def test_index_created_by_old_code_is_migrated(tmp_path):
-    store = Store(tmp_path / "s", config=Config.default(), agent="t")
+    store = Store(tmp_path / "s", config=Config.default(), writer="t")
     store.init()
     with sqlite3.connect(store.layout.index_db) as connection:
         columns = [row[1] for row in connection.execute("PRAGMA table_info(records)")]

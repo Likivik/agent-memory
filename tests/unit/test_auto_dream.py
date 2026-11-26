@@ -56,7 +56,7 @@ def test_first_claim_counts_distinct_completed_sessions_not_boundary_events(stor
 
     assert first.claim is not None
     assert first.claim.sessions == ("same", "second", "third")
-    assert first.claim.host == moments.HARNESS_CODEX
+    assert first.claim.harness == moments.HARNESS_CODEX
     assert duplicate.claim is None
     assert duplicate.reason == "dream claim active"
 
@@ -156,7 +156,7 @@ def test_failed_worker_is_observable_and_next_event_retries_same_decision(store)
     assert retried is not None
     assert retried.id == claim.id
     assert retried.attempt == claim.attempt + 1
-    assert retried.host == moments.HARNESS_CODEX
+    assert retried.harness == moments.HARNESS_CODEX
 
 
 def test_expired_claim_recovers_without_pid_scanning(store, clock):
@@ -185,7 +185,7 @@ def test_expired_lease_does_not_replace_a_worker_holding_the_run_lock(store, clo
 
     assert result.claim is None
     assert result.reason == "dream worker still running"
-    assert dreaming.state(store)["host"] == moments.HARNESS_CODEX
+    assert dreaming.state(store)["harness"] == moments.HARNESS_CODEX
 
 
 def test_duplicate_worker_lock_timeout_does_not_mark_the_owner_failed(store):
@@ -216,7 +216,7 @@ def test_detached_launcher_uses_manage_host_and_executor_environment(store, monk
     result = auto_dream.launch(store, trigger_source="hook")
 
     assert result.claim is not None
-    assert result.claim.host == "codex"
+    assert result.claim.harness == "codex"
     assert result.claim.trigger_source == "hook"
     assert result.claim.reasoner == "codex"
     assert launched["command"][-4:] == [
@@ -244,7 +244,7 @@ def test_detached_launcher_does_not_fallback_to_a_default_driver(store, monkeypa
     result = auto_dream.launch(store, trigger_source="hook")
 
     assert result.claim is not None
-    assert result.claim.host == "codex"
+    assert result.claim.harness == "codex"
     assert result.claim.reasoner == "codex"
     assert "--reason-host" not in launched["command"]
     assert launched["command"][-4:] == [
@@ -381,7 +381,7 @@ def test_sleep_if_due_reasoner_failure_is_persisted_without_a_report(
     assert error["code"] == "reasoner_unavailable"
     status = dreaming.state(store)
     assert status["status"] == dreaming.STATUS_FAILED
-    assert status["host"] == ""
+    assert status["harness"] == ""
     assert status["reasoner"] == "codex"
     assert "configured Codex unavailable" in str(status["last_error"])
     assert not list(store.layout.dream_reports.glob("auto-*.md"))
@@ -389,7 +389,7 @@ def test_sleep_if_due_reasoner_failure_is_persisted_without_a_report(
 
 def test_duplicate_boundary_is_still_a_retry_tick_without_incrementing_sessions(store):
     event = {
-        "host": moments.HARNESS_CODEX,
+        "harness": moments.HARNESS_CODEX,
         "hook_event_name": "Stop",
         "session_id": "same",
         "items": ["user: one"],
@@ -414,7 +414,7 @@ def test_session_start_is_the_next_event_time_threshold_tick(store):
 
     hook_entry.handle(
         store,
-        {"host": moments.HARNESS_CODEX, "hook_event_name": "SessionStart"},
+        {"harness": moments.HARNESS_CODEX, "hook_event_name": "SessionStart"},
         dream_launch=lambda *args: launches.append(args),
     )
 
@@ -518,8 +518,8 @@ def test_hook_distill_uses_manage_model_instead_of_the_source(store, monkeypatch
     payload = json.loads(capsys.readouterr().out)
 
     assert payload["auto_dream"]["reasoner"] == "codex"
-    assert payload["auto_dream"]["host"] == "codex"
+    assert payload["auto_dream"]["harness"] == "codex"
     assert launched["command"][-2:] == ["--reason-model", "muse-test"]
     state = dreaming.state(store)
-    assert state["host"] == "codex"
+    assert state["harness"] == "codex"
     assert state["trigger_source"] == "hook"

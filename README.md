@@ -2,7 +2,7 @@
 
 ### agent-memory: the long-term memory runtime for AI agents
 
-<a href="CLAUDE.md">Invariants</a> · <a href="skills/agent-memory/SKILL.md">Skill</a> · <a href="https://github.com/tigerless-labs/agent-memory/issues">Issues</a>
+<a href="AGENTS.md">Invariants</a> · <a href="skills/agent-memory/SKILL.md">Skill</a> · <a href="https://github.com/tigerless-labs/agent-memory/issues">Issues</a>
 
 ![](https://img.shields.io/badge/version-0.1.0-369eff?labelColor=black&style=flat-square)
 ![](https://img.shields.io/badge/python-3.12+-ffcb47?labelColor=black&style=flat-square)
@@ -541,7 +541,7 @@ enabled. Knobs live under `[write.jobs]` in `config.toml`: `jobs_dirname`, `leas
 uv run pytest -q && uv run ruff check . && uv run mypy
 ```
 
-The task lifecycle and the invariants a change must not break are in [CLAUDE.md](CLAUDE.md).
+The task lifecycle and the invariants a change must not break are in [AGENTS.md](AGENTS.md).
 
 ## Optional vector recall index
 

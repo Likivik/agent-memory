@@ -45,7 +45,7 @@ def verify(
     query: str,
     labeler: collections.abc.Callable[[str], str] | None,
     *,
-    agent: str = "",
+    writer: str = "",
     at: str | None = None,
     config: Config | None = None,
 ) -> dict[str, object]:
@@ -70,24 +70,24 @@ def verify(
         used = sum(1 for row in log.entries() if row["kind"] == KIND_VERIFY)
         if used >= session_cap:
             return _result(LABEL_ABSTAIN, names, evidence_blocks,
-                           reason="session audit budget spent", at=moment, agent=agent)
+                           reason="session audit budget spent", at=moment, writer=writer)
         if not evidence_blocks:
             entry = AccessEntry(at=moment, name="", query=query,
-                                kind=KIND_VERIFY, agent=agent)
+                                kind=KIND_VERIFY, writer=writer)
             log.append([entry])
             return _result(LABEL_UNSUPPORTED, [], [],
-                           reason="no memory hits", at=moment, agent=agent)
+                           reason="no memory hits", at=moment, writer=writer)
         if labeler is None:
             entry = AccessEntry(at=moment, name="", query=query,
-                                kind=KIND_VERIFY, agent=agent)
+                                kind=KIND_VERIFY, writer=writer)
             log.append([entry])
             return _result(LABEL_ABSTAIN, names, evidence_blocks,
-                           reason="no labeler bound", at=moment, agent=agent)
+                           reason="no labeler bound", at=moment, writer=writer)
         label = _label(labeler, PROMPT_TEMPLATE.format(
             evidence="\n".join(evidence_blocks), draft=draft, query=query))
         log.append([AccessEntry(
-            at=moment, name=names[0], query=query, kind=KIND_VERIFY, agent=agent)])
-    return _result(label, names, evidence_blocks, reason=None, at=moment, agent=agent)
+            at=moment, name=names[0], query=query, kind=KIND_VERIFY, writer=writer)])
+    return _result(label, names, evidence_blocks, reason=None, at=moment, writer=writer)
 
 
 def _label(labeler: collections.abc.Callable[[str], str], prompt: str) -> str:
@@ -104,12 +104,12 @@ def _label(labeler: collections.abc.Callable[[str], str], prompt: str) -> str:
 
 
 def _result(label: str, names: list[str], evidence: list[str], *, reason: str | None,
-            at: str, agent: str) -> dict[str, object]:
+            at: str, writer: str) -> dict[str, object]:
     return {
         "label": label,
         "evidence": names,
         "excerpts": evidence,
         "reason": reason,
         "at": at,
-        "agent": agent,
+        "writer": writer,
     }

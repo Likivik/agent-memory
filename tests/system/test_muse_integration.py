@@ -19,7 +19,7 @@ def test_muse_hook_capture_distill_and_read(store, tmp_path, monkeypatch, capsys
     response = hook_entry.handle(
         store,
         {
-            "host": "muse-code",
+            "harness": "muse-code",
             "hook_event_name": "Stop",
             "session_id": session_id,
             "transcript_path": None,

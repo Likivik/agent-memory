@@ -56,7 +56,7 @@ def distiller(
     """
     if ask is None:
         raise ReasonerUnavailableError(
-            "no reasoner configured: supply the host reasoner or the plugin LLM "
+            "no reasoner configured: supply a driver reasoner or the plugin LLM "
             f"(executor reasoner {config.reasoner!r})"
         )
     return CountedAsk(ask, store) if store is not None else ask

@@ -26,12 +26,12 @@ FIELD_ORDER = (
     "standing",
     "usage",
     "importance",
-    "author",
+    "writer",
     "links",
     "provenance",
 )
 CORE_FIELDS = frozenset(FIELD_ORDER) | {"status"}
-REQUIRED_FIELDS = ("name", "abstract", "type", "created", "updated", "author")
+REQUIRED_FIELDS = ("name", "abstract", "type", "created", "updated", "writer")
 DATE_FIELDS = ("created", "updated", "valid_from", "invalid_at")
 
 
@@ -47,13 +47,14 @@ STANDING_STATES = (
     STANDING_RETRACTED,
     STANDING_SUPERSEDED,
 )
-STANDING_DEFAULT = STANDING_ACCEPTED  # legacy files without the field keep their trust
 CONFLICT_PREFIX = "conflicts-with:"  # explicit agent-declared contradiction edge
 
 
 def _standing(raw: object) -> str:
     value = str(raw or "").strip()
-    return value if value in STANDING_STATES else STANDING_DEFAULT
+    if value not in STANDING_STATES:
+        raise ValidationError([FieldError("standing", f"unknown standing: {value or 'missing'}")])
+    return value
 
 
 @dataclasses.dataclass
@@ -61,14 +62,14 @@ class MemoryRecord:
     name: str
     abstract: str
     type: str
-    author: str
+    writer: str
     created: str
     updated: str
     body: str = ""
     valid_from: str | None = None
     invalid_at: str | None = None
     superseded_by: str | None = None
-    standing: str = STANDING_DEFAULT
+    standing: str = STANDING_ACCEPTED
     usage: float = 1.0
     importance: float = 0.0  # 1-10, judged at write time; 0 = unrated (neutral)
     links: list[str] = dataclasses.field(default_factory=list)
@@ -90,7 +91,7 @@ class MemoryRecord:
             "standing": self.standing,
             "usage": float(self.usage),
             "importance": float(self.importance),
-            "author": self.author,
+            "writer": self.writer,
             "links": list(self.links),
             "provenance": list(self.provenance),
         }
@@ -107,7 +108,7 @@ class MemoryRecord:
 
     @property
     def status(self) -> str:
-        """Compatibility view for callers; the interval is the sole stored state."""
+        """Derived view; the interval is the sole stored state."""
         return STATUS_ACTIVE if self.is_active() else STATUS_INVALID
 
     @classmethod
@@ -122,7 +123,7 @@ class MemoryRecord:
             name=str(raw.get("name") or ""),
             abstract=str(raw.get("abstract") or ""),
             type=str(raw.get("type") or ""),
-            author=str(raw.get("author") or ""),
+            writer=str(raw.get("writer") or ""),
             created=str(raw.get("created") or ""),
             updated=str(raw.get("updated") or ""),
             body=body,
@@ -175,7 +176,7 @@ def validate(record: MemoryRecord, config: Config, schema: MemorySchema | None =
     for key, value in fields.items():
         # The frontmatter dialect is line-based: an embedded line break ends the value and
         # whatever follows it is read back as another field. A newline in any rendered
-        # field — a core field like author, a list item, or a custom field — would
+        # field — a core field like writer, a list item, or a custom field — would
         # therefore inject frontmatter on the next read, so reject it here.
         items = value if isinstance(value, (list, tuple)) else (value,)
         if any("\n" in str(item) or "\r" in str(item) for item in items):

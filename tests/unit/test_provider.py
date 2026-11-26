@@ -90,7 +90,7 @@ def test_run_sleep_not_due_skips(store):
 
 def test_run_sleep_accepts_only_via_menu_with_stub_reasoner(store, clock, tmp_path, config):
     config.manage.trigger_min_sessions = 1
-    second = type(store)(tmp_path / "sleep", config=config, clock=clock, agent="t")
+    second = type(store)(tmp_path / "sleep", config=config, clock=clock, writer="t")
     second.init()
     second.record(abstract="A thing worth keeping", type="fact", body="x", name="keep-me")
     second.record(abstract="A thing worth keeping", type="fact", body="x", name="keep-me-2")
@@ -106,4 +106,4 @@ def test_hermes_moments_mapping():
     assert moments.moment_for("hermes", "SessionStart") == moments.MOMENT_INJECT
     assert moments.moment_for("hermes", "PreCompact") == moments.MOMENT_EVICT
     assert moments.moment_for("hermes", "Stop") == moments.MOMENT_PAUSE
-    assert "hermes" in moments.hosts()
+    assert "hermes" in moments.harnesses()

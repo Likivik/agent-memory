@@ -66,7 +66,7 @@ def route_for(store: Store, *, flag: str = "", gui_model: str = "") -> ModelRout
 
 
 def set_model(store: Store, model: str, source: str) -> ModelRoute:
-    """Compatibility wrapper: single-field write through the one writer."""
+    """One field, written through the one writer."""
     if source not in SET_SOURCES:
         raise ValueError(f"model source must be one of {SET_SOURCES}, got {source!r}")
     settings.apply_settings(store, {"model": model}, actor=source)

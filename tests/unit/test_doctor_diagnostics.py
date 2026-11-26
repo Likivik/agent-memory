@@ -10,7 +10,7 @@ from mnemobun.core.store import Store
 def _store(tmp_path):
     config = Config.default()
     config.executor.reasoner = "codex"  # no production default exists; doctor needs one named
-    store = Store(tmp_path / "store", config=config, agent="doctor-test")
+    store = Store(tmp_path / "store", config=config, writer="doctor-test")
     store.init()
     return store
 

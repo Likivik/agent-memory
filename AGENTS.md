@@ -1,9 +1,21 @@
-# agent-memory
+# mnemobun
 
-agent-memory is **Tigerless's agent-agnostic, local-first long-term memory runtime**: markdown
+mnemobun is **Tigerless's harness-agnostic, local-first long-term memory runtime**: markdown
 files as the single source of truth, a rebuildable SQLite index, deterministic boundary-triggered
-writes, and an independent sleep-time Manage layer — shared by multiple agents (Claude Code,
-Codex CLI, Hermes) over one common memory store.
+writes, and an independent sleep-time Manage layer — shared by several harnesses over one store.
+
+## No backward compatibility, until this section is removed
+
+This project is pre-release and has no users. Do not write backward-compatibility code.
+
+- No dual-format readers: no "accept the old key as well as the new one".
+- No migration commands for layouts or fields that only we ever wrote.
+- No deprecated CLI aliases, no shims kept "for a release", no legacy defaults.
+- No tests that exist only to prove an old format still parses.
+
+Rename the field, change the schema version, delete the old path. Storage is a cache and a
+store is rebuilt, so there is nothing to preserve. When this section is removed, this rule ends
+with it.
 
 **Wedge**: the only memory system with a true independent Manage layer (value-based forgetting,
 sleep-time consolidation with authority tiers) on top of file truth — every competitor either
@@ -40,7 +52,7 @@ has no M, or buries it in the write path.
    user-owned model endpoint, for distillation and for Manage; hosts only capture, trigger,
    inject and recall. Executor failures stop the projection before its watermark advances.
    Why: zero keys to install, no implicit Tigerless billing authority, one extraction pipeline
-   for every host, and a core that stays testable without a network.
+   for every harness, and a core that stays testable without a network.
 6. **Manage never destroys information.** Every Manage operation is reversible: T0 is
    rule-only (dates, weight, links, directories), T1 is decided by the library executor and
    only creates new files or marks old ones invalid, each kind capped per sleep, one git
@@ -67,8 +79,8 @@ out of order is *incomplete*.
 1. **Plan.** Non-trivial changes start with a plan in `docs/plans/`. The plan's first unit
    updates the relevant `docs/design/` doc; every unit places tests before code.
 2. **Branch, isolate, sync.** One explicit task per branch, developed in its own worktree
-   (Claude Code's built-in worktree tooling, which puts it at `.claude/worktrees/<branch>` —
-   keep that path gitignored, and remove the worktree once its branch lands). **Experiment
+   (any version-control worktree does: keep its path gitignored, and remove the worktree
+   once its branch lands). **Experiment
    artefacts never land inside a worktree** — they go to the main working tree, because
    `git worktree remove` takes gitignored data with it without a word. Never develop on
    `main`. Rebase onto latest `main` before developing; land via feature branch + PR, no direct

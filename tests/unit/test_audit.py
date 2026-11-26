@@ -66,7 +66,7 @@ def test_unparseable_reply_abstains(store):
 
 def test_session_cap_abstains(store, config, clock, tmp_path):
     config.standing.audit_max_per_session = 2
-    store = Store(tmp_path / "capped", config=config, clock=clock, agent="test-agent")
+    store = Store(tmp_path / "capped", config=config, clock=clock, writer="test-agent")
     store.init()
     _seed(store)
     for _ in range(2):

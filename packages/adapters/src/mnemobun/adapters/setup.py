@@ -1,4 +1,4 @@
-"""Deterministic host configuration primitives shared by setup and doctor."""
+"""Deterministic harness configuration primitives shared by setup and doctor."""
 
 from __future__ import annotations
 
@@ -46,21 +46,21 @@ BINARIES = {
 
 
 def detect() -> list[str]:
-    return [host for host in SETTINGS_FOR if default_settings_path(host).parent.exists()]
+    return [harness for harness in SETTINGS_FOR if default_settings_path(harness).parent.exists()]
 
 
-def canonical_host(host: str) -> str:
-    canonical = ALIASES.get(host, host)
+def canonical_host(harness: str) -> str:
+    canonical = ALIASES.get(harness, harness)
     if canonical not in SETTINGS_FOR:
         supported = ", ".join(sorted(SETTINGS_FOR))
         raise ValidationError(
-            [FieldError("host", f"unsupported host {host!r}; choose {supported}")]
+            [FieldError("harness", f"unsupported harness {harness!r}; choose {supported}")]
         )
     return canonical
 
 
-def default_settings_path(host: str, environment: dict[str, str] | None = None) -> pathlib.Path:
-    canonical = canonical_host(host)
+def default_settings_path(harness: str, environment: dict[str, str] | None = None) -> pathlib.Path:
+    canonical = canonical_host(harness)
     if canonical == moments.HARNESS_MUSE_CODE:
         env = os.environ if environment is None else environment
         fallback = pathlib.Path(env.get("HOME", "~")).expanduser() / ".config"
@@ -69,13 +69,18 @@ def default_settings_path(host: str, environment: dict[str, str] | None = None) 
     return SETTINGS_FOR[canonical].expanduser()
 
 
-def probe(host: str) -> str:
-    canonical = canonical_host(host)
+def probe(harness: str) -> str:
+    canonical = canonical_host(harness)
     binary = BINARIES[canonical]
     resolved = shutil.which(binary)
     if resolved is None:
         raise ValidationError(
-            [FieldError("host", f"{canonical} requires `{binary}` on PATH; install it and retry")]
+            [
+                FieldError(
+                    "harness",
+                    f"{canonical} requires `{binary}` on PATH; install it and retry",
+                )
+            ]
         )
     try:
         completed = subprocess.run(
@@ -83,19 +88,19 @@ def probe(host: str) -> str:
         )
     except (OSError, subprocess.TimeoutExpired) as error:
         raise ValidationError(
-            [FieldError("host", f"could not run `{binary} --version`: {error}")]
+            [FieldError("harness", f"could not run `{binary} --version`: {error}")]
         ) from error
     version = (completed.stdout.strip() or completed.stderr.strip()).splitlines()
     if completed.returncode != 0:
         detail = version[0] if version else f"exit {completed.returncode}"
         raise ValidationError(
-            [FieldError("host", f"`{binary} --version` failed: {detail}")]
+            [FieldError("harness", f"`{binary} --version` failed: {detail}")]
         )
     return version[0] if version else "unknown"
 
 
 def install(
-    host: str,
+    harness: str,
     settings_path: pathlib.Path | None = None,
     store_root: pathlib.Path | None = None,
     *,
@@ -103,18 +108,18 @@ def install(
     model: str | None = None,
     mcp: bool = False,
 ) -> pathlib.Path:
-    host = canonical_host(host)
-    target = settings_path or default_settings_path(host)
+    harness = canonical_host(harness)
+    target = settings_path or default_settings_path(harness)
     target.parent.mkdir(parents=True, exist_ok=True)
     settings = _read_settings(target)
-    if host == moments.HARNESS_MUSE_CODE:
+    if harness == moments.HARNESS_MUSE_CODE:
         settings.setdefault("schema_version", MUSE_SCHEMA_VERSION)
         if provider:
             from . import openrouter
 
             openrouter.merge_routing(settings, provider=provider, model=model)
         if mcp:
-            _merge_json_mcp(settings, host, store_root)
+            _merge_json_mcp(settings, harness, store_root)
     hooks = settings.setdefault(HOOKS_KEY, {})
     if not isinstance(hooks, dict):
         raise ValidationError([FieldError("settings.hooks", "must be an object")])
@@ -123,11 +128,11 @@ def install(
         HOOKS_KEY: [
             {
                 "type": "command",
-                "command": hook_command(host, store_root, settings_path=target),
+                "command": hook_command(harness, store_root, settings_path=target),
             }
         ],
     }
-    for event in moments.MOMENTS[host]:
+    for event in moments.MOMENTS[harness]:
         entries = hooks.get(event, [])
         if not isinstance(entries, list):
             raise ValidationError([FieldError(f"settings.hooks.{event}", "must be an array")])
@@ -137,23 +142,23 @@ def install(
     if not target.exists() or target.read_text(encoding="utf-8") != rendered:
         _atomic_write(target, rendered)
     _install_skill(target.parent / SKILL_PATH)
-    if mcp and host != moments.HARNESS_MUSE_CODE:
-        _install_external_mcp(host, target, store_root)
+    if mcp and harness != moments.HARNESS_MUSE_CODE:
+        _install_external_mcp(harness, target, store_root)
     return target
 
 
 def hook_command(
-    host: str,
+    harness: str,
     store_root: pathlib.Path | None = None,
     *,
     settings_path: pathlib.Path | None = None,
 ) -> str:
     """By absolute path: desktop clients run hooks without the user's shell PATH."""
     hook = pathlib.Path(sys.executable).parent / _entry_point(HOOK_COMMAND)
-    command = [str(hook), HARNESS_FLAG, host]
-    if host == moments.HARNESS_MUSE_CODE:
+    command = [str(hook), HARNESS_FLAG, harness]
+    if harness == moments.HARNESS_MUSE_CODE:
         command += [MUSE_DATA_HOME_FLAG, str(_muse_data_home())]
-        target = settings_path or default_settings_path(host)
+        target = settings_path or default_settings_path(harness)
         command += [MUSE_SETTINGS_FLAG, str(target.expanduser().resolve())]
     if store_root is not None:
         command += [STORE_FLAG, str(pathlib.Path(store_root).resolve())]
@@ -161,7 +166,7 @@ def hook_command(
 
 
 def render_command(command: list[str]) -> str:
-    """Windows hosts run hooks through Git Bash, PowerShell or cmd; plain forward-slash words
+    """Windows harnesses run hooks through Git Bash, PowerShell or cmd; plain forward-slash words
     mean the same in all three."""
     if sys.platform != "win32":
         return shlex.join(command)
@@ -177,8 +182,8 @@ def _entry_point(name: str) -> str:
     return f"{name}.exe" if sys.platform == "win32" else name
 
 
-def skill_path(host: str, settings_path: pathlib.Path | None = None) -> pathlib.Path:
-    target = settings_path or default_settings_path(host)
+def skill_path(harness: str, settings_path: pathlib.Path | None = None) -> pathlib.Path:
+    target = settings_path or default_settings_path(harness)
     return target.parent / SKILL_PATH
 
 
@@ -188,9 +193,9 @@ def mcp_binary() -> str:
 
 
 def _merge_json_mcp(
-    settings: dict[str, object], host: str, store_root: pathlib.Path | None
+    settings: dict[str, object], harness: str, store_root: pathlib.Path | None
 ) -> None:
-    key = "mcp_servers" if host == moments.HARNESS_MUSE_CODE else "mcpServers"
+    key = "mcp_servers" if harness == moments.HARNESS_MUSE_CODE else "mcpServers"
     servers = settings.setdefault(key, {})
     if not isinstance(servers, dict):
         raise ValidationError([FieldError(f"settings.{key}", "must be an object")])
@@ -199,7 +204,7 @@ def _merge_json_mcp(
         "command": mcp_binary(),
         "args": [],
     }
-    if host == moments.HARNESS_MUSE_CODE:
+    if harness == moments.HARNESS_MUSE_CODE:
         expected["mode"] = "optional"
     if store_root is not None:
         expected["env"] = {"MNEMOBUN_STORE": str(pathlib.Path(store_root).resolve())}
@@ -212,11 +217,11 @@ def _merge_json_mcp(
 
 
 def _install_external_mcp(
-    host: str, target: pathlib.Path, store_root: pathlib.Path | None
+    harness: str, target: pathlib.Path, store_root: pathlib.Path | None
 ) -> None:
-    if host != moments.HARNESS_CODEX:
+    if harness != moments.HARNESS_CODEX:
         return
-    binary = shutil.which(BINARIES[host])
+    binary = shutil.which(BINARIES[harness])
     if binary is None:
         raise ValidationError([FieldError("mcp", "Codex binary is required to configure MCP")])
     environment = {**os.environ, "CODEX_HOME": str(target.parent)}

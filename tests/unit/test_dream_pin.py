@@ -53,7 +53,7 @@ def _cite(store, name: str, queries: list[str]) -> None:
     from mnemobun.core.access_log import KIND_RECALL, AccessEntry, AccessLog
 
     entries = [AccessEntry(at="2026-01-15T09:00:00+00:00", name=name, query=q, kind=KIND_RECALL,
-                           agent="test") for q in queries]
+                           writer="test") for q in queries]
     with store._database.connect() as connection:  # noqa: SLF001 - the log has no public door
         AccessLog(connection).append(entries)
 

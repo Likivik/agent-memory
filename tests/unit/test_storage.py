@@ -62,7 +62,7 @@ def test_bad_date_is_rejected(store, config):
         name="bad-date",
         abstract="has an unparseable date",
         type="fact",
-        author="test",
+        writer="test",
         created="not-a-date",
         updated="2026-01-15",
     )
@@ -84,7 +84,7 @@ def test_multiline_custom_field_is_rejected_before_it_can_corrupt(config, break_
         name="multiline-extra",
         abstract="a custom field with a line break",
         type="fact",
-        author="test",
+        writer="test",
         created="2026-01-15",
         updated="2026-01-15",
         fields={"note": f"line one{break_char}line two"},

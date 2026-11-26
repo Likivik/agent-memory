@@ -1,6 +1,6 @@
 """Pure domain values for a write: what to record, under which key, to which route.
 
-Nothing here touches the filesystem, the clock or the host. Adapters translate into these.
+Nothing here touches the filesystem, the clock or the harness. Adapters translate into these.
 """
 
 from __future__ import annotations

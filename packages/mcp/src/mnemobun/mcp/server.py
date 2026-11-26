@@ -79,7 +79,7 @@ def serve_lines(
 
 def main(argv: Sequence[str] | None = None) -> int:
     stdio.use_utf8()
-    store = Store(agent=SERVER_NAME)
+    store = Store(writer=SERVER_NAME)
     serve(store, sys.stdin, sys.stdout)
     return 0
 

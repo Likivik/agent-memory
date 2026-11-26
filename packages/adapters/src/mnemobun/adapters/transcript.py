@@ -1,4 +1,4 @@
-"""Read a host transcript into plain segments. Nothing here interprets what it reads."""
+"""Read a harness transcript into plain segments. Nothing here interprets what it reads."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ CODEX_CONVERSATION = ("response_item", "message")
 CODEX_ROLES = ("user", "assistant")
 
 
-def items(path: pathlib.Path, host: str = "") -> list[str]:
-    if host == "muse-code":
+def items(path: pathlib.Path, harness: str = "") -> list[str]:
+    if harness == "muse-code":
         from .muse_session import items as muse_items
 
         return muse_items(path)

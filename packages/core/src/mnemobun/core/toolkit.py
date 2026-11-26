@@ -2,7 +2,7 @@
 
 Recall and read let it look; submitting operations is how it answers. The toolkit is the
 only definition of those tools — the endpoint loop calls it in process and the MCP adapter
-serves it to a host — so the same call yields the same result through every transport
+serves it to a harness — so the same call yields the same result through every transport
 (Invariant 8). Tools never write the Store: an accepted submission is handed back to the
 library, which applies it through the single write path (Invariant 2).
 """
@@ -283,7 +283,7 @@ class WriteToolkit:
     @classmethod
     def from_directory(cls, directory: pathlib.Path) -> WriteToolkit:
         seed = json.loads((directory / SEED_FILENAME).read_text(encoding="utf-8"))
-        return cls.from_seed(Store(str(seed["store"]), agent="write-toolkit"), seed)
+        return cls.from_seed(Store(str(seed["store"]), writer="write-toolkit"), seed)
 
 
 def _list(value: object) -> list:

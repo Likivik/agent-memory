@@ -28,10 +28,10 @@ REASON_MODEL_FLAG = "--reason-model"
 
 def launch(store: Store, *, trigger_source: str = "hook") -> dreaming.ClaimResult:
     """Claim with the configured Dream reasoner and launch its one-shot worker."""
-    reasoner_kind, host, model = _manage_target(store)
+    reasoner_kind, harness, model = _manage_target(store)
     result = dreaming.claim_due(
         store,
-        host,
+        harness,
         trigger_source=trigger_source,
         reasoner=reasoner_kind,
         model=model,
@@ -71,14 +71,14 @@ def run_due(
     reasoner: Reasoner | None,
     *,
     reasoner_kind: str,
-    host: str = "",
+    harness: str = "",
     model: str = "",
     trigger_source: str,
 ) -> dict[str, object]:
     """Run the same claimed Dream pipeline used by a detached Hook worker."""
     result = dreaming.claim_due(
         store,
-        host,
+        harness,
         trigger_source=trigger_source,
         reasoner=reasoner_kind,
         model=model,

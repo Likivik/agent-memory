@@ -14,7 +14,7 @@ from mnemobun.executor.drivers import HARNESS_HERMES
 def test_sandbox_spawn_has_auth(tmp_path):
     config = Config.default()
     config.executor.model = "mimo-v2.6-pro"
-    store = Store(tmp_path / "store", config=config, agent="auth-smoke")
+    store = Store(tmp_path / "store", config=config, writer="auth-smoke")
     store.init()
-    report = doctor.smoke(store, host=HARNESS_HERMES)
+    report = doctor.smoke(store, harness=HARNESS_HERMES)
     assert report["answered"], report

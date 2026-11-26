@@ -126,7 +126,7 @@ def test_text_and_native_rejections_leave_identical_t0_store_state(tmp_path, con
 
     stores = []
     for mode in ("text", "native"):
-        candidate = Store(tmp_path / mode, config=config, clock=clock, agent="paired")
+        candidate = Store(tmp_path / mode, config=config, clock=clock, writer="paired")
         candidate.init()
         _seed_every_kind(candidate)
         stores.append(candidate)
