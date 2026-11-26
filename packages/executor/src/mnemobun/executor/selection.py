@@ -31,13 +31,18 @@ def resolve(
     chosen = dataclasses.replace(
         config,
         reasoner=policy.reasoner or config.reasoner,
+        model=policy.model or config.model,
         timeout_seconds=policy.timeout_seconds or config.timeout_seconds,
     )
     if reasoner:
         chosen = dataclasses.replace(chosen, reasoner=reasoner)
     if model:
         chosen = dataclasses.replace(chosen, model=model)
-    if chosen.reasoner != REASONER_PLUGIN and chosen.reasoner not in REASONER_DRIVERS:
+    if (
+        chosen.reasoner
+        and chosen.reasoner != REASONER_PLUGIN
+        and chosen.reasoner not in REASONER_DRIVERS
+    ):
         raise ReasonerUnavailableError(
             f"unsupported reasoner {chosen.reasoner!r} for {operation}"
         )

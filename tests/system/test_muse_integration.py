@@ -38,7 +38,7 @@ def test_muse_hook_capture_distill_and_read(store, tmp_path, monkeypatch, capsys
         }
     )
     monkeypatch.setattr(
-        "mnemobun.executor.distiller.distiller", lambda config: lambda prompt: reply
+        "mnemobun.executor.distiller.distiller", lambda config, **_kw: lambda prompt: reply
     )
     assert main(["--store", str(store.root), "--json", "distill", "--session", session_id]) == 0
     report = json.loads(capsys.readouterr().out)

@@ -77,7 +77,9 @@ def smoke(store: Store, harness: str = "", model: str = "") -> dict[str, object]
     if credential is not None and not os.environ.get("OPENROUTER_API_KEY"):
         os.environ["OPENROUTER_API_KEY"] = credential.value
 
-    config = selection.resolve(store.config.executor, "write", model=model)
+    config = selection.resolve(
+        store.config.executor, "write", reasoner=harness, model=model
+    )
     try:
         from mnemobun.executor.reasoners import DriverReasoner
 

@@ -195,6 +195,7 @@ class WriteConfig:
 @dataclasses.dataclass
 class OperationExecutorConfig:
     reasoner: str = ""
+    model: str = ""  # no silent default, per operation
     timeout_seconds: float = 0.0
 
 

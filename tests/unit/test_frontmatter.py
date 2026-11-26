@@ -148,3 +148,10 @@ def test_inline_array_item_containing_quote_comma_round_trips():
     links = ['a", b', "next", 'C:\\", "x']
     parsed, _ = _round_trip({"links": links}, "body")
     assert parsed["links"] == links
+
+
+def test_a_malformed_list_raises_instead_of_being_guessed():
+    with pytest.raises(ValueError) as refusal:
+        frontmatter.parse('---\nlinks: ["C:\\", next]\n---\nbody\n')
+
+    assert "links" in str(refusal.value)

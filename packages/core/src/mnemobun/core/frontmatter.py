@@ -62,7 +62,10 @@ def _parse_mapping(lines: list[str]) -> dict[str, object]:
             pending_key = key
             continue
         pending_key = None
-        fields[key] = _parse_scalar(value)
+        try:
+            fields[key] = _parse_scalar(value)
+        except ValueError as error:
+            raise ValueError(f"{key}: {error}") from error
     return {key: value for key, value in fields.items()}
 
 

@@ -86,7 +86,9 @@ def _global_options(parser: argparse.ArgumentParser) -> None:
         default=argparse.SUPPRESS,
         help="store root (defaults to MNEMOBUN_STORE)",
     )
-    parser.add_argument("--agent", default=argparse.SUPPRESS, help="calling agent identity")
+    parser.add_argument(
+        "--writer", default=argparse.SUPPRESS, help="calling writer identity"
+    )
     parser.add_argument(
         "--json",
         action="store_true",
@@ -281,6 +283,12 @@ def _parser() -> argparse.ArgumentParser:
     index_sync.set_defaults(handler=_index_sync)
     index_rebuild = index_actions.add_parser("rebuild", help="drop and rebuild the index")
     index_rebuild.set_defaults(handler=_rebuild)
+    index_inspect = index_actions.add_parser(
+        "inspect", help="sync the index, then report the store"
+    )
+    _global_options(index_inspect)
+    index_inspect.set_defaults(handler=_inspect)
+
 
     dream_status = subcommand(
         "dream-status", help="show automatic Dream claim, failure, and progress state"
@@ -641,11 +649,14 @@ def _distill(store: Store, args: argparse.Namespace) -> dict[str, object]:
 
 
 def _distill_job(store: Store, args: argparse.Namespace) -> dict[str, object]:
-    executor = _executor(store, args, selection.WRITE)
+    job = write_jobs.WriteJobs(store).get(args.job)
+    if job is None:
+        return {"job": args.job, "status": "skipped", "reason": "no such job"}
+    executor = _executor(store, args, selection.WRITE, reasoner=job.harness)
     payload = write_run.run_job(
         store,
         args.job,
-        distiller.distiller(executor, store=store),
+        _reasoner(store, args, selection.WRITE, tools=True, fallback=job.harness),
         owner=_owner(),
         transport=_transport(executor),
     )
@@ -659,7 +670,7 @@ def _distill_drain(store: Store, args: argparse.Namespace) -> dict[str, object]:
     payload: dict[str, object] = {
         "drained": write_run.drain(
             store,
-            distiller.distiller(executor, store=store),
+            _reasoner(store, args, selection.WRITE, tools=True),
             owner=_owner(),
             transport=_transport(executor),
             limit=args.max,
@@ -871,8 +882,7 @@ def _feed(store: Store, args: argparse.Namespace) -> dict[str, object]:
 
     if not args.execute:
         return feed_module.run(store, ask=None).as_dict()
-    executor = _executor(store, args, selection.WRITE)
-    return feed_module.run(store, ask=distiller.distiller(executor, store=store)).as_dict()
+    return feed_module.run(store, ask=_reasoner(store, args, selection.WRITE)).as_dict()
 
 
 def _sleep(store: Store, args: argparse.Namespace) -> dict[str, object]:
@@ -891,7 +901,7 @@ def _sleep(store: Store, args: argparse.Namespace) -> dict[str, object]:
         model = executor.model
         return auto_dream.run_due(
             store,
-            distiller.distiller(executor, store=store),
+            _reasoner(store, args, selection.MANAGE),
             reasoner_kind=executor.reasoner,
             harness="",
             model=model,
@@ -928,16 +938,24 @@ def _reasoner(
     store: Store,
     args: argparse.Namespace,
     operation: str,
+    *,
+    tools: bool = False,
+    fallback: str = "",
 ) -> Reasoner | None:
     if args.reason == REASON_NONE:
         return None
     executor = _executor(store, args, operation)
-    from mnemobun.executor.reasoners import DriverReasoner
+    from mnemobun.executor.drivers import TRANSPORTS
+    from mnemobun.executor.reasoners import DriverReasoner, ToolDriverReasoner
 
-    harness = getattr(args, "reason_harness", "") or executor.reasoner
+    harness = getattr(args, "reason_harness", "") or executor.reasoner or fallback
+    if not harness:  # nobody chose a reasoner: deterministic-only, no LLM
+        return None
     if harness == REASONER_PLUGIN:  # the plugin injects ctx.llm; the CLI cannot
         raise ReasonerUnavailableError("reasoner 'plugin' needs the Hermes plugin")
     model = getattr(args, "reason_model", "") or executor.model
+    if tools and getattr(TRANSPORTS.get(harness), "supports_tools", False):
+        return ToolDriverReasoner.for_harness(harness, model=model)
     ask = DriverReasoner.for_harness(harness, model=model)
     return distiller.distiller(executor, store=store, ask=ask)
 
@@ -946,11 +964,13 @@ def _executor(
     store: Store,
     args: argparse.Namespace,
     operation: str,
+    *,
+    reasoner: str = "",
 ) -> ExecutorConfig:
     return selection.resolve(
         store.config.executor,
         operation,
-        reasoner=args.reason or "",
+        reasoner=args.reason or reasoner,
         model=args.reason_model,
     )
 
@@ -1006,10 +1026,10 @@ def _doctor(store: Store, args: argparse.Namespace) -> dict[str, object]:
     from mnemobun.adapters import doctor
 
     if getattr(args, "smoke", False):
-        return {"smoke": doctor.smoke(store, host=getattr(args, "host", "") or "")}
+        return {"smoke": doctor.smoke(store, harness=getattr(args, "harness", "") or "")}
     return doctor.run(
         store,
-        args.host,
+        args.harness,
         settings_path=pathlib.Path(args.settings) if args.settings else None,
         provider=args.provider,
         model=args.model,

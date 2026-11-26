@@ -11,6 +11,7 @@ import json
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
 
 from .paths import StoreLayout
 
@@ -121,32 +122,13 @@ class Database:
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
         self._layout.index_dir.mkdir(parents=True, exist_ok=True)
+        self._discard_stale()
         connection = sqlite3.connect(self._layout.index_db)
         connection.row_factory = sqlite3.Row
         try:
-            columns = connection.execute("PRAGMA table_info(records)").fetchall()
-            if columns and any(column["name"] == "status" for column in columns):
-                connection.execute("ALTER TABLE records DROP COLUMN status")
-            if columns and not any(column["name"] == "standing" for column in columns):
-                connection.execute(
-                    "ALTER TABLE records ADD COLUMN standing TEXT NOT NULL"
-                    " DEFAULT 'accepted'"
-                )
-            if columns and not any(column["name"] == "usage" for column in columns):
-                connection.execute(
-                    "ALTER TABLE records ADD COLUMN usage REAL NOT NULL"
-                    " DEFAULT 1.0"
-                )
-            if columns and not any(column["name"] == "importance" for column in columns):
-                connection.execute(
-                    "ALTER TABLE records ADD COLUMN importance REAL NOT NULL"
-                    " DEFAULT 0.0"
-                )
-            if columns and any(column["name"] == "weight" for column in columns):
-                connection.execute("ALTER TABLE records DROP COLUMN weight")
-            connection.execute("DROP TABLE IF EXISTS raw_chunks")
             for statement in SCHEMA:
                 connection.execute(statement)
+            connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
             self._handshake(connection)
             yield connection
             connection.commit()
@@ -155,6 +137,20 @@ class Database:
             raise
         finally:
             connection.close()
+
+    def _discard_stale(self) -> None:
+        """Drop an index this version cannot read. It is a cache, not a migration."""
+        path = self._layout.index_db
+        if not path.exists():
+            return
+        try:
+            found = sqlite3.connect(path).execute("PRAGMA user_version").fetchone()[0]
+        except sqlite3.DatabaseError:
+            found = -1
+        if found == SCHEMA_VERSION:
+            return
+        for suffix in ("", "-wal", "-shm"):
+            Path(f"{path}{suffix}").unlink(missing_ok=True)
 
     def _handshake(self, connection: sqlite3.Connection) -> None:
         """Plugin<->store version handshake: drift is a named error, not a crash."""
@@ -177,8 +173,8 @@ class Database:
             raise StoreVersionError(
                 f"store version {schema} written by plugin "
                 f"{known.get('writer_version', 'unknown')}; this plugin is "
-                f"{WRITER_VERSION} (schema {SCHEMA_VERSION}) — run index rebuild / "
-                "migration or start from scratch"
+                f"{WRITER_VERSION} (schema {SCHEMA_VERSION}) — run index rebuild, "
+                "which drops and refills the index"
             )
         if schema < SCHEMA_VERSION or known.get("writer_version") != WRITER_VERSION:
             path.write_text(

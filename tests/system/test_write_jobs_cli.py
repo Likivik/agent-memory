@@ -82,13 +82,12 @@ def test_a_boundary_hook_enqueues_the_job_and_spawns_its_worker(store, monkeypat
     assert job.state == STATE_QUEUED
     assert job.session == "boundary"
     assert job.target == 1
-    assert launched["command"][-5:] == [
+    assert launched["command"][-3:] == [
         hook_entry.JOB_FLAG,
         job.id,
-        hook_entry.SOURCE_HARNESS_FLAG,
-        "codex",
         hook_entry.AUTO_DREAM_FLAG,
     ]
+    assert job.harness == "codex"
 
 
 def test_a_failed_spawn_leaves_the_job_queued(store, monkeypatch):
@@ -208,7 +207,7 @@ def test_a_killed_worker_leaves_the_job_to_the_next_run(
     _capture(store)
     job = WriteJobs(store).enqueue("boundary", "codex")
     blocking = python_executable(
-        tmp_path / "bin-block" / "claude", BLOCKING_HOST.format(python=sys.executable)
+        tmp_path / "bin-block" / "codex", BLOCKING_HOST.format(python=sys.executable)
     )
     monkeypatch.setenv("PATH", f"{blocking.parent}{os.pathsep}{os.environ.get('PATH', '')}")
     monkeypatch.setenv("FAKE_HOST_STOP", str(tmp_path / "stop-host"))
@@ -403,20 +402,29 @@ FAKE_HOST = """#!{python}
 import json, os, subprocess, sys
 
 argv = sys.argv[1:]
+overrides = {{}}
+index = 0
+while index < len(argv) - 1:
+    if argv[index] == "-c":
+        key, _, value = argv[index + 1].partition("=")
+        overrides[key] = json.loads(value)
+        index += 2
+        continue
+    index += 1
 
-def after(flag):
-    return argv[argv.index(flag) + 1]
+sys.stdin.read()
+answer_file = argv[argv.index("--output-last-message") + 1]
+prefixes = [key[: -len(".command")] for key in overrides if key.endswith(".command")]
+if not prefixes:
+    raise SystemExit("unexpected codex invocation: no mcp server override")
 
-if "--mcp-config" in argv:
-    prompt = sys.stdin.read()
-    server = next(iter(json.loads(after("--mcp-config"))["mcpServers"].values()))
-else:
-    raise SystemExit("unexpected claude invocation")
-
+prefix = prefixes[0]
+server = {{"command": overrides[prefix + ".command"], "args": overrides[prefix + ".args"]}}
 child = subprocess.Popen(
     [server["command"], *server["args"]],
     stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
 )
+
 
 def rpc(request_id, method, params=None):
     message = {{"jsonrpc": "2.0", "id": request_id, "method": method, "params": params or {{}}}}
@@ -424,20 +432,22 @@ def rpc(request_id, method, params=None):
     child.stdin.flush()
     return json.loads(child.stdout.readline())
 
+
 rpc(0, "initialize")
 for index, (name, arguments) in enumerate(json.loads(os.environ["FAKE_HOST_SCRIPT"])):
     rpc(index + 2, "tools/call", {{"name": name, "arguments": arguments}})
 child.stdin.close()
 child.wait()
+with open(answer_file, "w", encoding="utf-8") as handle:
+    handle.write("done")
 with open(os.environ["FAKE_HOST_LOG"], "a", encoding="utf-8") as log:
     record = {{"argv": argv, "executor": os.environ.get("MNEMOBUN_EXECUTOR")}}
     log.write(json.dumps(record) + "\\n")
-print("done")
 """
 
 
 def _fake_host(install, tmp_path):
-    return install(tmp_path / "bin" / "claude", FAKE_HOST.format(python=sys.executable))
+    return install(tmp_path / "bin" / "codex", FAKE_HOST.format(python=sys.executable))
 
 
 def test_mem_distill_job_runs_one_job_end_to_end_with_the_deterministic_host(

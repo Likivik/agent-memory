@@ -5,7 +5,13 @@ means adding a transport module and one line here - never a branch inside Driver
 """
 
 from .codex import CodexTransport
-from .constants import BINARIES, HARNESS_CODEX, HARNESS_HERMES, HARNESS_MUSE_CODE
+from .constants import (
+    BINARIES,
+    HARNESS_CODEX,
+    HARNESS_HERMES,
+    HARNESS_MUSE_CODE,
+    HERMES_WRITE_SERVER_NAME,
+)
 from .driver import Driver
 from .helpers import _CodexTrace, _run_codex_jsonl
 from .hermes import HermesTransport
@@ -17,6 +23,7 @@ __all__ = [
     "BINARIES",
     "TRANSPORTS",
     "Driver",
+    "HERMES_WRITE_SERVER_NAME",
     "_CodexTrace",
     "_count",
     "_host_usage",

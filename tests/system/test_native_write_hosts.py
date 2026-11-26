@@ -7,10 +7,8 @@ import sys
 
 import pytest
 from mnemobun.core import distill, sessions, toolkit
-from mnemobun.core.config import ExecutorConfig
 from mnemobun.core.errors import ValidationError
 from mnemobun.core.watermark import Watermark
-from mnemobun.executor import distiller as executor_distiller
 from mnemobun.executor import drivers
 from mnemobun.executor.reasoners import ToolDriverReasoner
 
@@ -97,7 +95,7 @@ def _fake_host(install, tmp_path, name):
 
 def _reasoner(name, binary):
     spec = drivers.DriverSpec(name=name, binary=str(binary), model="a-model", attempts=1)
-    return ToolDriverReasoner(harness=drivers.Driver(spec))
+    return ToolDriverReasoner(driver=drivers.Driver(spec))
 
 
 def _batch(store):
@@ -236,8 +234,7 @@ def test_muse_auto_native_write_creates_a_new_memory_with_source_provenance(
     monkeypatch.setenv("FAKE_HOST_LOG", str(log))
     binary = _fake_host(python_executable, tmp_path, drivers.BINARIES[drivers.HARNESS_MUSE_CODE][0])
     monkeypatch.setenv("PATH", str(binary.parent) + os.pathsep + os.environ["PATH"])
-    reasoner = executor_distiller.distiller(ExecutorConfig(harness=drivers.HARNESS_MUSE_CODE))
-    assert isinstance(reasoner, ToolDriverReasoner)
+    reasoner = ToolDriverReasoner.for_harness(drivers.HARNESS_MUSE_CODE, model="")
 
     report = distill.distill(
         store,
