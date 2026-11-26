@@ -359,7 +359,7 @@ def _pin(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     from mnemobun.core.docket import Docket
 
     order = arguments.get("order")
-    placement = int(order) if order is not None else None
+    placement = int(str(order)) if order is not None else None
     result = Docket(store).pin(str(arguments["name"]), order=placement)
     return {"result": result}
 
@@ -514,7 +514,11 @@ def _doctor(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     if bool(arguments.get("smoke")):
         from mnemobun.adapters import doctor as doctor_module
 
-        result["smoke"] = doctor_module.smoke(store, host="")
+        harness = store.config.executor.write.reasoner
+        if harness:
+            result["smoke"] = doctor_module.smoke(store, harness=harness)
+        else:
+            result["smoke"] = {"error": "no reasoner configured"}
     return result
 
 

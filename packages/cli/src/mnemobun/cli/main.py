@@ -9,7 +9,7 @@ import os
 import pathlib
 import sys
 from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from mnemobun.core import context as context_module
 from mnemobun.core import distill as distill_module
@@ -38,6 +38,9 @@ from mnemobun.core.errors import (
 from mnemobun.core.locking import file_lock
 from mnemobun.core.observation import invoke as observe_invocation
 from mnemobun.core.reasoning import Reasoner
+
+if TYPE_CHECKING:
+    from mnemobun.executor.reasoners import ToolDriverReasoner
 from mnemobun.core.recall import Recall
 from mnemobun.core.store import LEVEL_FULL, LEVELS, Store
 from mnemobun.core.watermark import Watermark
@@ -941,7 +944,7 @@ def _reasoner(
     *,
     tools: bool = False,
     fallback: str = "",
-) -> Reasoner | None:
+) -> Reasoner | ToolDriverReasoner | None:
     if args.reason == REASON_NONE:
         return None
     executor = _executor(store, args, operation)
@@ -957,7 +960,7 @@ def _reasoner(
     if tools and getattr(TRANSPORTS.get(harness), "supports_tools", False):
         return ToolDriverReasoner.for_harness(harness, model=model)
     ask = DriverReasoner.for_harness(harness, model=model)
-    return distiller.distiller(executor, store=store, ask=ask)
+    return cast(Reasoner, distiller.distiller(executor, store=store, ask=ask))
 
 
 def _executor(
