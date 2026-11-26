@@ -111,8 +111,7 @@ class Driver:
                 exam_prompt, self._system.context(root, episode.question)
             )
         elif arm.memory:
-            exam_prompt = framing.with_injected(exam_prompt, self._system.injection(root))
-
+            exam_prompt = framing.with_injected(exam_prompt, self._system.pinned(root))
         environment = self._system.environment(root) if arm.memory else {}
         environment = {**environment, observation.ENV: "", observation.ATTEMPT_ENV: ""}
         evidence_dir = None

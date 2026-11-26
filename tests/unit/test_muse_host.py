@@ -8,7 +8,7 @@ import subprocess
 
 import pytest
 from mnemobun.adapters import hook_entry, moments, muse_session, setup, transcript
-from mnemobun.core import injection, prompts, sessions
+from mnemobun.core import prompts, sessions
 from mnemobun.core.errors import ValidationError
 from mnemobun.executor import agents
 from mnemobun.harness import main as harness
@@ -148,16 +148,13 @@ def test_muse_hook_events_normalize_to_existing_moments(event, moment):
     assert normalized["session_id"] == raw["session_id"]
 
 
-def test_muse_session_start_uses_muse_json_context_schema(seeded):
+def test_muse_session_start_sends_no_context(seeded):
+    """No memory index is pasted at session start; rules arrive through the pinned block."""
     response = hook_entry.handle(
         seeded,
         {"host": "muse-code", "hook_event_name": "SessionStart", "source": "startup"},
     )
-    specific = response["hookSpecificOutput"]
-    assert specific == {
-        "hookEventName": "SessionStart",
-        "additionalContext": injection.payload(seeded),
-    }
+    assert "hookSpecificOutput" not in response
 
 
 def test_muse_root_session_is_normalized_and_child_log_is_ignored(tmp_path):

@@ -149,7 +149,8 @@ def test_a_one_word_turn_does_not_trip_the_isolation_gate(tmp_path, suite):
     assert _driver(tmp_path, StubHost(), episodes).run(noisy, arms.W1).status == STATUS_OK
 
 
-def test_the_exam_receives_the_memory_index_when_the_arm_has_memory(tmp_path, suite):
+def test_the_exam_receives_the_pinned_block_when_the_arm_has_memory(tmp_path, suite):
+    """One always-on surface: rules that were pinned, never a memory index."""
     episodes = dataset.load(suite)
     host = StubHost()
     driver = _driver(tmp_path, host, episodes)
@@ -166,18 +167,16 @@ def test_the_control_arm_receives_no_index(tmp_path, suite):
     assert "memory store currently holds" not in exam_prompt
 
 
-def test_injection_is_disabled_by_config_rather_than_by_code(tmp_path, suite):
-    from mnemobun.core.config import Config
-    from mnemobun.core.injection import payload
+def test_an_empty_pin_set_injects_nothing(tmp_path, suite):
+    from mnemobun.core import pinned
 
     episodes = dataset.load(suite)
-    _driver(tmp_path, StubHost(), episodes).run(episodes[0], arms.W1)
-    store = Store(tmp_path / "stores" / arms.W1.name / episodes[0].id)
-    assert payload(store)
-
-    store.config.recall.injection_enabled = False
-    assert payload(store) == ""
-    assert Config.default().recall.injection_enabled
+    host = StubHost()
+    _driver(tmp_path, host, episodes).run(episodes[0], arms.W0)
+    store = Store(tmp_path / "stores" / arms.W0.name / episodes[0].id)
+    assert pinned.render(store) == ""
+    exam_prompt = next(prompt for prompt in host.prompts if "Question:" in prompt)
+    assert "memory store currently holds" not in exam_prompt
 
 
 def test_the_driver_refuses_to_score_a_run_whose_isolation_broke(tmp_path, suite, monkeypatch):

@@ -220,14 +220,11 @@ def test_batch_input_rejections_keep_valid_siblings_projected(cli, tmp_path, inv
     store = Store(cli.root)
     assert {record.name for record in store.records()} == set(names)
     assert {hit["name"] for hit in cli("recall", "batch recovery")["hits"]} == set(names)
-    projected = store.layout.memory_index.read_bytes()
-    assert all(name.encode() in projected for name in names)
-    assert b"invalid" not in projected
+    assert not (store.root / "MEMORY.md").exists()
 
     cli("rebuild")
 
     assert {hit["name"] for hit in cli("recall", "batch recovery")["hits"]} == set(names)
-    assert store.layout.memory_index.read_bytes() == projected
 
 
 def test_batch_missing_predecessor_rolls_back_accepted_siblings(cli, tmp_path):
@@ -242,7 +239,6 @@ def test_batch_missing_predecessor_rolls_back_accepted_siblings(cli, tmp_path):
     )
     store = Store(cli.root)
     original = {path: path.read_bytes() for path in store.layout.truth_files()}
-    projected = store.layout.memory_index.read_bytes()
     names = {hit["name"] for hit in cli("recall", "batch recovery")["hits"]}
     batch = tmp_path / "aborted-batch.jsonl"
     specs = [
@@ -266,13 +262,11 @@ def test_batch_missing_predecessor_rolls_back_accepted_siblings(cli, tmp_path):
     assert payload["code"] == "not_found"
     assert "batch-missing" in payload["message"]
     assert {path: path.read_bytes() for path in store.layout.truth_files()} == original
-    assert store.layout.memory_index.read_bytes() == projected
     assert {hit["name"] for hit in cli("recall", "batch recovery")["hits"]} == names
 
     cli("rebuild")
 
     assert {hit["name"] for hit in cli("recall", "batch recovery")["hits"]} == names
-    assert store.layout.memory_index.read_bytes() == projected
 
 
 def test_record_without_a_batch_still_demands_its_fields(cli):
@@ -476,8 +470,7 @@ def test_rule_only_sleep_preserves_distinct_memories_and_projections(cli, conten
     assert not any(action["kind"] == "duplicate-merged" for action in report["actions"])
     assert {record.name for record in Store(cli.root).records()} == names
     assert {hit["name"] for hit in cli("recall", "retention")["hits"]} == names
-    memory_index = (cli.root / "MEMORY.md").read_text(encoding="utf-8")
-    assert all(f"[{name}]" in memory_index for name in names)
+    assert not (cli.root / "MEMORY.md").exists()
 
 
 def test_rule_only_sleep_supersedes_exact_copies_and_retains_their_history(cli):
@@ -506,9 +499,7 @@ def test_rule_only_sleep_supersedes_exact_copies_and_retains_their_history(cli):
     assert {
         hit["name"] for hit in cli("recall", "retention", "--as-of", "2001-01-01")["hits"]
     } == names
-    memory_index = (cli.root / "MEMORY.md").read_text(encoding="utf-8")
-    assert "[exact-copy-a]" in memory_index
-    assert "[exact-copy-b]" not in memory_index
+    assert not (cli.root / "MEMORY.md").exists()
     assert not any(
         action["kind"] == "duplicate-merged"
         for action in cli("sleep", "--reason", "none")["actions"]

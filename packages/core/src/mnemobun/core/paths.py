@@ -7,7 +7,6 @@ import pathlib
 
 from .config import Config
 
-MEMORY_INDEX_FILENAME = "MEMORY.md"
 ARCHIVE_DIRNAME = "archive"
 PROVENANCE_DIRNAME = "provenance"
 SESSIONS_DIRNAME = "sessions"
@@ -30,10 +29,6 @@ MEMORY_SUFFIX = ".md"
 class StoreLayout:
     root: pathlib.Path
     config: Config
-
-    @property
-    def memory_index(self) -> pathlib.Path:
-        return self.root / MEMORY_INDEX_FILENAME
 
     @property
     def archive(self) -> pathlib.Path:
@@ -144,8 +139,6 @@ class StoreLayout:
             self.dream_reports,
         ):
             path.mkdir(parents=True, exist_ok=True)
-        if not self.memory_index.exists():
-            self.memory_index.write_text(self.config.memory_md.header + "\n\n", encoding="utf-8")
 
     def type_of(self, path: pathlib.Path) -> str | None:
         try:

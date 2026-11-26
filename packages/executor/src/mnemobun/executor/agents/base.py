@@ -32,26 +32,17 @@ from mnemobun.core.config import MUSE_SETTINGS_ENV_VAR
 from .. import muse_namespaces
 from ..credentials import VertexCredentials
 
-HOST_CLAUDE_CODE = "claude-code"
 HOST_CODEX = "codex"
 HOST_HERMES = "hermes"
 HOST_MUSE_CODE = "muse-code"
 
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 BINARIES = {
-    HOST_CLAUDE_CODE: ("claude", DEFAULT_MODEL),
     HOST_CODEX: ("codex", "gpt-5.6-sol"),
     HOST_HERMES: ("hermes", "google/gemini-3.7-flash"),
     HOST_MUSE_CODE: ("muse", ""),
 }
 MEM_TOOL_PATTERN = "Bash(mem:*)"
-CLAUDE_NATIVE_TOOLS = "Write,Edit,NotebookEdit,WebSearch,WebFetch,Task"
-CLAUDE_STRUCTURED_OUTPUT = "json"
-CLAUDE_RESULT_TYPE = "result"
-CLAUDE_CACHE_READ = "cache_read_input_tokens"
-CLAUDE_OUTPUT = "output_tokens"
-CLAUDE_INPUT_FIELDS = ("input_tokens", CLAUDE_CACHE_READ, "cache_creation_input_tokens")
-CLAUDE_USAGE_FIELDS = (*CLAUDE_INPUT_FIELDS, CLAUDE_OUTPUT)
 HERMES_TOOLSETS = "terminal"
 HERMES_WRITE_SERVER_NAME = "mnemobun-write"
 HERMES_MANAGE_SERVER_NAME = "mnemobun-manage"
@@ -306,7 +297,10 @@ class Host:
         self.spec = spec
         from . import DIALECTS  # package-level map; resolves after all dialect modules load
 
-        self.dialect = DIALECTS.get(spec.name, DIALECTS[HOST_CLAUDE_CODE])
+        dialect = DIALECTS.get(spec.name)
+        if dialect is None:
+            raise ValueError(f"no dialect registered for host: {spec.name}")
+        self.dialect = dialect
         self.credentials = (
             VertexCredentials()
             if spec.name == HOST_HERMES and spec.provider in ("", "gemini")
@@ -773,12 +767,12 @@ class Host:
         return environment
 
 
-def _claude_result(stdout: str) -> dict[str, object] | None:
+def _stream_result(stdout: str) -> dict[str, object] | None:
     try:
         parsed = json.loads(stdout)
     except json.JSONDecodeError:
         return None
-    if isinstance(parsed, dict) and parsed.get("type") == CLAUDE_RESULT_TYPE:
+    if isinstance(parsed, dict) and parsed.get("type") == "result":
         return parsed
     return None
 

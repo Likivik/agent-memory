@@ -12,7 +12,7 @@ import os
 import pathlib
 import tempfile
 
-from . import chunking, memory_md, observation, placement, timestamp
+from . import chunking, observation, placement, timestamp
 from . import record as record_module
 from . import trace as trace_module
 from .access_log import KIND_READ, AccessEntry, AccessLog
@@ -856,12 +856,10 @@ class Store:
     def rebuild_index(self) -> IndexReport:
         with store_lock(self.layout):
             report = self._indexer.rebuild()
-            memory_md.write(self.layout, self.records())
             return report
 
     def _project(self) -> IndexReport:
         report = self._indexer.sync()
-        memory_md.write(self.layout, self.records())
         return report
 
     def _log_access(self, entries: list[AccessEntry]) -> None:

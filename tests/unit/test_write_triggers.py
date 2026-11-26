@@ -10,7 +10,7 @@ import sys
 import pytest
 from mnemobun.adapters import capture as capture_module
 from mnemobun.adapters import detached, hook_entry, moments, setup, transcript
-from mnemobun.core import injection, sessions, triggers
+from mnemobun.core import sessions, triggers
 from mnemobun.core.watermark import Watermark
 from mnemobun.core.write_jobs import STATE_QUEUED, WriteJobs
 
@@ -61,18 +61,6 @@ def test_the_cron_path_reaches_the_same_state_as_the_hook_path(store, tmp_path):
     )
 
 
-def test_injection_is_a_byte_prefix_of_memory_md(seeded):
-    payload = injection.payload(seeded)
-    raw = seeded.layout.memory_index.read_bytes()
-    assert raw.startswith(payload.encode("utf-8"))
-    assert len(payload.encode("utf-8")) <= seeded.config.recall.injection_budget_bytes
-
-
-def test_injection_is_truncated_at_a_line_boundary_when_it_exceeds_the_budget(seeded):
-    seeded.config.recall.injection_budget_bytes = len(seeded.config.memory_md.header) + len("\n\n")
-    payload = injection.payload(seeded)
-    assert seeded.layout.memory_index.read_bytes().startswith(payload.encode("utf-8"))
-    assert "\n- " not in payload
 
 
 @pytest.mark.parametrize(
@@ -94,13 +82,12 @@ def test_hook_survives_malformed_input_without_touching_the_host_exit_code(monke
     assert hook_entry.main() == hook_entry.EXIT_OK
 
 
-def test_hook_injects_memory_md_at_session_start(seeded):
+def test_hook_injects_nothing_at_session_start(seeded):
+    """Rules ride the pinned block; the hook must not paste a memory index into the prompt."""
     response = hook_entry.handle(
         seeded, {"host": moments.HOST_CLAUDE_CODE, "hook_event_name": "SessionStart"}
     )
-    output = response[hook_entry.CLAUDE_OUTPUT_KEY]
-    assert output[hook_entry.CLAUDE_CONTEXT_KEY] == injection.payload(seeded)
-    assert output["hookEventName"] == "SessionStart"
+    assert hook_entry.CLAUDE_CONTEXT_KEY not in str(response)
 
 
 @pytest.mark.parametrize(

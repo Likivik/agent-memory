@@ -123,7 +123,6 @@ def test_regroup_rolls_back_truth_and_projection(menu_store, monkeypatch):
     store = menu_store
     original = store.record(type="note", name="source", abstract="Orchid source memory")
     before = {path: path.read_bytes() for path in store.layout.truth_files()}
-    memory_before = (store.root / "MEMORY.md").read_bytes()
     project = store._project
     failed = False
 
@@ -140,7 +139,6 @@ def test_regroup_rolls_back_truth_and_projection(menu_store, monkeypatch):
         store.regroup(original.name, "new-group")
 
     assert {path: path.read_bytes() for path in store.layout.truth_files()} == before
-    assert (store.root / "MEMORY.md").read_bytes() == memory_before
     assert store.find(original.name).path == original.path
     assert {hit.name for hit in Recall(store).recall("orchid", log=False)} == {original.name}
 

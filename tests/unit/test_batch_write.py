@@ -209,8 +209,6 @@ def test_failed_batches_restore_all_canonical_changes(store, monkeypatch, failur
         for name in ("edited", "predecessor", "last-predecessor")
     ]
     before = {path: path.read_bytes() for path in store.layout.truth_files()}
-    memory_path = store.root / "MEMORY.md"
-    memory_before = memory_path.read_bytes()
     archive_before = {path for path in store.layout.archive.rglob("*") if path.is_file()}
     specs = [
         {
@@ -294,7 +292,6 @@ def test_failed_batches_restore_all_canonical_changes(store, monkeypatch, failur
         store.record_many(specs)
 
     assert {path: path.read_bytes() for path in store.layout.truth_files()} == before
-    assert memory_path.read_bytes() == memory_before
     assert {hit.name for hit in Recall(store).recall("orchid")} == {
         record.name for record in originals
     }
@@ -302,7 +299,6 @@ def test_failed_batches_restore_all_canonical_changes(store, monkeypatch, failur
     archive_after = {path for path in store.layout.archive.rglob("*") if path.is_file()}
     assert archive_before < archive_after
     store.rebuild_index()
-    assert memory_path.read_bytes() == memory_before
     assert {hit.name for hit in Recall(store).recall("orchid")} == {
         record.name for record in originals
     }

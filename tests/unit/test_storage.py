@@ -16,7 +16,6 @@ def test_init_creates_the_schema_set_and_the_archive_buckets(store):
     assert store.schemas.load()
     for bucket in (store.layout.provenance, store.layout.sessions):
         assert bucket.is_dir()
-    assert store.layout.memory_index.exists()
 
 
 def test_recorded_file_round_trips_through_frontmatter(store):

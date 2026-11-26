@@ -128,15 +128,6 @@ def test_memcore_release_stops_its_daemon(tmp_path, memcore):
     assert (root / "calls.log").read_text(encoding="utf-8").strip().splitlines()[-1] == "stop"
 
 
-def test_memcore_injection_is_what_its_hook_injects(tmp_path, memcore):
-    root = tmp_path / "q1"
-    memcore.prepare(root, fresh=True)
-    assert memcore.injection(root) == ""
-    (root / "memories" / "snake plant gift.md").write_text("---\nabstract: a\n---\n", "utf-8")
-    injected = memcore.injection(root)
-    assert "snake plant gift" in injected
-    assert "memcore recall --top-k" in injected
-
 
 def test_memcore_keeps_no_transcript(tmp_path, memcore):
     root = tmp_path / "q1"
@@ -246,3 +237,10 @@ def test_paths_are_data_not_defaults():
     source = inspect.getsource(systems)
     assert "/home/" not in source
     assert str(pathlib.Path.home()) not in source
+
+
+def test_the_harness_arm_gets_rules_and_no_memory_index(tmp_path, memcore):
+    """One always-on surface: the pinned block. An index pasted into the prompt is gone."""
+    root = tmp_path / "q1"
+    memcore.prepare(root, fresh=True)
+    assert memcore.pinned(root) == ""

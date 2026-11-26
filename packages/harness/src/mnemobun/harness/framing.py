@@ -69,7 +69,7 @@ def fixed_exam(episode: Episode, context: str) -> str:
 
 
 def with_injected(exam_prompt: str, block: str) -> str:
-    """The injection track, appended after the isolation gate has cleared the question."""
-    if not block.strip():
+    """The pinned rules, appended after the isolation gate has cleared the exam."""
+    if not block:
         return exam_prompt
-    return block + INJECTION_SEPARATOR + exam_prompt
+    return f"{block}\n\n{exam_prompt}"

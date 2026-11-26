@@ -21,7 +21,7 @@ import traceback
 from collections.abc import Callable, Iterator, Sequence
 from types import FrameType
 
-from mnemobun.core import injection, stdio
+from mnemobun.core import stdio
 from mnemobun.core.config import (
     EXECUTOR_ENV_VAR,
     MUSE_SETTINGS_ENV_VAR,
@@ -138,7 +138,7 @@ def _offer_drain(store: Store, drain_launch: DrainLauncher | None) -> None:
 
 
 def _inject(store: Store, host: str) -> dict[str, object]:
-    context = injection.payload(store)
+    context = ""  # mnemobun injects nothing at session start; rules ride the pinned block
     if not context:
         return {}
     if host in (moments.HOST_CLAUDE_CODE, moments.HOST_CODEX):

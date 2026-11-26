@@ -14,9 +14,7 @@ a tool does and which operations to believe stays in the core.
 from __future__ import annotations
 
 import dataclasses
-import os
 import pathlib
-import shutil
 import sys
 import tempfile
 
@@ -26,7 +24,7 @@ from mnemobun.core.manage_toolkit import ManageReviewToolkit
 from mnemobun.core.reasoning import ReviewRuntime
 from mnemobun.core.toolkit import WriteToolkit
 
-from .agents import BINARIES, HOST_CLAUDE_CODE, Host, HostResult, HostSpec, ToolServer
+from .agents import BINARIES, Host, HostResult, HostSpec, ToolServer
 
 CHAT_COMPLETIONS = "/chat/completions"
 DEFAULT_ENDPOINT_MODEL = "google/gemini-2.5-flash"
@@ -74,13 +72,10 @@ class HostReasoner:
         provider: str = EMPTY,
         allow_data_training: bool = False,
     ) -> HostReasoner:
-        """A host is named by its dialect, not by its binary — `claude-code` runs `claude`."""
+        """A host is named by its dialect, not by its binary."""
         if name not in BINARIES:
             raise ReasonerUnavailableError(f"unsupported host reasoner {name!r}")
         binary, default_model = BINARIES[name]
-        bundled = os.environ.get(CLAUDE_BUNDLED_ENV, EMPTY)
-        if name == HOST_CLAUDE_CODE and bundled and shutil.which(binary) is None:
-            binary = bundled
         return cls(
             host=Host(
                 HostSpec(

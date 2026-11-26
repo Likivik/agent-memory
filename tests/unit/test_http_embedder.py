@@ -74,4 +74,4 @@ def test_new_embedder_knobs_leave_disabled_fingerprint_alone():
     config.index.embedder_backend = "http"
     config.index.embedder_url = "http://127.0.0.1:8081"
     assert config.recall_fingerprint() == before
-    assert Config.default().recall_fingerprint() == "5cbd58b5e008eef3"
+    assert Config.default().recall_fingerprint() == "c1a9226ace853d4a"

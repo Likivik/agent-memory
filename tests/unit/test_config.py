@@ -18,7 +18,6 @@ def test_defaults_are_complete_and_self_consistent():
     assert config.manage.trigger_min_sessions >= 1
     assert config.manage.trigger_min_hours > 0
     assert config.manage.cluster_min_files > 1
-    assert config.memory_md.budget_bytes > 0
     assert config.usage.floor < config.usage.initial < config.usage.ceiling
     assert config.usage.decay_step > 0
     assert config.usage.boost_step > 0
@@ -93,7 +92,7 @@ def test_vector_knobs_leave_the_recall_fingerprint_alone_while_disabled():
 
 
 def test_default_recall_fingerprint_matches_memory_only_policy():
-    assert Config.default().recall_fingerprint() == "5cbd58b5e008eef3"
+    assert Config.default().recall_fingerprint() == "c1a9226ace853d4a"
 
 
 def test_enabling_vector_changes_the_recall_fingerprint_and_so_does_the_model():

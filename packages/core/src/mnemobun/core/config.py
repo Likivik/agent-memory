@@ -27,7 +27,7 @@ SLUG_WIDEN_FACTOR = 4
 SLUG_DIGEST_LENGTH = 8
 SLUG_MIN_KEEP = 1
 REASONER_PLUGIN = "plugin"  # the Hermes plugin injects ctx.llm
-REASONER_DIALECTS = ("claude-code", "codex")  # an external CLI agent answers
+REASONER_DIALECTS = ("codex",)  # an external CLI agent answers
 COORDINATION_LOCK_POLL_SECONDS = 0.02
 DREAM_CLAIM_ID_LENGTH = 20
 DREAM_ERROR_MAX_CHARS = 1000
@@ -73,13 +73,6 @@ class IndexConfig:
 
 
 @dataclasses.dataclass
-class MemoryMdConfig:
-    budget_bytes: int = 8192
-    max_lines: int = 120
-    header: str = "# MEMORY.md"
-
-
-@dataclasses.dataclass
 class BudgetConfig:
     """Hard bounds are calls + input tokens."""
 
@@ -121,11 +114,8 @@ class RecallConfig:
     recency_half_life_days: float = 180.0
     recency_decay_base: float = 0.5
     recency_floor: float = 0.25
-    memory_md_weight_floor: float = 0.75
     synthesis_hint: bool = True
     context_full_text_entries: int = 4
-    injection_enabled: bool = True
-    injection_budget_bytes: int = 8192
     pinned_max_bytes: int = 2048  # the pinned-rules block: ~500 tokens, ~10 rules
     anchor_context_chars: int = 160
     snippet_max_chars: int = 400
@@ -210,7 +200,7 @@ class OperationExecutorConfig:
 
 @dataclasses.dataclass
 class ExecutorConfig:
-    reasoner: str = "claude-code"
+    reasoner: str = ""  # never a host default: empty means deterministic-only
     provider: str = ""
     provider_source: str = "unset"  # a CLI dialect, or "plugin" for ctx.llm
     model: str = ""  # no silent default
@@ -248,7 +238,6 @@ class StandingConfig:
 class Config:
     storage: StorageConfig = dataclasses.field(default_factory=StorageConfig)
     index: IndexConfig = dataclasses.field(default_factory=IndexConfig)
-    memory_md: MemoryMdConfig = dataclasses.field(default_factory=MemoryMdConfig)
     usage: UsageConfig = dataclasses.field(default_factory=UsageConfig)
     budget: BudgetConfig = dataclasses.field(default_factory=BudgetConfig)
     recall: RecallConfig = dataclasses.field(default_factory=RecallConfig)

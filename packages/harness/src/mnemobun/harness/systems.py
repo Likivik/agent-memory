@@ -19,7 +19,8 @@ import pathlib
 import subprocess
 
 from mnemobun.core import distill as distill_module
-from mnemobun.core import injection, prompts, sessions
+from mnemobun.core import pinned as pinned_rules
+from mnemobun.core import prompts, sessions
 from mnemobun.core.config import Config
 from mnemobun.core.distill import Ask
 from mnemobun.core.store import Store
@@ -111,11 +112,13 @@ class MemorySystem:
     def archive(self, root: pathlib.Path, label: str, text: str) -> None:
         raise NotImplementedError
 
-    def injection(self, root: pathlib.Path) -> str:
-        raise NotImplementedError
 
     def context(self, root: pathlib.Path, question: str) -> str:
         raise NotImplementedError
+
+    def pinned(self, root: pathlib.Path) -> str:
+        """The always-on surface. Rules only: there is no injected memory index any more."""
+        return ""
 
     def record_count(self, root: pathlib.Path) -> int:
         return len(self.record_texts(root))
@@ -178,9 +181,6 @@ class NativeSystem(MemorySystem):
         report = distill_module.distill(store, label, messages, ask)
         return sum(len(batch.written) for batch in report.batches)
 
-    def injection(self, root):
-        payload = injection.payload(self._store(root))
-        return prompts.injected_index(payload) if payload.strip() else ""
 
     def context(self, root, question):
         store = self._store(root)
@@ -193,6 +193,9 @@ class NativeSystem(MemorySystem):
 
     def release(self, root):
         return None
+
+    def pinned(self, root: pathlib.Path) -> str:
+        return pinned_rules.render(self._store(root))
 
     def _store(self, root: pathlib.Path) -> Store:
         config = dataclasses.replace(self._config) if self._config else None
@@ -253,13 +256,6 @@ class MemcoreSystem(MemorySystem):
     def archive(self, root, label, text):
         return None
 
-    def injection(self, root):
-        listing = self._call(
-            root, "recall", "--top-k", str(MEMCORE_WORKING_MEMORY_TOP_K), check=False
-        ).strip()
-        if not listing:
-            return ""
-        return MEMCORE_INJECTED.format(top_k=MEMCORE_WORKING_MEMORY_TOP_K, listing=listing)
 
     def context(self, root, question):
         raise NotImplementedError("the harness has no context builder for memcore retrieval")
