@@ -24,7 +24,7 @@ from mnemobun.core.manage_toolkit import ManageReviewToolkit
 from mnemobun.core.reasoning import ReviewRuntime
 from mnemobun.core.toolkit import WriteToolkit
 
-from .agents import BINARIES, Host, HostResult, HostSpec, ToolServer
+from .drivers import BINARIES, Driver, DriverResult, DriverSpec, ToolServer
 
 CHAT_COMPLETIONS = "/chat/completions"
 DEFAULT_ENDPOINT_MODEL = "google/gemini-2.5-flash"
@@ -43,10 +43,10 @@ MALFORMED_ARGUMENTS = "tool arguments must be a JSON object"
 
 
 @dataclasses.dataclass
-class HostReasoner:
+class DriverReasoner:
     """The consuming agent's own CLI, run headless for one turn."""
 
-    host: Host
+    host: Driver
     max_turns: int = 1
 
     def __call__(self, prompt: str) -> str:
@@ -70,14 +70,14 @@ class HostReasoner:
         model: str = EMPTY,
         provider: str = EMPTY,
         allow_data_training: bool = False,
-    ) -> HostReasoner:
-        """A host is named by its dialect, not by its binary."""
+    ) -> DriverReasoner:
+        """A harness is named by its driver, not by its binary."""
         if name not in BINARIES:
             raise ReasonerUnavailableError(f"unsupported host reasoner {name!r}")
         binary, default_model = BINARIES[name]
         return cls(
-            host=Host(
-                HostSpec(
+            host=Driver(
+                DriverSpec(
                     name=name,
                     binary=binary,
                     model=model or default_model,
@@ -89,7 +89,7 @@ class HostReasoner:
 
 
 @dataclasses.dataclass
-class ToolHostReasoner(HostReasoner):
+class ToolDriverReasoner(DriverReasoner):
     """The host CLI as a tool-use agent: one run per batch, the toolkit served over MCP."""
 
     def converse(self, instructions: str, material: str, toolkit: WriteToolkit) -> None:
@@ -104,7 +104,7 @@ class ToolHostReasoner(HostReasoner):
     def review_converse(
         self, instructions: str, material: str, toolkit: ManageReviewToolkit
     ) -> ReviewRuntime:
-        """Run one bounded native Dream review and return measured Host wall time."""
+        """Run one bounded native Dream review and return measured Driver wall time."""
         result = self._converse(
             instructions,
             material,
@@ -138,7 +138,7 @@ class ToolHostReasoner(HostReasoner):
         module: str,
         timeout_seconds: float | None = None,
         host_analytics_enabled: bool = True,
-    ) -> HostResult:
+    ) -> DriverResult:
         with tempfile.TemporaryDirectory() as batch:
             directory = pathlib.Path(batch)
             toolkit.save_seed(directory)
@@ -162,7 +162,7 @@ class ToolHostReasoner(HostReasoner):
             return result
 
 
-def _host_failure(host: Host, result: HostResult) -> ReasonerUnavailableError:
+def _host_failure(host: Driver, result: DriverResult) -> ReasonerUnavailableError:
     name = getattr(host, "name", "configured host")
     detail = f": {result.error.strip()}" if result.error.strip() else ""
     return ReasonerUnavailableError(

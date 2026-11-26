@@ -127,7 +127,7 @@ def install(
             }
         ],
     }
-    for event in moments.DIALECTS[host]:
+    for event in moments.MOMENTS[host]:
         entries = hooks.get(event, [])
         if not isinstance(entries, list):
             raise ValidationError([FieldError(f"settings.hooks.{event}", "must be an array")])

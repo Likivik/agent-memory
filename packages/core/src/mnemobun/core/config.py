@@ -27,7 +27,7 @@ SLUG_WIDEN_FACTOR = 4
 SLUG_DIGEST_LENGTH = 8
 SLUG_MIN_KEEP = 1
 REASONER_PLUGIN = "plugin"  # the Hermes plugin injects ctx.llm
-REASONER_DIALECTS = ("codex",)  # an external CLI agent answers
+REASONER_DRIVERS = ("codex",)  # an external CLI agent answers
 COORDINATION_LOCK_POLL_SECONDS = 0.02
 DREAM_CLAIM_ID_LENGTH = 20
 DREAM_ERROR_MAX_CHARS = 1000
@@ -202,7 +202,7 @@ class OperationExecutorConfig:
 class ExecutorConfig:
     reasoner: str = ""  # never a host default: empty means deterministic-only
     provider: str = ""
-    provider_source: str = "unset"  # a CLI dialect, or "plugin" for ctx.llm
+    provider_source: str = "unset"  # a driver name, or "plugin" for ctx.llm
     model: str = ""  # no silent default
     model_source: str = "unset"  # chat | cli | gui | unset
     timeout_seconds: float = 120.0

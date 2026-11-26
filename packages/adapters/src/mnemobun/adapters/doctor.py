@@ -79,9 +79,9 @@ def smoke(store: Store, host: str = "", model: str = "") -> dict[str, object]:
 
     config = selection.resolve(store.config.executor, "write", model=model)
     try:
-        from mnemobun.executor.reasoners import HostReasoner
+        from mnemobun.executor.reasoners import DriverReasoner
 
-        ask = HostReasoner.for_host(config.reasoner, model=config.model)
+        ask = DriverReasoner.for_host(config.reasoner, model=config.model)
         reasoner = distiller_module.distiller(config, store=store, ask=ask)
         answer = reasoner("Reply with exactly the two letters: OK")
     except Exception as error:  # the doctor reports, it does not crash
@@ -337,7 +337,7 @@ def _hook_checks(
         return [Check("HOOK_INVALID", False, "settings.hooks is missing or not an object")]
     expected_store = setup.render_command([str(store_root.resolve())])
     failures = []
-    for event in moments.DIALECTS[host]:
+    for event in moments.MOMENTS[host]:
         entries = hooks.get(event)
         if not isinstance(entries, list):
             failures.append(f"{event} missing")
@@ -371,7 +371,7 @@ def _mentions(entry: object, text: str) -> bool:
 def _reasoner_checks(
     store: Store, host: str, environment: dict[str, str] | None = None
 ) -> list[Check]:
-    from mnemobun.core.config import REASONER_DIALECTS
+    from mnemobun.core.config import REASONER_DRIVERS
     from mnemobun.executor import selection
 
     checks = []
@@ -383,13 +383,13 @@ def _reasoner_checks(
                 operation,
 
             )
-            if executor.reasoner in REASONER_DIALECTS:
+            if executor.reasoner in REASONER_DRIVERS:
                 ok = True
                 detail = f"{operation} reasons through the {executor.reasoner} CLI"
             else:
                 ok = False
                 detail = (
-                    f"{operation} reasoner must be a CLI dialect or 'plugin': "
+                    f"{operation} reasoner must name a driver or 'plugin': "
                     f"{executor.reasoner!r}"
                 )
         except Exception as error:
@@ -416,9 +416,9 @@ def _live_reasoner_check(store: Store, host: str, operation: str) -> Check:
             operation,
 
         )
-        from mnemobun.executor.reasoners import HostReasoner
+        from mnemobun.executor.reasoners import DriverReasoner
 
-        ask = HostReasoner.for_host(executor.reasoner, model=executor.model)
+        ask = DriverReasoner.for_host(executor.reasoner, model=executor.model)
         reasoner = distiller(executor, store=store, ask=ask)
         reply = reasoner("Reply with exactly MNEMOBUN_READY.")
     except Exception as error:
@@ -449,11 +449,11 @@ def _driver_binary_needed(store: Store) -> bool:
     Every channel resolves to the host reasoner, so the host binary is what
     reasons and its absence is a loud failure, not a silent abstain.
     """
-    from mnemobun.core.config import REASONER_DIALECTS
+    from mnemobun.core.config import REASONER_DRIVERS
 
     executor = store.config.executor
     for policy in (executor.write, executor.manage):
-        if (policy.reasoner or executor.reasoner) in REASONER_DIALECTS:
+        if (policy.reasoner or executor.reasoner) in REASONER_DRIVERS:
             return True
     return False
 

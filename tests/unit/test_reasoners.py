@@ -7,8 +7,8 @@ import subprocess
 
 import pytest
 from mnemobun.core.errors import ReasonerUnavailableError
-from mnemobun.executor.agents import HostResult
-from mnemobun.executor.reasoners import HostReasoner
+from mnemobun.executor.drivers import DriverResult
+from mnemobun.executor.reasoners import DriverReasoner
 
 
 class FakeHost:
@@ -26,45 +26,45 @@ def _reply(content):
 
 
 def test_a_host_reasoner_passes_the_prompt_through_and_returns_the_answer():
-    host = FakeHost(HostResult(text="verdict line", ok=True, seconds=0.1))
-    assert HostReasoner(host=host)("review this") == "verdict line"
+    host = FakeHost(DriverResult(text="verdict line", ok=True, seconds=0.1))
+    assert DriverReasoner(host=host)("review this") == "verdict line"
     assert host.calls[0][0] == "review this"
 
 
 def test_a_host_reasoner_asks_for_no_tools():
-    host = FakeHost(HostResult(text="ok", ok=True, seconds=0.1))
-    HostReasoner(host=host)("review this")
+    host = FakeHost(DriverResult(text="ok", ok=True, seconds=0.1))
+    DriverReasoner(host=host)("review this")
     assert host.calls[0][1]["tools_enabled"] is False
 
 
 def test_a_failed_host_is_reported():
-    host = FakeHost(HostResult(text="usage: claude ...", ok=False, seconds=0.1, error="boom"))
+    host = FakeHost(DriverResult(text="usage: claude ...", ok=False, seconds=0.1, error="boom"))
     with pytest.raises(ReasonerUnavailableError, match="host reasoner failed.*boom"):
-        HostReasoner(host=host)("review this")
+        DriverReasoner(host=host)("review this")
 
 
 def test_an_empty_host_reply_is_reported():
-    host = FakeHost(HostResult(text="", ok=True, seconds=0.1))
+    host = FakeHost(DriverResult(text="", ok=True, seconds=0.1))
     with pytest.raises(ReasonerUnavailableError, match="empty response"):
-        HostReasoner(host=host)("review this")
+        DriverReasoner(host=host)("review this")
 
 
-def test_a_host_reasoner_is_named_by_dialect_and_runs_that_dialect_s_binary():
-    from mnemobun.executor.agents import BINARIES, HARNESS_CODEX
-    from mnemobun.executor.reasoners import HostReasoner
+def test_a_driver_is_named_by_harness_and_runs_that_harness_s_binary():
+    from mnemobun.executor.drivers import BINARIES, HARNESS_CODEX
+    from mnemobun.executor.reasoners import DriverReasoner
 
-    reasoner = HostReasoner.for_host(HARNESS_CODEX)
+    reasoner = DriverReasoner.for_host(HARNESS_CODEX)
     assert reasoner.host.spec.binary == BINARIES[HARNESS_CODEX][0]
     assert reasoner.host.spec.model == BINARIES[HARNESS_CODEX][1]
 
 
-def test_an_unknown_host_reasoner_fails_closed_instead_of_using_another_dialect():
+def test_an_unknown_driver_fails_closed_instead_of_using_another_harness():
     with pytest.raises(ReasonerUnavailableError, match="unsupported host reasoner"):
-        HostReasoner.for_host("not-a-host")
+        DriverReasoner.for_host("not-a-host")
 
 
 def test_codex_jsonl_usage_is_retained_for_native_review_metrics(tmp_path, monkeypatch):
-    from mnemobun.executor import agents
+    from mnemobun.executor import drivers
 
     def run(command, **kwargs):
         pathlib.Path(command[command.index("--output-last-message") + 1]).write_text("done")
@@ -80,8 +80,8 @@ def test_codex_jsonl_usage_is_retained_for_native_review_metrics(tmp_path, monke
         )
         return subprocess.CompletedProcess(command, 0, stdout, "")
 
-    monkeypatch.setattr(agents.subprocess, "run", run)
-    host = agents.Host(agents.HostSpec(name="codex", binary="codex", attempts=1))
+    monkeypatch.setattr(drivers.driver.subprocess, "run", run)
+    host = drivers.Driver(drivers.DriverSpec(name="codex", binary="codex", attempts=1))
     result = host.run("review", workdir=tmp_path)
 
     assert result.ok and result.usage is not None
@@ -96,7 +96,7 @@ def test_codex_jsonl_usage_is_retained_for_native_review_metrics(tmp_path, monke
 
 
 def test_codex_jsonl_trace_separates_startup_model_mcp_and_shutdown():
-    from mnemobun.executor.agents import _CodexTrace
+    from mnemobun.executor.drivers import _CodexTrace
 
     trace = _CodexTrace(started=10.0)
     trace.observe(json.dumps({"type": "thread.started"}), 11.0)
@@ -133,8 +133,8 @@ def test_codex_jsonl_trace_separates_startup_model_mcp_and_shutdown():
 def test_a_host_reasoner_marks_its_session_as_the_executor_so_hooks_stand_down():
     from mnemobun.core.config import EXECUTOR_ENV_VAR
 
-    host = FakeHost(HostResult(text="ok", ok=True, seconds=0.1))
-    HostReasoner(host=host)("review this")
+    host = FakeHost(DriverResult(text="ok", ok=True, seconds=0.1))
+    DriverReasoner(host=host)("review this")
     assert host.calls[0][1]["environment"][EXECUTOR_ENV_VAR]
 
 

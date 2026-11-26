@@ -1,4 +1,4 @@
-"""Three universal moments and their host event dialects."""
+"""Three universal moments and each harness's event names."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ HARNESS_MUSE_CODE = "muse-code"
 HARNESS_HERMES = "hermes"
 HARNESS_GENERIC = "generic"
 
-DIALECTS: dict[str, dict[str, str]] = {
+MOMENTS: dict[str, dict[str, str]] = {
     HARNESS_CODEX: {
         "SessionStart": MOMENT_INJECT,
         "Stop": MOMENT_PAUSE,
@@ -38,8 +38,8 @@ DIALECTS: dict[str, dict[str, str]] = {
 
 
 def moment_for(host: str, event: str) -> str | None:
-    return DIALECTS.get(host, {}).get(event)
+    return MOMENTS.get(host, {}).get(event)
 
 
 def hosts() -> tuple[str, ...]:
-    return tuple(DIALECTS)
+    return tuple(MOMENTS)

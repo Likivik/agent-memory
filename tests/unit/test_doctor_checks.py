@@ -49,7 +49,7 @@ def test_the_probe_token_is_read_through_stray_characters():
     assert not doctor._probe_matched("SORRY")
 
 
-def test_a_cli_dialect_is_what_runs_the_binary(store):
+def test_a_cli_driver_is_what_runs_the_binary(store):
     store.config.executor.write.reasoner = ""
     store.config.executor.manage.reasoner = ""
     store.config.executor.reasoner = "plugin"

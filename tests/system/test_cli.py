@@ -585,7 +585,7 @@ def test_sleep_can_be_handed_a_reasoner_whose_verdicts_reach_the_store(cli, monk
     proposal = cli("proposals")["proposals"][0]
     reply = json.dumps({"proposal": proposal["id"], "verdict": "reject"})
     monkeypatch.setattr(
-        "mnemobun.executor.reasoners.HostReasoner.__call__",
+        "mnemobun.executor.reasoners.DriverReasoner.__call__",
         lambda self, prompt: reply,
     )
     report = cli("sleep", "--reason", "host")

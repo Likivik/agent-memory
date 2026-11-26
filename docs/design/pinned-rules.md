@@ -85,7 +85,6 @@ Verified surfaces today:
 | Host | Surface | Preserved | Refresh |
 |---|---|---|---|
 | Hermes | `system_prompt_block()` → `build_system_prompt()` (`agent/system_prompt.py:568`) | yes | per_turn |
-| Claude Code | `--system-prompt-file` (`executor/agents/claude_code.py:42`) | yes | per_run |
 | Codex | `model_instructions_file`, else prepended to the prompt | yes | per_run |
 | Muse | `--prompt-file`, system prompt prepended to stdin | **no** — prompt file, not a system message | per_run |
 

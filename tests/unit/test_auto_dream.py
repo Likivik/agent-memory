@@ -229,7 +229,7 @@ def test_detached_launcher_uses_manage_host_and_executor_environment(store, monk
     assert launched["kwargs"]["stdin"] is auto_dream.subprocess.DEVNULL
 
 
-def test_detached_launcher_does_not_fallback_to_the_default_dialect(store, monkeypatch):
+def test_detached_launcher_does_not_fallback_to_a_default_driver(store, monkeypatch):
     _enough(store)
     store.config.executor.model = "managed-model"
     store.config.executor.manage = OperationExecutorConfig(reasoner="codex")

@@ -1,10 +1,22 @@
-"""hermes dialect."""
+"""Hermes: native tool server, isolated profile."""
 
-from .base import *  # noqa: F403
+from .constants import (
+    HERMES_MANAGE_SERVER_NAME,
+    HERMES_NATIVE_MAX_TURNS,
+    HERMES_TOOLSETS,
+    HERMES_WRITE_SERVER_NAME,
+    MEM_TOOL_PATTERN,
+    PROMPT_FILENAME,
+    PROMPT_PLACEHOLDER,
+    PROMPT_SEPARATOR,
+)
+from .transport import Transport
+from .types import DriverSpec, ToolServer
 
 
-class HermesDialect(Dialect):
+class HermesTransport(Transport):
     """One-shot mode loads its own memory toolset by default; the toolset list drops it."""
+
 
     prompt_on_stdin = False
     supports_tools = True
@@ -61,7 +73,7 @@ class HermesDialect(Dialect):
             return command + ["--yolo"]
         return command + ["--ignore-rules", "--yolo"]
 
-    def routed_model(self, spec: HostSpec) -> str:
+    def routed_model(self, spec: DriverSpec) -> str:
         """Hermes eats one `<provider>/` prefix off the model as routing, so a backend that
         wants a publisher-qualified id — Vertex wants `google/<model>` — needs one added back."""
         if spec.provider == "gemini":

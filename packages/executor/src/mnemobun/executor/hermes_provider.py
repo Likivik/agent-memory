@@ -1,6 +1,6 @@
 """In-process Hermes provider (P3, design doc v1.2 §11 / decisions 4–7).
 
-The provider is the only component that speaks both dialects: it presents the store as the
+The provider is the only component that speaks both sides: it presents the store as the
 Hermes MemoryProvider surface (prefetch / sync_turn / verify) and backs it entirely with
 core calls — no MCP hop, no LLM in the write path. `agent.memory_provider` is the host-side
 base class; it is imported defensively so this package stays installable without Hermes.

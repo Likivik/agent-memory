@@ -2,7 +2,7 @@
 
 One extraction for every host (ADR-002 as amended). What is sent and what the reply may do
 are decided in the core; this module only picks the pipe the text travels through. A host
-whose dialect has an MCP posture runs as a tool-use agent over the Write toolkit; the rest
+whose transport has an MCP posture runs as a tool-use agent over the Write toolkit; the rest
 keep the text protocol.
 """
 
@@ -51,7 +51,7 @@ def distiller(
 ) -> Callable[[str], str]:
     """The counted ask for memory jobs: the caller's reasoner, never config-built.
 
-    The host CLI supplies a ``HostReasoner``; the Hermes plugin supplies its
+    The host CLI supplies a ``DriverReasoner``; the Hermes plugin supplies its
     ``ctx.llm`` adapter. Nothing here reaches the network on its own.
     """
     if ask is None:

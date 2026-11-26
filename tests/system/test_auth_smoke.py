@@ -8,7 +8,7 @@ from __future__ import annotations
 from mnemobun.adapters import doctor
 from mnemobun.core.config import Config
 from mnemobun.core.store import Store
-from mnemobun.executor.agents import HARNESS_HERMES
+from mnemobun.executor.drivers import HARNESS_HERMES
 
 
 def test_sandbox_spawn_has_auth(tmp_path):

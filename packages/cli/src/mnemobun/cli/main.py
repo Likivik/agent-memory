@@ -27,7 +27,7 @@ from mnemobun.core import (
     write_trace,
 )
 from mnemobun.core import migrate as migrate_module
-from mnemobun.core.config import REASONER_DIALECTS, REASONER_PLUGIN, ExecutorConfig
+from mnemobun.core.config import REASONER_DRIVERS, REASONER_PLUGIN, ExecutorConfig
 from mnemobun.core.docket import Docket
 from mnemobun.core.dream import Dream
 from mnemobun.core.errors import (
@@ -45,7 +45,7 @@ from mnemobun.core.watermark import Watermark
 from mnemobun.executor import distiller, selection
 
 SESSION_FLAG = "--session"
-REASON_HOST = REASONER_DIALECTS[0]
+REASON_HOST = REASONER_DRIVERS[0]
 REASON_NONE = "none"
 EMIT_INDENT = 2
 FIELD_ERROR_KEYS = frozenset({"field", "reason"})
@@ -947,12 +947,12 @@ def _reasoner(
     if args.reason == REASON_NONE:
         return None
     executor = _executor(store, args, operation)
-    from mnemobun.executor.reasoners import HostReasoner
+    from mnemobun.executor.reasoners import DriverReasoner
 
     host = getattr(args, "reason_host", "") or executor.reasoner
     if host == REASONER_PLUGIN:  # the plugin injects ctx.llm; the CLI cannot
         raise ReasonerUnavailableError("reasoner 'plugin' needs the Hermes plugin")
-    ask = HostReasoner.for_host(host, model=getattr(args, "reason_model", "") or executor.model)
+    ask = DriverReasoner.for_host(host, model=getattr(args, "reason_model", "") or executor.model)
     return distiller.distiller(executor, store=store, ask=ask)
 
 

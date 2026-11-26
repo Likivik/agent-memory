@@ -5,7 +5,7 @@ from __future__ import annotations
 import dataclasses
 
 from mnemobun.core.config import (
-    REASONER_DIALECTS,
+    REASONER_DRIVERS,
     REASONER_PLUGIN,
     ExecutorConfig,
     OperationExecutorConfig,
@@ -23,7 +23,7 @@ def resolve(
     reasoner: str = "",
     model: str = "",
 ) -> ExecutorConfig:
-    """Merge the operation policy over the executor policy. A CLI dialect or
+    """Merge the operation policy over the executor policy. A driver or
     "plugin" only; anything else fails here, loudly."""
     if operation not in OPERATIONS:
         raise ReasonerUnavailableError(f"unsupported memory operation: {operation}")
@@ -37,7 +37,7 @@ def resolve(
         chosen = dataclasses.replace(chosen, reasoner=reasoner)
     if model:
         chosen = dataclasses.replace(chosen, model=model)
-    if chosen.reasoner != REASONER_PLUGIN and chosen.reasoner not in REASONER_DIALECTS:
+    if chosen.reasoner != REASONER_PLUGIN and chosen.reasoner not in REASONER_DRIVERS:
         raise ReasonerUnavailableError(
             f"unsupported reasoner {chosen.reasoner!r} for {operation}"
         )

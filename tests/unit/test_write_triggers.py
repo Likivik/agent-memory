@@ -72,7 +72,7 @@ def test_the_cron_path_reaches_the_same_state_as_the_hook_path(store, tmp_path):
         (moments.HARNESS_CODEX, "NotAThing", None),
     ],
 )
-def test_host_dialects_map_onto_the_universal_moments(host, event, expected):
+def test_harness_transports_map_onto_the_universal_moments(host, event, expected):
     assert moments.moment_for(host, event) == expected
 
 
@@ -169,7 +169,7 @@ def test_setup_is_idempotent_and_leaves_foreign_settings_alone(tmp_path):
 
     assert once == twice
     assert twice["theme"] == "dark"
-    assert set(twice["hooks"]) == set(moments.DIALECTS[moments.HARNESS_CODEX])
+    assert set(twice["hooks"]) == set(moments.MOMENTS[moments.HARNESS_CODEX])
 
 
 def _stop_event(store, session="s"):
@@ -334,7 +334,7 @@ def test_setup_writes_an_absolute_hook_command_and_installs_the_skill(tmp_path, 
     settings = tmp_path / host / "hooks.json"
     setup.install(host, settings)
     hooks = json.loads(settings.read_text(encoding="utf-8"))["hooks"]
-    assert set(hooks) == set(moments.DIALECTS[host])
+    assert set(hooks) == set(moments.MOMENTS[host])
     command = hooks["Stop"][0]["hooks"][0]["command"]
     executable, *arguments = shlex.split(command)
     assert pathlib.Path(executable).stem == setup.HOOK_COMMAND

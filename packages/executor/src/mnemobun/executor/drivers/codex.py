@@ -1,11 +1,23 @@
-"""codex dialect."""
+"""Codex CLI: prompt on argv, answer in its last message."""
 
-from .base import *  # noqa: F403
+import json
+import pathlib
+
+from .constants import (
+    CODEX_DISABLED_FEATURES,
+    CODEX_SANDBOX_READONLY,
+    CODEX_SANDBOX_TOOLS,
+    CODEX_TOOL_APPROVAL,
+    MEM_TOOL_PATTERN,
+    PROMPT_SEPARATOR,
+)
+from .transport import Transport
 
 
-class CodexDialect(Dialect):
+class CodexTransport(Transport):
     """No system-prompt flag, so it rides in the prompt; and stdout carries the whole session
     transcript, so the final message is read from the file the host writes it to."""
+
 
     supports_tools = True
     tools_by_default = True

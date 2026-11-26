@@ -1,17 +1,17 @@
-"""P1 — a host is a dialect, not a branch. Adding one must not touch the driver."""
+"""A harness is a transport, not a branch. Adding one must not touch the driver."""
 
 import pytest
-from mnemobun.executor import agents
+from mnemobun.executor import drivers
 
 
 def _spec(name):
-    return agents.HostSpec(name=name, binary=name, model="a-model")
+    return drivers.DriverSpec(name=name, binary=name, model="a-model")
 
 
-@pytest.mark.parametrize("name", agents.DIALECTS)
-def test_every_dialect_builds_a_command_that_starts_with_its_binary(name, tmp_path):
-    dialect = agents.DIALECTS[name]
-    command = dialect.command(
+@pytest.mark.parametrize("name", drivers.TRANSPORTS)
+def test_every_transport_builds_a_command_that_starts_with_its_binary(name, tmp_path):
+    transport = drivers.TRANSPORTS[name]
+    command = transport.command(
         _spec(name),
         tools_enabled=True,
         system_prompt="be a memory keeper",
@@ -23,11 +23,11 @@ def test_every_dialect_builds_a_command_that_starts_with_its_binary(name, tmp_pa
     assert "a-model" in command
 
 
-@pytest.mark.parametrize("name", agents.DIALECTS)
-def test_the_system_prompt_reaches_the_host_one_way_or_the_other(name, tmp_path):
-    dialect = agents.DIALECTS[name]
+@pytest.mark.parametrize("name", drivers.TRANSPORTS)
+def test_the_system_prompt_reaches_the_harness_one_way_or_the_other(name, tmp_path):
+    transport = drivers.TRANSPORTS[name]
     system = "you are a memory keeper"
-    command = dialect.command(
+    command = transport.command(
         _spec(name),
         tools_enabled=True,
         system_prompt=system,
@@ -35,16 +35,16 @@ def test_the_system_prompt_reaches_the_host_one_way_or_the_other(name, tmp_path)
         store_root=tmp_path / "store",
         answer_file=tmp_path / "answer.txt",
     )
-    delivered = dialect.stdin("the question", system)
+    delivered = transport.stdin("the question", system)
     assert system in " ".join(command) or system in (delivered or "")
 
 
-@pytest.mark.parametrize("name", agents.DIALECTS)
-def test_no_dialect_leaves_its_own_memory_layer_running(name, tmp_path):
+@pytest.mark.parametrize("name", drivers.TRANSPORTS)
+def test_no_transport_leaves_its_own_memory_layer_running(name, tmp_path):
     """Two memory systems in one run make the score unattributable."""
-    dialect = agents.DIALECTS[name]
+    transport = drivers.TRANSPORTS[name]
     command = " ".join(
-        dialect.command(
+        transport.command(
             _spec(name),
             tools_enabled=True,
             system_prompt="s",
@@ -53,7 +53,7 @@ def test_no_dialect_leaves_its_own_memory_layer_running(name, tmp_path):
             answer_file=tmp_path / "answer.txt",
         )
     )
-    assert dialect.disables_native_memory(command)
+    assert transport.disables_native_memory(command)
 
 
 
@@ -62,8 +62,8 @@ def test_no_dialect_leaves_its_own_memory_layer_running(name, tmp_path):
 
 def test_codex_is_given_write_access_to_the_store_it_must_reach(tmp_path):
     store = tmp_path / "store"
-    command = agents.DIALECTS[agents.HARNESS_CODEX].command(
-        _spec(agents.HARNESS_CODEX),
+    command = drivers.TRANSPORTS[drivers.HARNESS_CODEX].command(
+        _spec(drivers.HARNESS_CODEX),
         tools_enabled=True,
         system_prompt="keeper",
         max_turns=7,
@@ -76,8 +76,8 @@ def test_codex_is_given_write_access_to_the_store_it_must_reach(tmp_path):
 
 
 def test_codex_without_tools_stays_read_only(tmp_path):
-    command = agents.DIALECTS[agents.HARNESS_CODEX].command(
-        _spec(agents.HARNESS_CODEX),
+    command = drivers.TRANSPORTS[drivers.HARNESS_CODEX].command(
+        _spec(drivers.HARNESS_CODEX),
         tools_enabled=False,
         system_prompt="",
         max_turns=7,
@@ -89,8 +89,8 @@ def test_codex_without_tools_stays_read_only(tmp_path):
 
 
 def test_hermes_enables_only_the_toolset_that_reaches_the_mem_cli(tmp_path):
-    command = agents.DIALECTS[agents.HARNESS_HERMES].command(
-        _spec(agents.HARNESS_HERMES),
+    command = drivers.TRANSPORTS[drivers.HARNESS_HERMES].command(
+        _spec(drivers.HARNESS_HERMES),
         tools_enabled=True,
         system_prompt="keeper",
         max_turns=7,
@@ -108,25 +108,26 @@ def test_codex_reads_its_answer_from_the_file_not_the_transcript(tmp_path):
     noisy = (
         "sandbox: read-only\nsession id: abc\nuser\nquestion\ncodex\nthe final answer\ntokens used"
     )
-    assert agents.DIALECTS[agents.HARNESS_CODEX].answer(noisy, answer_file) == "the final answer"
+    transport = drivers.TRANSPORTS[drivers.HARNESS_CODEX]
+    assert transport.answer(noisy, answer_file) == "the final answer"
 
 
 
 
-def test_an_unavailable_host_is_reported_rather_than_silently_skipped():
-    spec = agents.HostSpec(name="nope", binary="definitely-not-installed", model="m")
+def test_an_unavailable_harness_is_reported_rather_than_silently_skipped():
+    spec = drivers.DriverSpec(name="nope", binary="definitely-not-installed", model="m")
     assert not spec.available()
 
 
 def test_hermes_re_adds_the_prefix_it_is_about_to_strip(tmp_path):
     """It consumes one provider prefix as routing; a publisher-qualified backend needs it back."""
-    spec = agents.HostSpec(
-        name=agents.HARNESS_HERMES,
+    spec = drivers.DriverSpec(
+        name=drivers.HARNESS_HERMES,
         binary="hermes",
         model="google/gemini-3.7-flash",
         provider="gemini",
     )
-    command = agents.DIALECTS[agents.HARNESS_HERMES].command(
+    command = drivers.TRANSPORTS[drivers.HARNESS_HERMES].command(
         spec,
         tools_enabled=True,
         system_prompt="k",
@@ -138,8 +139,8 @@ def test_hermes_re_adds_the_prefix_it_is_about_to_strip(tmp_path):
 
 
 def test_hermes_leaves_the_model_alone_when_no_provider_is_pinned(tmp_path):
-    spec = agents.HostSpec(name=agents.HARNESS_HERMES, binary="hermes", model="some-model")
-    command = agents.DIALECTS[agents.HARNESS_HERMES].command(
+    spec = drivers.DriverSpec(name=drivers.HARNESS_HERMES, binary="hermes", model="some-model")
+    command = drivers.TRANSPORTS[drivers.HARNESS_HERMES].command(
         spec,
         tools_enabled=True,
         system_prompt="k",

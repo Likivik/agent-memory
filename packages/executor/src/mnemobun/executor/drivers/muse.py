@@ -1,12 +1,23 @@
-"""muse dialect."""
+"""Muse Code: staged settings and its own answer file."""
 
+import json
 import os
+import pathlib
 
-from .base import *  # noqa: F403
+from .constants import (
+    MEM_TOOL_PATTERN,
+    MUSE_NATIVE_MAX_MODEL_STEPS,
+    MUSE_TOOLSET_SETTING,
+    PROMPT_FILENAME,
+    PROMPT_PLACEHOLDER,
+    PROMPT_SEPARATOR,
+)
+from .transport import Transport
 
 
-class MuseCodeDialect(Dialect):
+class MuseCodeTransport(Transport):
     """Muse's headless transport: JSONL out, prompt file in, sandbox kept on."""
+
 
     supports_tools = True
     tools_by_default = True
@@ -121,7 +132,7 @@ class MuseCodeDialect(Dialect):
     def _workspace(tools_enabled, store_root, workdir, scratch):
         if not tools_enabled or store_root is None:
             workspace = (workdir or scratch).resolve()
-            MuseCodeDialect._require_no_native_memory(workspace)
+            MuseCodeTransport._require_no_native_memory(workspace)
             return workspace
         roots = [store_root.resolve(), (workdir or scratch).resolve()]
         common = pathlib.Path(os.path.commonpath([str(path) for path in roots]))
@@ -130,7 +141,7 @@ class MuseCodeDialect(Dialect):
             raise ValueError(
                 "Muse sandbox needs the experiment store and workdir under one safe workspace"
             )
-        MuseCodeDialect._require_no_native_memory(common)
+        MuseCodeTransport._require_no_native_memory(common)
         return common
 
     @staticmethod
