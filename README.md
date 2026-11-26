@@ -56,6 +56,10 @@ Index line → abstract → full file → raw material: each rung costs an order
 than the last, and each is a place to stop. Long files add two free rungs — the anchor that
 matched, and an outline computed at read time.
 
+## Vocabulary
+
+Six words, one meaning each: **store**, **record**, **writer**, **harness**, **driver**, **worker** — plus **channel** and **reasoner**. Read [the vocabulary](docs/design/vocabulary.md) before any other design note.
+
 ## Design commitments
 
 - **Three read tracks, so a miss on one is not a miss.** Deterministic `MEMORY.md` injection at
