@@ -39,7 +39,8 @@ KEY_SESSION = "session_id"
 KEY_TRANSCRIPT = "transcript_path"
 KEY_EVENT_HOOK = "hook_event_name"
 KEY_EVENT_GENERIC = "event"
-KEY_HOST = "host"
+KEY_HARNESS = "harness"
+LEGACY_KEY_HOST = "host"  # payloads written before the vocabulary rename
 KEY_ITEMS = "items"
 KEY_MUSE_DATA_HOME = "muse_data_home"
 KEY_MUSE_SETTINGS = "muse_settings"
@@ -49,7 +50,7 @@ HOOK_EVENT_OUTPUT_KEY = "hookEventName"
 KEY_DISTILL = "distill"
 DISTILL_LAUNCHED = "launched"
 DISTILL_SKIPPED = "skipped"
-HOST_FLAG = "--host"
+HARNESS_FLAG = "--harness"
 STORE_FLAG = "--store"
 MUSE_DATA_HOME_FLAG = "--muse-data-home"
 MUSE_SETTINGS_FLAG = "--muse-settings"
@@ -76,12 +77,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     store: Store | None = None
     try:
         parser = argparse.ArgumentParser(prog="mem-hook")
-        parser.add_argument(HOST_FLAG, default="")
+        parser.add_argument(HARNESS_FLAG, dest="harness", default="")
         parser.add_argument(STORE_FLAG, default="")
         parser.add_argument(MUSE_DATA_HOME_FLAG, default="")
         parser.add_argument(MUSE_SETTINGS_FLAG, default="")
         args = parser.parse_args(argv or ())
-        event = normalize_event(json.loads(sys.stdin.read() or "{}"), args.host)
+        event = normalize_event(json.loads(sys.stdin.read() or "{}"), args.harness)
         if args.store:
             event["store"] = args.store
         if args.muse_data_home:
@@ -110,7 +111,7 @@ def handle(
     dream_launch: DreamLauncher | None = None,
     drain_launch: DrainLauncher | None = None,
 ) -> dict[str, object]:
-    host = str(event.get(KEY_HOST) or "")
+    host = str(event.get(KEY_HARNESS) or event.get(LEGACY_KEY_HOST) or "")
     if not host:
         raise ValueError("a hook event must name its harness")
     raw_event = str(event.get(KEY_EVENT_HOOK) or event.get(KEY_EVENT_GENERIC) or "")
@@ -225,16 +226,16 @@ def _items(event: dict[str, object]) -> list[str]:
     supplied = event.get(KEY_ITEMS)
     if isinstance(supplied, list):
         return [str(item) for item in supplied]
-    host = str(event.get(KEY_HOST) or "")
+    host = str(event.get(KEY_HARNESS) or event.get(LEGACY_KEY_HOST) or "")
     path = event.get(KEY_TRANSCRIPT)
-    if host == moments.HOST_MUSE_CODE and not path:
+    if host == moments.HARNESS_MUSE_CODE and not path:
         data_home = event.get(KEY_MUSE_DATA_HOME)
         path = muse_session.path_for(
             str(event.get(KEY_SESSION) or ""),
             data_home=pathlib.Path(str(data_home)) if data_home else None,
         )
     found = transcript.items(pathlib.Path(str(path)), host=host) if path else []
-    if host == moments.HOST_MUSE_CODE and found:
+    if host == moments.HARNESS_MUSE_CODE and found:
         final = str(event.get("last_assistant_message") or "").strip()
         rendered = f"assistant: {final}" if final else ""
         if rendered and rendered not in found:
@@ -248,7 +249,7 @@ def normalize_event(event: object, host: str = "") -> dict[str, object]:
         raise TypeError("hook payload must be a JSON object")
     normalized = dict(event)
     if host:
-        normalized[KEY_HOST] = host
+        normalized[KEY_HARNESS] = host
     return normalized
 
 

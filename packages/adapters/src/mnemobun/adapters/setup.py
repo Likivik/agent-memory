@@ -19,7 +19,7 @@ from . import moments
 
 HOOK_COMMAND = "mem-hook"
 WINDOWS_PLAIN_WORD = re.compile(r"[\w./:+=@-]+")
-HOST_FLAG = "--host"
+HARNESS_FLAG = "--harness"
 CODEX_SETTINGS = pathlib.Path("~/.codex/hooks.json")
 MUSE_SETTINGS = pathlib.Path("muse/settings.json")
 HOOKS_KEY = "hooks"
@@ -29,10 +29,10 @@ SKILL_PATH = pathlib.Path("skills") / "mnemobun" / "SKILL.md"
 SETTINGS_INDENT = 2
 
 SETTINGS_FOR = {
-    moments.HOST_CODEX: CODEX_SETTINGS,
-    moments.HOST_MUSE_CODE: MUSE_SETTINGS,
+    moments.HARNESS_CODEX: CODEX_SETTINGS,
+    moments.HARNESS_MUSE_CODE: MUSE_SETTINGS,
 }
-ALIASES = {"muse": moments.HOST_MUSE_CODE}
+ALIASES = {"muse": moments.HARNESS_MUSE_CODE}
 MUSE_SCHEMA_VERSION = 1
 MUSE_DATA_HOME_FLAG = "--muse-data-home"
 MUSE_SETTINGS_FLAG = "--muse-settings"
@@ -40,8 +40,8 @@ STORE_FLAG = "--store"
 MCP_SERVER = "mnemobun"
 MCP_COMMAND = "mem-mcp"
 BINARIES = {
-    moments.HOST_CODEX: "codex",
-    moments.HOST_MUSE_CODE: "muse",
+    moments.HARNESS_CODEX: "codex",
+    moments.HARNESS_MUSE_CODE: "muse",
 }
 
 
@@ -61,7 +61,7 @@ def canonical_host(host: str) -> str:
 
 def default_settings_path(host: str, environment: dict[str, str] | None = None) -> pathlib.Path:
     canonical = canonical_host(host)
-    if canonical == moments.HOST_MUSE_CODE:
+    if canonical == moments.HARNESS_MUSE_CODE:
         env = os.environ if environment is None else environment
         fallback = pathlib.Path(env.get("HOME", "~")).expanduser() / ".config"
         config_home = pathlib.Path(env.get("XDG_CONFIG_HOME") or fallback)
@@ -107,7 +107,7 @@ def install(
     target = settings_path or default_settings_path(host)
     target.parent.mkdir(parents=True, exist_ok=True)
     settings = _read_settings(target)
-    if host == moments.HOST_MUSE_CODE:
+    if host == moments.HARNESS_MUSE_CODE:
         settings.setdefault("schema_version", MUSE_SCHEMA_VERSION)
         if provider:
             from . import openrouter
@@ -137,7 +137,7 @@ def install(
     if not target.exists() or target.read_text(encoding="utf-8") != rendered:
         _atomic_write(target, rendered)
     _install_skill(target.parent / SKILL_PATH)
-    if mcp and host != moments.HOST_MUSE_CODE:
+    if mcp and host != moments.HARNESS_MUSE_CODE:
         _install_external_mcp(host, target, store_root)
     return target
 
@@ -150,8 +150,8 @@ def hook_command(
 ) -> str:
     """By absolute path: desktop clients run hooks without the user's shell PATH."""
     hook = pathlib.Path(sys.executable).parent / _entry_point(HOOK_COMMAND)
-    command = [str(hook), HOST_FLAG, host]
-    if host == moments.HOST_MUSE_CODE:
+    command = [str(hook), HARNESS_FLAG, host]
+    if host == moments.HARNESS_MUSE_CODE:
         command += [MUSE_DATA_HOME_FLAG, str(_muse_data_home())]
         target = settings_path or default_settings_path(host)
         command += [MUSE_SETTINGS_FLAG, str(target.expanduser().resolve())]
@@ -190,7 +190,7 @@ def mcp_binary() -> str:
 def _merge_json_mcp(
     settings: dict[str, object], host: str, store_root: pathlib.Path | None
 ) -> None:
-    key = "mcp_servers" if host == moments.HOST_MUSE_CODE else "mcpServers"
+    key = "mcp_servers" if host == moments.HARNESS_MUSE_CODE else "mcpServers"
     servers = settings.setdefault(key, {})
     if not isinstance(servers, dict):
         raise ValidationError([FieldError(f"settings.{key}", "must be an object")])
@@ -199,7 +199,7 @@ def _merge_json_mcp(
         "command": mcp_binary(),
         "args": [],
     }
-    if host == moments.HOST_MUSE_CODE:
+    if host == moments.HARNESS_MUSE_CODE:
         expected["mode"] = "optional"
     if store_root is not None:
         expected["env"] = {"MNEMOBUN_STORE": str(pathlib.Path(store_root).resolve())}
@@ -214,7 +214,7 @@ def _merge_json_mcp(
 def _install_external_mcp(
     host: str, target: pathlib.Path, store_root: pathlib.Path | None
 ) -> None:
-    if host != moments.HOST_CODEX:
+    if host != moments.HARNESS_CODEX:
         return
     binary = shutil.which(BINARIES[host])
     if binary is None:

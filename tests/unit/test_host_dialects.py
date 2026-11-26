@@ -62,8 +62,8 @@ def test_no_dialect_leaves_its_own_memory_layer_running(name, tmp_path):
 
 def test_codex_is_given_write_access_to_the_store_it_must_reach(tmp_path):
     store = tmp_path / "store"
-    command = agents.DIALECTS[agents.HOST_CODEX].command(
-        _spec(agents.HOST_CODEX),
+    command = agents.DIALECTS[agents.HARNESS_CODEX].command(
+        _spec(agents.HARNESS_CODEX),
         tools_enabled=True,
         system_prompt="keeper",
         max_turns=7,
@@ -76,8 +76,8 @@ def test_codex_is_given_write_access_to_the_store_it_must_reach(tmp_path):
 
 
 def test_codex_without_tools_stays_read_only(tmp_path):
-    command = agents.DIALECTS[agents.HOST_CODEX].command(
-        _spec(agents.HOST_CODEX),
+    command = agents.DIALECTS[agents.HARNESS_CODEX].command(
+        _spec(agents.HARNESS_CODEX),
         tools_enabled=False,
         system_prompt="",
         max_turns=7,
@@ -89,8 +89,8 @@ def test_codex_without_tools_stays_read_only(tmp_path):
 
 
 def test_hermes_enables_only_the_toolset_that_reaches_the_mem_cli(tmp_path):
-    command = agents.DIALECTS[agents.HOST_HERMES].command(
-        _spec(agents.HOST_HERMES),
+    command = agents.DIALECTS[agents.HARNESS_HERMES].command(
+        _spec(agents.HARNESS_HERMES),
         tools_enabled=True,
         system_prompt="keeper",
         max_turns=7,
@@ -108,7 +108,7 @@ def test_codex_reads_its_answer_from_the_file_not_the_transcript(tmp_path):
     noisy = (
         "sandbox: read-only\nsession id: abc\nuser\nquestion\ncodex\nthe final answer\ntokens used"
     )
-    assert agents.DIALECTS[agents.HOST_CODEX].answer(noisy, answer_file) == "the final answer"
+    assert agents.DIALECTS[agents.HARNESS_CODEX].answer(noisy, answer_file) == "the final answer"
 
 
 
@@ -121,12 +121,12 @@ def test_an_unavailable_host_is_reported_rather_than_silently_skipped():
 def test_hermes_re_adds_the_prefix_it_is_about_to_strip(tmp_path):
     """It consumes one provider prefix as routing; a publisher-qualified backend needs it back."""
     spec = agents.HostSpec(
-        name=agents.HOST_HERMES,
+        name=agents.HARNESS_HERMES,
         binary="hermes",
         model="google/gemini-3.7-flash",
         provider="gemini",
     )
-    command = agents.DIALECTS[agents.HOST_HERMES].command(
+    command = agents.DIALECTS[agents.HARNESS_HERMES].command(
         spec,
         tools_enabled=True,
         system_prompt="k",
@@ -138,8 +138,8 @@ def test_hermes_re_adds_the_prefix_it_is_about_to_strip(tmp_path):
 
 
 def test_hermes_leaves_the_model_alone_when_no_provider_is_pinned(tmp_path):
-    spec = agents.HostSpec(name=agents.HOST_HERMES, binary="hermes", model="some-model")
-    command = agents.DIALECTS[agents.HOST_HERMES].command(
+    spec = agents.HostSpec(name=agents.HARNESS_HERMES, binary="hermes", model="some-model")
+    command = agents.DIALECTS[agents.HARNESS_HERMES].command(
         spec,
         tools_enabled=True,
         system_prompt="k",

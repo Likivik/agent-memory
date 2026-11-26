@@ -8,7 +8,7 @@ from __future__ import annotations
 from mnemobun.adapters import doctor
 from mnemobun.core.config import Config
 from mnemobun.core.store import Store
-from mnemobun.executor.agents import HOST_HERMES
+from mnemobun.executor.agents import HARNESS_HERMES
 
 
 def test_sandbox_spawn_has_auth(tmp_path):
@@ -16,5 +16,5 @@ def test_sandbox_spawn_has_auth(tmp_path):
     config.executor.model = "mimo-v2.6-pro"
     store = Store(tmp_path / "store", config=config, agent="auth-smoke")
     store.init()
-    report = doctor.smoke(store, host=HOST_HERMES)
+    report = doctor.smoke(store, host=HARNESS_HERMES)
     assert report["answered"], report

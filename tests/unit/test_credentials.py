@@ -77,14 +77,14 @@ def test_a_failed_mint_is_an_explicit_authentication_error(monkeypatch):
 
 def test_only_hermes_carries_credentials(monkeypatch):
     from mnemobun.executor.agents import (
-        HOST_CODEX,
-        HOST_HERMES,
+        HARNESS_CODEX,
+        HARNESS_HERMES,
         Host,
         HostSpec,
     )
 
-    assert Host(HostSpec(name=HOST_HERMES, binary="hermes")).credentials is not None
-    for name in (HOST_CODEX, HOST_CODEX):
+    assert Host(HostSpec(name=HARNESS_HERMES, binary="hermes")).credentials is not None
+    for name in (HARNESS_CODEX, HARNESS_CODEX):
         assert Host(HostSpec(name=name, binary=name)).credentials is None
 
 

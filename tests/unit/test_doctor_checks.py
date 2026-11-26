@@ -53,9 +53,9 @@ def test_a_cli_dialect_is_what_runs_the_binary(store):
     store.config.executor.write.reasoner = ""
     store.config.executor.manage.reasoner = ""
     store.config.executor.reasoner = "plugin"
-    assert not doctor._host_binary_needed(store)
+    assert not doctor._driver_binary_needed(store)
     store.config.executor.reasoner = "codex"
-    assert doctor._host_binary_needed(store)
+    assert doctor._driver_binary_needed(store)
 
 
 def test_an_empty_queue_is_healthy(store):

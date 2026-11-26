@@ -77,7 +77,7 @@ def test_a_hook_event_naming_a_foreign_store_writes_only_where_it_is_pointed(sto
     response = hook_entry.handle(
         store,
         {
-            "host": moments.HOST_CODEX,
+            "host": moments.HARNESS_CODEX,
             "hook_event_name": "Stop",
             "session_id": "adversary",
             "store": str(foreign),
@@ -92,7 +92,7 @@ def test_a_transcript_full_of_instructions_is_archived_verbatim_and_acted_on_by_
     hook_entry.handle(
         store,
         {
-            "host": moments.HOST_CODEX,
+            "host": moments.HARNESS_CODEX,
             "hook_event_name": "PreCompact",
             "session_id": "loaded",
             "items": [PAYLOAD],

@@ -480,7 +480,7 @@ def _parser() -> argparse.ArgumentParser:
     installer.set_defaults(handler=_setup)
 
     doctor = subcommand("doctor", help="diagnose host, Store and provider setup")
-    doctor.add_argument("--host", required=True)
+    doctor.add_argument("--harness", required=True)
     doctor.add_argument("--settings", default=None)
     doctor.add_argument("--provider", default=None)
     doctor.add_argument("--model", default=None)

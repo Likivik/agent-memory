@@ -135,7 +135,7 @@ def ensure_proxy(
     parsed = urllib.parse.urlsplit(proxy_url)
     host = parsed.hostname or "127.0.0.1"
     port = parsed.port or 8817
-    command = [binary, "--host", host, "--port", str(port), "--model-filter", "muse-spark"]
+    command = [binary, "--harness", host, "--port", str(port), "--model-filter", "muse-spark"]
     if credential.pass_through:
         command.append("--auth-passthrough")
         env.pop("OPENROUTER_API_KEY", None)
@@ -258,7 +258,7 @@ def muse_live_preflight(
 ) -> tuple[str | None, str]:
     binary = shutil.which("muse", path=(environment or os.environ).get("PATH"))
     if not binary:
-        return "HOST_BINARY_MISSING", "muse is not on PATH"
+        return "DRIVER_BINARY_MISSING", "muse is not on PATH"
     target = model or DEFAULT_MODEL
     env = _network_environment(environment)
     env["MUSE_NO_AUTO_UPDATE"] = "1"

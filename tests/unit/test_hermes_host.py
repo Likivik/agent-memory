@@ -12,7 +12,7 @@ from mnemobun.executor import agents
 def _host(*, timeout_seconds=5.0):
     return agents.Host(
         agents.HostSpec(
-            name=agents.HOST_HERMES,
+            name=agents.HARNESS_HERMES,
             binary="hermes",
             model="meta/muse-spark-1.3-contributor",
             provider="openrouter",

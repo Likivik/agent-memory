@@ -180,9 +180,9 @@ rm -rf ~/agent-memory-store/.index && mem rebuild
 ## Wire it into your agent
 
 ```bash
-mem setup --host hermes
-mem setup --host codex
-mem setup --host muse-code --provider openrouter
+mem setup --harness hermes
+mem setup --harness codex
+mem setup --harness muse-code --provider openrouter
 ```
 
 All three commands use the same pipeline: probe the host, initialize or check the Store, safely
@@ -195,15 +195,15 @@ conflicting setting fails closed instead of being replaced.
 Use a non-default Store in the usual way; setup pins its absolute path into every installed hook:
 
 ```bash
-MNEMOBUN_STORE=/absolute/path/to/store mem setup --host codex
+MNEMOBUN_STORE=/absolute/path/to/store mem setup --harness codex
 ```
 
 Run the same checks later, or get a precise failure layer after setup fails:
 
 ```bash
-mem doctor --host hermes
-mem doctor --host codex
-mem doctor --host muse-code --provider openrouter
+mem doctor --harness hermes
+mem doctor --harness codex
+mem doctor --harness muse-code --provider openrouter
 ```
 
 Diagnostics distinguish host/config/Store/hook/reasoner failures and, for Muse, credential,
@@ -440,7 +440,7 @@ Setup recognizes an already provisioned credential and never prints or replaces 
 
 ```bash
 export OPENROUTER_API_KEY="..."  # omit when Muse auth is already provisioned
-mem setup --host muse-code --provider openrouter
+mem setup --harness muse-code --provider openrouter
 muse
 ```
 
@@ -459,7 +459,7 @@ and repeat setup. pproxy is launched as a user process and recorded under
 or run doctor if the proxy is no longer reachable. Use `--mcp` to merge the MCP server too:
 
 ```bash
-mem setup --host muse-code --provider openrouter --mcp
+mem setup --harness muse-code --provider openrouter --mcp
 ```
 
 Muse native memory and agent-memory's `MNEMOBUN_STORE` are separate systems. Setup does not
@@ -610,7 +610,7 @@ can increase `--limit` or reformulate its query before tracing a selected memory
 ## Read evaluation with Codex
 
 The experiment runner selects the tested host and judge independently. Pass
-`--host codex --judge-host codex` and explicit `--model` / `--judge-model` values
+`--harness codex --judge-host codex` and explicit `--model` / `--judge-model` values
 for a Codex-only run. The judge harness is named, never assumed;
 its historical default model. `calibrate` and `regrade` also accept `--judge-host`.
 Use `calibrate --cases <labelled-cases.json> --output <calibration.json>` to retain

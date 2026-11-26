@@ -1,10 +1,10 @@
 """Answer-file handling: the codex dialect reads the file its host writes."""
 
-from mnemobun.executor.agents import DIALECTS, HOST_CODEX
+from mnemobun.executor.agents import DIALECTS, HARNESS_CODEX
 
 
 def _dialect():
-    chosen = DIALECTS[HOST_CODEX]
+    chosen = DIALECTS[HARNESS_CODEX]
     return chosen() if isinstance(chosen, type) else chosen
 
 

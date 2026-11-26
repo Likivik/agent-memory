@@ -50,12 +50,12 @@ def test_an_empty_host_reply_is_reported():
 
 
 def test_a_host_reasoner_is_named_by_dialect_and_runs_that_dialect_s_binary():
-    from mnemobun.executor.agents import BINARIES, HOST_CODEX
+    from mnemobun.executor.agents import BINARIES, HARNESS_CODEX
     from mnemobun.executor.reasoners import HostReasoner
 
-    reasoner = HostReasoner.for_host(HOST_CODEX)
-    assert reasoner.host.spec.binary == BINARIES[HOST_CODEX][0]
-    assert reasoner.host.spec.model == BINARIES[HOST_CODEX][1]
+    reasoner = HostReasoner.for_host(HARNESS_CODEX)
+    assert reasoner.host.spec.binary == BINARIES[HARNESS_CODEX][0]
+    assert reasoner.host.spec.model == BINARIES[HARNESS_CODEX][1]
 
 
 def test_an_unknown_host_reasoner_fails_closed_instead_of_using_another_dialect():

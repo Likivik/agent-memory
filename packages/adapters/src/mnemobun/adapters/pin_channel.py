@@ -166,11 +166,11 @@ def sync(store, host: str, target: pathlib.Path) -> Delivery:
     return deliver(channel_, block, target=target, state_dir=store.layout.state_dir)
 
 
-HOST_ALIASES = {"muse-code": "muse"}
+HARNESS_ALIASES = {"muse-code": "muse"}
 
 
 def host_name(spec_name: str) -> str:
-    return HOST_ALIASES.get(spec_name, spec_name)
+    return HARNESS_ALIASES.get(spec_name, spec_name)
 
 
 def executor_block(store, spec_name: str) -> str:

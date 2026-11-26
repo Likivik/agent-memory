@@ -32,14 +32,14 @@ from mnemobun.core.config import MUSE_SETTINGS_ENV_VAR
 from .. import muse_namespaces
 from ..credentials import VertexCredentials
 
-HOST_CODEX = "codex"
-HOST_HERMES = "hermes"
-HOST_MUSE_CODE = "muse-code"
+HARNESS_CODEX = "codex"
+HARNESS_HERMES = "hermes"
+HARNESS_MUSE_CODE = "muse-code"
 
 BINARIES = {
-    HOST_CODEX: ("codex", "gpt-5.6-sol"),
-    HOST_HERMES: ("hermes", "google/gemini-3.7-flash"),
-    HOST_MUSE_CODE: ("muse", ""),
+    HARNESS_CODEX: ("codex", "gpt-5.6-sol"),
+    HARNESS_HERMES: ("hermes", "google/gemini-3.7-flash"),
+    HARNESS_MUSE_CODE: ("muse", ""),
 }
 MEM_TOOL_PATTERN = "Bash(mem:*)"
 HERMES_TOOLSETS = "terminal"
@@ -302,7 +302,7 @@ class Host:
         self.dialect = dialect
         self.credentials = (
             VertexCredentials()
-            if spec.name == HOST_HERMES and spec.provider in ("", "gemini")
+            if spec.name == HARNESS_HERMES and spec.provider in ("", "gemini")
             else None
         )
 
@@ -387,11 +387,11 @@ class Host:
                 answer_file=answer_file,
             )
             settings = None
-            if self.spec.name == HOST_HERMES:
+            if self.spec.name == HARNESS_HERMES:
                 command, prompt = self.dialect.invocation(
                     command, prompt, system_prompt, scratch_path
                 )
-            elif self.spec.name == HOST_MUSE_CODE:
+            elif self.spec.name == HARNESS_MUSE_CODE:
                 environment = self._isolated_muse_environment(environment, scratch_path)
                 # Muse 1.4.9 rejects its process-lifetime tool-output root when TMPDIR and the
                 # workspace share the /tmp tree. Muse creates and cleans its own unique child.
@@ -416,7 +416,7 @@ class Host:
             if settings is not None:
                 with muse_namespaces.for_muse_settings(settings):
                     return invoke()
-            if self.spec.name == HOST_HERMES:
+            if self.spec.name == HARNESS_HERMES:
                 with self._isolated_hermes_environment(
                     environment,
                     server,
@@ -541,10 +541,11 @@ class Host:
                 tool_pattern=tool_pattern,
                 workdir=workdir,
             )
-            if self.spec.name == HOST_CODEX and tools_enabled and environment.get(observation.ENV):
-                command += ["--add-dir", environment[observation.ENV]]
+            needs_scratch = environment.get(observation.ENV)
+            if self.spec.name == HARNESS_CODEX and tools_enabled and needs_scratch:
+                command += ["--add-dir", needs_scratch]
             command, payload = self.dialect.invocation(command, prompt, system_prompt, scratch_path)
-            if self.spec.name == HOST_MUSE_CODE:
+            if self.spec.name == HARNESS_MUSE_CODE:
                 environment = self._isolated_muse_environment(environment, scratch_path)
 
             def invoke() -> HostResult:
@@ -556,7 +557,7 @@ class Host:
                     answer_file,
                 )
 
-            if self.spec.name == HOST_HERMES:
+            if self.spec.name == HARNESS_HERMES:
                 with self._isolated_hermes_environment(
                     environment,
                     None,
@@ -679,7 +680,7 @@ class Host:
         phase_trace = None
         try:
             timeout = timeout_seconds or self.spec.timeout_seconds
-            if self.spec.name == HOST_CODEX and "--json" in command:
+            if self.spec.name == HARNESS_CODEX and "--json" in command:
                 completed, phase_trace = _run_codex_jsonl(
                     command,
                     payload,
@@ -721,7 +722,7 @@ class Host:
         if completed.returncode != 0:
             detail = (completed.stderr.strip() or completed.stdout.strip())[:ERROR_EXCERPT]
             if (
-                self.spec.name == HOST_HERMES
+                self.spec.name == HARNESS_HERMES
                 and "--toolsets" in command
                 and (
                     "unrecognized arguments" in detail
@@ -731,15 +732,15 @@ class Host:
             ):
                 detail = HERMES_NATIVE_TOOL_REQUIREMENT
             if (
-                self.spec.name == HOST_MUSE_CODE
+                self.spec.name == HARNESS_MUSE_CODE
                 and MUSE_TOOLSET_SETTING in " ".join(command)
                 and ("unexpected argument '-c'" in detail or "unknown option" in detail)
             ):
                 detail = MUSE_NATIVE_TOOL_REQUIREMENT
             return HostResult("", False, elapsed, detail or "non-zero exit with no output")
         text = self.dialect.answer(completed.stdout, answer_file)
-        if require_answer and self.spec.name in (HOST_CODEX, HOST_MUSE_CODE) and not text:
-            label = "Codex" if self.spec.name == HOST_CODEX else "Muse"
+        if require_answer and self.spec.name in (HARNESS_CODEX, HARNESS_MUSE_CODE) and not text:
+            label = "Codex" if self.spec.name == HARNESS_CODEX else "Muse"
             return HostResult("", False, elapsed, f"missing or empty {label} final message")
         return HostResult(
             text,

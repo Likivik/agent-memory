@@ -66,10 +66,10 @@ def test_the_cron_path_reaches_the_same_state_as_the_hook_path(store, tmp_path):
 @pytest.mark.parametrize(
     ("host", "event", "expected"),
     [
-        (moments.HOST_CODEX, "SessionStart", moments.MOMENT_INJECT),
-        (moments.HOST_CODEX, "Stop", moments.MOMENT_PAUSE),
-        (moments.HOST_CODEX, "SessionStart", moments.MOMENT_INJECT),
-        (moments.HOST_CODEX, "NotAThing", None),
+        (moments.HARNESS_CODEX, "SessionStart", moments.MOMENT_INJECT),
+        (moments.HARNESS_CODEX, "Stop", moments.MOMENT_PAUSE),
+        (moments.HARNESS_CODEX, "SessionStart", moments.MOMENT_INJECT),
+        (moments.HARNESS_CODEX, "NotAThing", None),
     ],
 )
 def test_host_dialects_map_onto_the_universal_moments(host, event, expected):
@@ -84,7 +84,7 @@ def test_hook_survives_malformed_input_without_touching_the_host_exit_code(monke
 def test_hook_injects_nothing_at_session_start(seeded):
     """Rules ride the pinned block; the hook must not paste a memory index into the prompt."""
     response = hook_entry.handle(
-        seeded, {"host": moments.HOST_CODEX, "hook_event_name": "SessionStart"}
+        seeded, {"host": moments.HARNESS_CODEX, "hook_event_name": "SessionStart"}
     )
     assert hook_entry.HOOK_CONTEXT_KEY not in str(response)
 
@@ -92,9 +92,9 @@ def test_hook_injects_nothing_at_session_start(seeded):
 @pytest.mark.parametrize(
     ("host", "event"),
     [
-        (moments.HOST_CODEX, "Stop"),
-        (moments.HOST_CODEX, "Stop"),
-        (moments.HOST_GENERIC, moments.MOMENT_PAUSE),
+        (moments.HARNESS_CODEX, "Stop"),
+        (moments.HARNESS_CODEX, "Stop"),
+        (moments.HARNESS_GENERIC, moments.MOMENT_PAUSE),
     ],
 )
 def test_every_host_hook_archives_the_increment_and_launches_the_same_executor_call(
@@ -129,7 +129,7 @@ def test_the_hook_leaves_distillation_alone_when_the_boundary_switch_is_off(stor
     response = hook_entry.handle(
         store,
         {
-            "host": moments.HOST_CODEX,
+            "host": moments.HARNESS_CODEX,
             "hook_event_name": "Stop",
             "session_id": "s",
             "items": SEGMENTS,
@@ -162,19 +162,19 @@ def test_setup_is_idempotent_and_leaves_foreign_settings_alone(tmp_path):
     settings = tmp_path / "settings.json"
     settings.write_text(json.dumps({"theme": "dark"}), encoding="utf-8")
 
-    setup.install(moments.HOST_CODEX, settings)
+    setup.install(moments.HARNESS_CODEX, settings)
     once = json.loads(settings.read_text(encoding="utf-8"))
-    setup.install(moments.HOST_CODEX, settings)
+    setup.install(moments.HARNESS_CODEX, settings)
     twice = json.loads(settings.read_text(encoding="utf-8"))
 
     assert once == twice
     assert twice["theme"] == "dark"
-    assert set(twice["hooks"]) == set(moments.DIALECTS[moments.HOST_CODEX])
+    assert set(twice["hooks"]) == set(moments.DIALECTS[moments.HARNESS_CODEX])
 
 
 def _stop_event(store, session="s"):
     return {
-        "host": moments.HOST_CODEX,
+        "host": moments.HARNESS_CODEX,
         "hook_event_name": "Stop",
         "session_id": session,
         "items": SEGMENTS,
@@ -198,14 +198,14 @@ def test_the_launched_executor_call_is_one_the_cli_accepts(store, monkeypatch):
         )
 
     monkeypatch.setattr("subprocess.Popen", fake_popen)
-    assert hook_entry.launch_distill(store, "session-x", moments.HOST_CODEX)
+    assert hook_entry.launch_distill(store, "session-x", moments.HARNESS_CODEX)
     assert detached.options().items() <= launched["kwargs"].items()
     args = _parser().parse_args(launched["command"][1:])
     assert args.session is None
     job = WriteJobs(store).get(args.job)
     assert job.state == STATE_QUEUED
     assert job.session == "session-x"
-    assert job.host == moments.HOST_CODEX
+    assert job.host == moments.HARNESS_CODEX
     assert launched["env"][STORE_ENV_VAR] == str(store.root)
     assert launched["env"][EXECUTOR_ENV_VAR]
     expected_log = store.layout.state_dir / hook_entry.LOG_FILENAME
@@ -218,7 +218,7 @@ def test_the_launched_executor_resolves_from_the_install_without_path(store, mon
     monkeypatch.setenv("PATH", "")
     monkeypatch.setattr("subprocess.Popen", lambda command, **_: launched.update(command=command))
 
-    assert hook_entry.launch_distill(store, "session-x", moments.HOST_CODEX)
+    assert hook_entry.launch_distill(store, "session-x", moments.HARNESS_CODEX)
     executable = pathlib.Path(launched["command"][0])
     assert executable.is_file()
     assert executable.parent == pathlib.Path(sys.executable).parent
@@ -230,7 +230,7 @@ def test_a_failed_executor_launch_is_written_to_the_hook_log(store, monkeypatch)
 
     monkeypatch.setattr("subprocess.Popen", fail_launch)
 
-    assert not hook_entry.launch_distill(store, "session-x", moments.HOST_CODEX)
+    assert not hook_entry.launch_distill(store, "session-x", moments.HARNESS_CODEX)
     log = (store.layout.state_dir / hook_entry.LOG_FILENAME).read_text(encoding="utf-8")
     assert "distill launch failed: missing executable" in log
 
@@ -258,8 +258,8 @@ def test_the_hook_takes_its_host_from_the_command_line(store, monkeypatch):
     monkeypatch.setattr(hook_entry, "launch_distill", lambda s, session, host: hosts.append(host))
     event = {key: value for key, value in _stop_event(store).items() if key != "host"}
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(event)))
-    hook_entry.main(["--host", moments.HOST_CODEX])
-    assert hosts == [moments.HOST_CODEX]
+    hook_entry.main(["--harness", moments.HARNESS_CODEX])
+    assert hosts == [moments.HARNESS_CODEX]
 
 
 def test_muse_hook_passes_pinned_settings_to_background_distillation(store, monkeypatch):
@@ -285,8 +285,8 @@ def test_muse_hook_passes_pinned_settings_to_background_distillation(store, monk
     assert (
         hook_entry.main(
             [
-                "--host",
-                moments.HOST_MUSE_CODE,
+                "--harness",
+                moments.HARNESS_MUSE_CODE,
                 "--muse-settings",
                 str(settings),
             ]
@@ -327,7 +327,7 @@ def test_codex_rollout_transcripts_yield_the_conversation(tmp_path):
     assert transcript.items(path) == ["user: we deploy on Fridays", "assistant: noted"]
 
 
-@pytest.mark.parametrize("host", [moments.HOST_CODEX, moments.HOST_CODEX])
+@pytest.mark.parametrize("host", [moments.HARNESS_CODEX, moments.HARNESS_CODEX])
 def test_setup_writes_an_absolute_hook_command_and_installs_the_skill(tmp_path, host):
     from mnemobun.core import prompts
 
@@ -339,7 +339,7 @@ def test_setup_writes_an_absolute_hook_command_and_installs_the_skill(tmp_path, 
     executable, *arguments = shlex.split(command)
     assert pathlib.Path(executable).stem == setup.HOOK_COMMAND
     assert pathlib.Path(executable).is_absolute() and pathlib.Path(executable).exists()
-    assert arguments == [setup.HOST_FLAG, host]
+    assert arguments == [setup.HARNESS_FLAG, host]
     skill = settings.parent / "skills" / "mnemobun" / "SKILL.md"
     assert skill.read_text(encoding="utf-8") == prompts.skill()
 
@@ -347,7 +347,7 @@ def test_setup_writes_an_absolute_hook_command_and_installs_the_skill(tmp_path, 
 @pytest.mark.skipif(os.name != "nt", reason="Windows hook command rendering")
 def test_windows_hook_commands_mean_the_same_in_bash_powershell_and_cmd(tmp_path):
     store_root = tmp_path / "store with space"
-    command = setup.hook_command(moments.HOST_CODEX, store_root)
+    command = setup.hook_command(moments.HARNESS_CODEX, store_root)
 
     assert "\\" not in command and "'" not in command
     plain = command.split(f" {setup.STORE_FLAG} ")[0]

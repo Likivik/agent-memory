@@ -106,15 +106,15 @@ def run(
     version = ""
     try:
         version = setup.probe(host)
-        checks.append(Check("HOST_BINARY_OK", True, version))
+        checks.append(Check("DRIVER_BINARY_OK", True, version))
     except Exception as error:
         # An endpoint reasoner never runs the host binary: it posts to an
         # OpenAI-shaped URL. A missing binary is then a note about the host,
         # not a reason to refuse the store.
-        needed = _host_binary_needed(store)
+        needed = _driver_binary_needed(store)
         checks.append(
             Check(
-                "HOST_BINARY_MISSING" if needed else "HOST_BINARY_NOT_REQUIRED",
+                "DRIVER_BINARY_MISSING" if needed else "DRIVER_BINARY_NOT_REQUIRED",
                 not needed,
                 str(error),
                 required=needed,
@@ -152,9 +152,9 @@ def run(
         )
     if mcp:
         checks.append(_mcp_check(host, target, store.root, configured, environment))
-    if host == moments.HOST_CODEX:
+    if host == moments.HARNESS_CODEX:
         checks.extend(_codex_checks(target, store.root))
-    if host == moments.HOST_MUSE_CODE and provider:
+    if host == moments.HARNESS_MUSE_CODE and provider:
         checks.extend(
             _muse_provider_checks(
                 configured,
@@ -349,7 +349,7 @@ def _hook_checks(
         if not _mentions(managed[0], expected_store):
             failures.append(f"{event} does not pin Store {expected_store}")
             continue
-        if host == moments.HOST_MUSE_CODE:
+        if host == moments.HARNESS_MUSE_CODE:
             expected_settings = setup.render_command([str(settings_path.resolve())])
             if not _mentions(managed[0], setup.MUSE_SETTINGS_FLAG) or not _mentions(
                 managed[0], expected_settings
@@ -443,7 +443,7 @@ def _live_reasoner_check(store: Store, host: str, operation: str) -> Check:
     )
 
 
-def _host_binary_needed(store: Store) -> bool:
+def _driver_binary_needed(store: Store) -> bool:
     """Whether any channel would actually launch the host binary.
 
     Every channel resolves to the host reasoner, so the host binary is what
@@ -478,7 +478,7 @@ def _mcp_check(
     configured: dict[str, object] | None,
     environment: dict[str, str] | None,
 ) -> Check:
-    if host == moments.HOST_CODEX:
+    if host == moments.HARNESS_CODEX:
         binary = setup.BINARIES[host]
         env = {
             **(os.environ if environment is None else environment),

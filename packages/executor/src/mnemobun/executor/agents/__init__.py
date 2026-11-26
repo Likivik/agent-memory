@@ -7,7 +7,7 @@ from .hermes import *  # noqa: F403
 from .muse import *  # noqa: F403
 
 DIALECTS: dict[str, Dialect] = {
-    HOST_CODEX: CodexDialect(),
-    HOST_HERMES: HermesDialect(),
-    HOST_MUSE_CODE: MuseCodeDialect(),
+    HARNESS_CODEX: CodexDialect(),
+    HARNESS_HERMES: HermesDialect(),
+    HARNESS_MUSE_CODE: MuseCodeDialect(),
 }

@@ -85,7 +85,7 @@ def test_a_boundary_hook_enqueues_the_job_and_spawns_its_worker(store, monkeypat
     assert launched["command"][-5:] == [
         hook_entry.JOB_FLAG,
         job.id,
-        hook_entry.SOURCE_HOST_FLAG,
+        hook_entry.SOURCE_HARNESS_FLAG,
         "codex",
         hook_entry.AUTO_DREAM_FLAG,
     ]
@@ -556,7 +556,7 @@ def test_doctor_reports_an_unhealthy_job_queue(cli, clock):
         current = queue.claim("worker").job
         assert current is not None
 
-    payload = cli("doctor", "--host", "codex", "--no-live", expect=EXIT_ERROR)
+    payload = cli("doctor", "--harness", "codex", "--no-live", expect=EXIT_ERROR)
 
     checks = {check["code"]: check for check in payload["checks"]}
     assert checks["WRITE_JOBS_DEGRADED"]["ok"] is False

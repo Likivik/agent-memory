@@ -39,7 +39,7 @@ Two cleanup changes are in the working tree, uncommitted:
 | `DIALECTS` | `DRIVERS` | Keyed by harness name |
 | `HOST_CLAUDE_CODE`, `HOST_CODEX`, `HOST_HERMES`, `HOST_MUSE_CODE` | `HARNESS_*` | Constants name harnesses, not hosts |
 | `moments.py` host map | `moments.py` harness map | Same content, `HARNESS_*` keys |
-| `hook_entry` `--host` flag | `--harness` flag, no default | A hook with no harness is an error |
+| `hook_entry` `--harness` flag | `--harness` flag, no default | A hook with no harness is an error |
 | `pin_channel.py` | `channels.py` | `PinChannel` → `Channel`, registry keyed by harness |
 | `record.agent` | `record.writer` | On-disk field changes: see §4 |
 | `executor` package | stays | It is already the workers' home |
