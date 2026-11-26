@@ -93,7 +93,12 @@ single wiring point and the only module that imports the concrete transports.
 Every `from .base import *` is gone, so the ruff `F403`/`F405` per-file-ignore is gone too.
 Test: gate unchanged, 1023 passed.
 
-**R4 — channels.** Rename `pin_channel.py` → `channels.py`, `PinChannel` → `Channel`; registry keyed by harness; `pin_channel.sync` → `channels.deliver`. Test: digest parity across harnesses still holds.
+**R4 — channels.** Done. `pin_channel.py` is `channels.py`, `PinChannel` is `Channel` with a
+`harness` field, `REGISTRY` is `CHANNELS`, `channel(host)` is `for_harness(name)` and refuses an
+unknown harness by name. `sync` is now `deliver(store, harness, target)` - the one public entry -
+and the old low-level `deliver` is `place(channel, block, ...)`; one function, one meaning.
+`host_name` became `channel_name`. Doctor's `PIN_HOST` code is `PIN_CHANNEL`.
+Test: digest parity across harnesses still holds.
 
 **R5 — writer, data half.** Accept `writer:` on read, write `writer:` on write, reject a record with neither. Add `manage migrate-writer` and a test that a legacy file round-trips with provenance intact.
 

@@ -71,7 +71,7 @@ per-host transport delivers it to whatever surface that host offers. The bytes a
 hosts — same rules, same order, same digest — so a rule cannot mean different things in different
 harnesses.
 
-`adapters/pin_channel.py` holds the registry. A channel declares four things:
+`adapters/channels.py` holds the registry. A channel declares four things:
 
 | Field | Meaning |
 |---|---|
@@ -137,7 +137,7 @@ deserves its own soak test before it is trusted.
   claim is pinned (no empty header).
 - `test_prefetch.py`: prefetch never returns a pinned claim (they belong to the other channel).
 - `test_docket_pin.py`: `pin`/`unpin` proposals require a ruling; `_apply` respects the budget.
-- `test_pin_channel.py`: every registered channel renders the **same digest** for one fixture store;
+- `test_channels.py`: every registered channel renders the **same digest** for one fixture store;
   a file channel replaces only its delimited region and leaves surrounding lines byte-identical;
   an unchanged block is not rewritten; a `preserved: false` channel reports `PIN_UNPINNED_HOST`.
 - Doctor: `PINNED_OVER_BUDGET`, `PINNED_STALE`, `PINNED_UNREADABLE`, `PIN_UNPINNED_HOST`,
@@ -145,9 +145,9 @@ deserves its own soak test before it is trusted.
 
 ## Not wired yet
 
-`adapters/pin_channel.py` is a registry with a digest test. Hermes delivers through
+`adapters/channels.py` is a registry with a digest test. Hermes delivers through
 `system_prompt_block()`; the headless hosts are served by `HostAgent._with_pins()`, which asks
-`pin_channel.executor_block(store, host)` for the block and prepends it to the system prompt the
+`channels.executor_block(store, host)` for the block and prepends it to the system prompt the
 executor hands the host (the same text that becomes Claude Code's `--system-prompt-file`, Codex's
 `model_instructions_file`, Muse's prompt file). Hermes is skipped there because its own block would
 otherwise arrive twice. A store fault degrades to "no pins" and is logged.

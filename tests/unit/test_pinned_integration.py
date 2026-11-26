@@ -1,8 +1,8 @@
-"""P9: the rendered block survives the trip through a host channel, and old stores stay quiet."""
+"""P9: the rendered block survives the trip through a harness channel, and old stores stay quiet."""
 
 from __future__ import annotations
 
-from mnemobun.adapters import pin_channel
+from mnemobun.adapters import channels
 from mnemobun.core import pinned
 
 
@@ -13,7 +13,7 @@ def test_rendered_block_survives_the_channel_round_trip(store, tmp_path):
     target = tmp_path / "AGENTS.md"
     target.write_text("# project rules\n")
 
-    delivery = pin_channel.deliver(pin_channel.channel("codex"), block, target=target)
+    delivery = channels.place(channels.for_harness("codex"), block, target=target)
 
     text = target.read_text()
     assert block in text
@@ -28,8 +28,8 @@ def test_store_without_pinned_fields_reads_clean(store):
 
 
 def test_hermes_channel_is_the_provider_surface():
-    host = pin_channel.channel("hermes")
+    channel = channels.for_harness("hermes")
 
-    assert host.surface == pin_channel.SURFACE_SYSTEM_BLOCK
-    assert host.preserved is True
-    assert host.refresh == pin_channel.REFRESH_PER_TURN
+    assert channel.surface == channels.SURFACE_SYSTEM_BLOCK
+    assert channel.preserved is True
+    assert channel.refresh == channels.REFRESH_PER_TURN

@@ -250,10 +250,10 @@ def _pinned_checks(store: Store) -> list[Check]:
         )
     )
     try:
-        from mnemobun.adapters import pin_channel
+        from mnemobun.adapters import channels
 
-        host = pin_channel.channel("hermes")
-        delivered = pin_channel.recorded(store.layout.state_dir).get(host.host, "")
+        channel = channels.for_harness("hermes")
+        delivered = channels.recorded(store.layout.state_dir).get(channel.harness, "")
         current = block.digest
         out.append(
             Check(
@@ -265,9 +265,9 @@ def _pinned_checks(store: Store) -> list[Check]:
         )
         out.append(
             Check(
-                "PIN_HOST",
-                not host.degraded,
-                f"{host.host}: {host.surface} (preserved={host.preserved})",
+                "PIN_CHANNEL",
+                not channel.degraded,
+                f"{channel.harness}: {channel.surface} (preserved={channel.preserved})",
                 required=False,
             )
         )
