@@ -85,7 +85,9 @@ harness to it. `REASONER_DIALECTS` → `REASONER_DRIVERS`; `moments.DIALECTS` �
 `base.py` was 915 lines doing four jobs; it is now five modules:
 `transport.py` (the ABC), `driver.py` (one run: process, timeouts, retries, error mapping),
 `types.py` (the dataclasses), `constants.py` (harness names, binaries, prompt strings),
-`helpers.py` (trace parsing, credential staging, provider settings). Transports import
+`helpers.py` (trace parsing, credential staging, provider settings). Reading a harness's
+own usage numbers is a transport concern, so `_host_usage` lives in `transport.py`; `helpers.py`
+never imports `transport.py`, and `transport.py` imports only `constants.py` and `types.py`. Transports import
 `transport.py`, `types.py`, `constants.py` only — never `driver.py`. `__init__.py` is the
 single wiring point and the only module that imports the concrete transports.
 Every `from .base import *` is gone, so the ruff `F403`/`F405` per-file-ignore is gone too.

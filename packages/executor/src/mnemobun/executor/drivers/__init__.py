@@ -7,10 +7,10 @@ means adding a transport module and one line here - never a branch inside Driver
 from .codex import CodexTransport
 from .constants import BINARIES, HARNESS_CODEX, HARNESS_HERMES, HARNESS_MUSE_CODE
 from .driver import Driver
-from .helpers import _CodexTrace, _host_usage, _run_codex_jsonl, _stream_result
+from .helpers import _CodexTrace, _run_codex_jsonl
 from .hermes import HermesTransport
 from .muse import MuseCodeTransport
-from .transport import Transport
+from .transport import Transport, _count, _host_usage, _stream_result
 from .types import DriverPhases, DriverResult, DriverSpec, DriverUsage, ToolServer
 
 __all__ = [
@@ -18,6 +18,7 @@ __all__ = [
     "TRANSPORTS",
     "Driver",
     "_CodexTrace",
+    "_count",
     "_host_usage",
     "_run_codex_jsonl",
     "_stream_result",

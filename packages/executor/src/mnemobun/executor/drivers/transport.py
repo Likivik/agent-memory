@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import pathlib
 
 from .constants import MEM_TOOL_PATTERN, PROMPT_PLACEHOLDER
-from .helpers import _host_usage
 from .types import DriverSpec, DriverUsage, ToolServer
 
 
@@ -65,3 +65,45 @@ class Transport:
             return command, payload
         return [payload if part == PROMPT_PLACEHOLDER else part for part in command], ""
 
+
+def _stream_result(stdout: str) -> dict[str, object] | None:
+    try:
+        parsed = json.loads(stdout)
+    except json.JSONDecodeError:
+        return None
+    if isinstance(parsed, dict) and parsed.get("type") == "result":
+        return parsed
+    return None
+
+
+def _count(value: object) -> int:
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def _host_usage(stdout: str) -> DriverUsage | None:
+    turns = 0
+    totals = {
+        "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "output_tokens": 0,
+    }
+    found = False
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict) or event.get("type") != "turn.completed":
+            continue
+        turns += 1
+        usage = event.get("usage")
+        if not isinstance(usage, dict):
+            continue
+        found = True
+        for key in totals:
+            value = usage.get(key)
+            if isinstance(value, int) and not isinstance(value, bool):
+                totals[key] += value
+    if not found:
+        return None
+    return DriverUsage(turns=turns, **totals)

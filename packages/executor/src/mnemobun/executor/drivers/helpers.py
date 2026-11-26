@@ -9,7 +9,7 @@ import subprocess
 import threading
 import time
 
-from .types import DriverPhases, DriverUsage
+from .types import DriverPhases
 
 PROVIDER_CONFIG_ALLOWLIST = (
     "model",  # model routing: base_url, defaults, provider endpoints
@@ -88,49 +88,6 @@ def _copy_credentials(real_home: str, sandbox_home: pathlib.Path) -> list[str]:
         except OSError:
             continue
     return copied
-
-
-def _stream_result(stdout: str) -> dict[str, object] | None:
-    try:
-        parsed = json.loads(stdout)
-    except json.JSONDecodeError:
-        return None
-    if isinstance(parsed, dict) and parsed.get("type") == "result":
-        return parsed
-    return None
-
-
-def _count(value: object) -> int:
-    return value if isinstance(value, int) and not isinstance(value, bool) else 0
-
-
-def _host_usage(stdout: str) -> DriverUsage | None:
-    turns = 0
-    totals = {
-        "input_tokens": 0,
-        "cached_input_tokens": 0,
-        "output_tokens": 0,
-    }
-    found = False
-    for line in stdout.splitlines():
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(event, dict) or event.get("type") != "turn.completed":
-            continue
-        turns += 1
-        usage = event.get("usage")
-        if not isinstance(usage, dict):
-            continue
-        found = True
-        for key in totals:
-            value = usage.get(key)
-            if isinstance(value, int) and not isinstance(value, bool):
-                totals[key] += value
-    if not found:
-        return None
-    return DriverUsage(turns=turns, **totals)
 
 
 class _CodexTrace:
