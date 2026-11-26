@@ -1,6 +1,6 @@
 """Instructions handed to the host agent. The core borrows intelligence; it never owns it.
 
-One authoritative copy: hooks, the skill, and the experiment harness all render from here,
+One authoritative copy: hooks and the skill render from here,
 so a wording change is a single edit and a single rerun of the P2 core subset.
 
 Wording is an experiment variable, not a detail. Two failure modes seen in P2 traces shape
@@ -345,7 +345,7 @@ A shared memory store on disk. Markdown files are the truth; `mem` is the way in
 
 ## Host setup
 
-Use the deterministic installer for the active host: `mem setup --host claude-code`,
+Use the deterministic installer for the active harness: `mem setup --host <harness>`,
 `mem setup --host codex`, or `mem setup --host muse-code --provider openrouter`. If setup
 reports FAILED, run `mem doctor --host <host>` with the same provider options. Do not edit
 mnemobun-managed hooks, Store paths, provider routing, or MCP entries yourself. Ask the user

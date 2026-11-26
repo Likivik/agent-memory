@@ -6,7 +6,7 @@
 
 ![](https://img.shields.io/badge/version-0.1.0-369eff?labelColor=black&style=flat-square)
 ![](https://img.shields.io/badge/python-3.12+-ffcb47?labelColor=black&style=flat-square)
-![](https://img.shields.io/badge/hosts-Claude%20Code%2C%20Codex%20CLI%2C%20Muse%20Code-ff80eb?labelColor=black&style=flat-square)
+![](https://img.shields.io/badge/hosts-Hermes%2C%20Codex%20CLI%2C%20Muse%20Code-ff80eb?labelColor=black&style=flat-square)
 ![](https://img.shields.io/badge/dependencies-zero%20API%20keys-c4f042?labelColor=black&style=flat-square)
 
 </div>
@@ -16,7 +16,7 @@
 An agent that closes its session forgets everything it learned in it. agent-memory is the
 runtime that fixes that, for any agent — not only coding ones. Markdown files in one store are
 the single source of truth, the SQLite index beside them is a cache you can delete at any time,
-and Claude Code, Codex CLI, Muse Code, and anything else that can run a shell command share
+and Codex CLI, Muse Code, Hermes and anything else that can run a shell command share
 that store.
 
 Retrieval is local and ranked, and it answers with paths rather than pasted text — the agent
@@ -118,7 +118,7 @@ and concurrent writes; Sleep keeps its proposal and cap limits for unattended ac
 
 ## Proof it works
 
-Measured on LongMemEval-S with a bounded haystack, 120 episodes, `claude -p` (Haiku 4.5) as
+Measured on LongMemEval-S with a bounded haystack, 120 episodes, one CLI reasoner as
 host, one calibrated Sonnet 5 judge, two exam replays per arm.
 
 | arm | pooled accuracy | paired vs agent-memory |
@@ -132,7 +132,7 @@ to 12 sessions per episode, which makes this a write-strategy study rather than 
 one. The system-to-system row differs in write and read together, so it is an end-to-end
 comparison and licenses no attribution to either half.
 
-**One store, three hosts:** all 9 ordered writer/reader pairs across Claude Code, Codex CLI,
+**One store, three harnesses:** all ordered writer/reader pairs across Codex CLI,
 and Hermes pass — what one host's shell writes, another's finds, specifics intact. Pooled net
 contribution over no memory: 2/36 → 13/36, p=0.0074.
 
@@ -180,7 +180,7 @@ rm -rf ~/agent-memory-store/.index && mem rebuild
 ## Wire it into your agent
 
 ```bash
-mem setup --host claude-code
+mem setup --host hermes
 mem setup --host codex
 mem setup --host muse-code --provider openrouter
 ```
@@ -201,7 +201,7 @@ MNEMOBUN_STORE=/absolute/path/to/store mem setup --host codex
 Run the same checks later, or get a precise failure layer after setup fails:
 
 ```bash
-mem doctor --host claude-code
+mem doctor --host hermes
 mem doctor --host codex
 mem doctor --host muse-code --provider openrouter
 ```
@@ -236,13 +236,13 @@ which source session is archived or cited:
 ```toml
 [executor.write]
 reasoner = "host"
-host = "muse-code" # or "source", "hermes", "codex", or "claude-code"
+host = "hermes" # or "source", "codex", "muse-code"
 host_provider = "" # Hermes can pin "openrouter" independently of its model
 tool_mode = "auto" # supported Hosts use native tools; use "text" for compatibility
 
 [executor.manage]
 reasoner = "host"
-host = "muse-code" # native Manage supports "claude-code", "codex", "hermes", and "muse-code"
+host = "hermes" # native Manage supports "codex", "hermes", and "muse-code"
 tool_mode = "text" # set "native" for the experimental bounded Host reviewer
 timeout_seconds = 120
 
@@ -260,7 +260,7 @@ marker that prevents recursive capture.
 
 Write runs the reasoner as a standard tool-use agent over one toolkit — `recall`, `read`, and
 `submit_operations`. An endpoint reasoner drives that loop through native function calling.
-Claude Code, Codex, Hermes, and Muse Code run their own loop in one headless process per batch by
+Codex, Hermes, and Muse Code run their own loop in one headless process per batch by
 default: the toolkit is served by a per-batch stdio MCP server, their built-in tools, user
 configuration and native memory are off, and the distillation instructions replace their system
 prompt where the Host supports replacement. Hermes and Muse use one combined prompt file and an
@@ -275,7 +275,7 @@ or gcloud authentication. `tool_mode = "text"` forces the compatibility protocol
 without an accepted submission writes nothing and leaves the backlog for retry.
 
 Manage keeps the text-verdict path by default. An explicit
-`[executor.manage] tool_mode = "native"` selects the experimental Claude Code, Codex, Hermes, or
+`[executor.manage] tool_mode = "native"` selects the experimental Codex, Hermes, or
 Muse reviewer.
 It starts one isolated Host process with only `list_proposals`, `read_evidence`, and
 `submit_verdicts`; proposal summaries arrive first and bodies are opened on demand. These tools
@@ -487,7 +487,7 @@ mem-exp interop --workspace /tmp/muse-memory-smoke \
   --pairs muse-code:muse-code,muse-code:codex,codex:muse-code
 ```
 
-Then omit `--pairs` and pass `--hosts claude-code,codex,hermes,muse-code` for the 4×4 matrix.
+
 Current limitations: only the root Muse session log is captured; child/observer logs are ignored,
 setup installs MCP only when `--mcp` is requested, and live hook/MCP/sandbox behavior must be
 verified on a machine with Muse Code installed and authenticated. Muse 1.4.3 does not support the
@@ -611,7 +611,7 @@ can increase `--limit` or reformulate its query before tracing a selected memory
 
 The experiment runner selects the tested host and judge independently. Pass
 `--host codex --judge-host codex` and explicit `--model` / `--judge-model` values
-for a Codex-only run. Omitting `--judge-host` retains the Claude Code judge and
+for a Codex-only run. The judge harness is named, never assumed;
 its historical default model. `calibrate` and `regrade` also accept `--judge-host`.
 Use `calibrate --cases <labelled-cases.json> --output <calibration.json>` to retain
 individual votes and distinguish transport failures from label disagreements.
@@ -641,7 +641,7 @@ Notes are plain markdown files. A search index sits beside them. You can delete
 the index; the notes stay.
 
 **The borrowed agent.** mnemobun has no brain inside. When it must think, it
-borrows one. It launches an agent you already have — Claude Code, Codex, Hermes —
+borrows one. It launches an agent you already have — Codex or Hermes —
 gives it a task, reads the answer. `mnemobun setup` picks which agent to borrow.
 `mnemobun doctor` checks that it works.
 

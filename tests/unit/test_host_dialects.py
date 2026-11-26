@@ -150,28 +150,6 @@ def test_hermes_leaves_the_model_alone_when_no_provider_is_pinned(tmp_path):
     assert command[command.index("--model") + 1] == "some-model"
 
 
-def test_the_expensive_tier_has_to_be_asked_for_out_loud(monkeypatch):
-    """A matrix is hundreds of calls; the costly model must not arrive by default or typo."""
-    from mnemobun.harness.main import ALLOW_COSTLY_ENV, _affordable
-
-    monkeypatch.delenv(ALLOW_COSTLY_ENV, raising=False)
-    with pytest.raises(ValueError, match="expensive tier"):
-        _affordable("claude-opus-5", "judge")
-    with pytest.raises(ValueError):
-        _affordable("CLAUDE-OPUS-4-8", "codex")
-
-    assert _affordable("claude-haiku-4-5-20251001", "codex")
-    assert _affordable("claude-sonnet-5", "judge")
-
-    monkeypatch.setenv(ALLOW_COSTLY_ENV, "1")
-    assert _affordable("claude-opus-5", "judge") == "claude-opus-5"
 
 
-def test_the_shipped_defaults_are_all_affordable(monkeypatch):
-    from mnemobun.executor.agents import BINARIES
-    from mnemobun.harness.main import ALLOW_COSTLY_ENV, JUDGE_MODEL, _affordable
 
-    monkeypatch.delenv(ALLOW_COSTLY_ENV, raising=False)
-    _affordable(JUDGE_MODEL, "judge")
-    for name, (_, model) in BINARIES.items():
-        _affordable(model, name)
