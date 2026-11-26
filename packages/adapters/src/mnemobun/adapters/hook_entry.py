@@ -76,7 +76,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     store: Store | None = None
     try:
         parser = argparse.ArgumentParser(prog="mem-hook")
-        parser.add_argument(HARNESS_FLAG, dest="harness", default="")
+        parser.add_argument(HARNESS_FLAG, dest="harness", required=True)
         parser.add_argument(STORE_FLAG, default="")
         parser.add_argument(MUSE_DATA_HOME_FLAG, default="")
         parser.add_argument(MUSE_SETTINGS_FLAG, default="")

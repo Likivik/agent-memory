@@ -21,7 +21,7 @@ def _run_stuck_hook(store, monkeypatch, *, bound_seconds, stuck_seconds):
     event = {"hook_event_name": "Stop", "session_id": "s", "store": str(store.root)}
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(event)))
     started = time.monotonic()
-    code = hook_entry.main([])
+    code = hook_entry.main(["--harness", "codex"])
     return code, time.monotonic() - started
 
 

@@ -109,7 +109,10 @@ to migrate. `author` is gone from the record, the index column and the search te
 `store.writer`, the access-log column and every audit parameter follow, and `SCHEMA_VERSION` moved
 from 3 to 4 because the column name changed. The index is a cache: it is rebuilt, not migrated.
 
-**R7 — no defaults.** `--harness` requires a value; `write.reasoner` empty means deterministic-only with a loud refusal (already true); `channels.deliver` refuses an unknown harness. Test: each of the three refuses explicitly.
+**R7 — no defaults.** Done. The hook's `--harness` is `required=True`, so a hook wired without
+it never runs. An empty `write.reasoner` still reaches `selection.resolve` and is refused there
+by name. `channels.for_harness` refuses an unknown harness by name. `tests/unit/test_no_defaults.py`
+holds one test per refusal.
 
 **R8 — Claude Code removal.** Delete §5's list. Test: gate green with those modules gone; no `claude` string in `packages/`.
 

@@ -78,7 +78,7 @@ def test_harness_transports_map_onto_the_universal_moments(harness, event, expec
 
 def test_hook_survives_malformed_input_without_touching_the_host_exit_code(monkeypatch, store):
     monkeypatch.setattr("sys.stdin", io.StringIO("not json at all"))
-    assert hook_entry.main() == hook_entry.EXIT_OK
+    assert hook_entry.main(["--harness", "codex"]) == hook_entry.EXIT_OK
 
 
 def test_hook_injects_nothing_at_session_start(seeded):
@@ -240,7 +240,7 @@ def test_a_hook_fired_inside_the_executor_session_does_nothing(store, monkeypatc
 
     monkeypatch.setenv(EXECUTOR_ENV_VAR, "1")
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(_stop_event(store))))
-    assert hook_entry.main() == hook_entry.EXIT_OK
+    assert hook_entry.main(["--harness", "codex"]) == hook_entry.EXIT_OK
     assert capsys.readouterr().out == ""
     assert sessions.read(store.layout, "s") == []
 
@@ -248,7 +248,7 @@ def test_a_hook_fired_inside_the_executor_session_does_nothing(store, monkeypatc
 def test_a_boundary_hook_prints_nothing_for_the_host_to_parse(store, monkeypatch, capsys):
     monkeypatch.setattr(hook_entry, "launch_distill", lambda *_: True)
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(_stop_event(store))))
-    assert hook_entry.main() == hook_entry.EXIT_OK
+    assert hook_entry.main(["--harness", "codex"]) == hook_entry.EXIT_OK
     assert capsys.readouterr().out == ""
     assert len(sessions.read(store.layout, "s")) == len(SEGMENTS)
 
