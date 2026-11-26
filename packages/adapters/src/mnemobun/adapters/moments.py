@@ -6,19 +6,12 @@ MOMENT_INJECT = "inject"
 MOMENT_PAUSE = "pause"
 MOMENT_EVICT = "evict"
 
-HOST_CLAUDE_CODE = "claude-code"
 HOST_CODEX = "codex"
 HOST_MUSE_CODE = "muse-code"
 HOST_HERMES = "hermes"
 HOST_GENERIC = "generic"
 
 DIALECTS: dict[str, dict[str, str]] = {
-    HOST_CLAUDE_CODE: {
-        "SessionStart": MOMENT_INJECT,
-        "Stop": MOMENT_PAUSE,
-        "SessionEnd": MOMENT_PAUSE,
-        "PreCompact": MOMENT_EVICT,
-    },
     HOST_CODEX: {
         "SessionStart": MOMENT_INJECT,
         "Stop": MOMENT_PAUSE,

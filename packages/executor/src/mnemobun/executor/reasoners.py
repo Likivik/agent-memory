@@ -40,7 +40,6 @@ WRITE_SESSION_MODULE = "mnemobun.mcp.write_session"
 MANAGE_SESSION_MODULE = "mnemobun.mcp.manage_session"
 MANAGE_TOOL_SERVER_NAME = "memory_review"
 MALFORMED_ARGUMENTS = "tool arguments must be a JSON object"
-CLAUDE_BUNDLED_ENV = "CLAUDE_CODE_EXECPATH"
 
 
 @dataclasses.dataclass

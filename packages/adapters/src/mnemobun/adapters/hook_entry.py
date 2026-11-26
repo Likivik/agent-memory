@@ -37,15 +37,15 @@ EXIT_OK = 0
 LOG_FILENAME = "hooks.log"
 KEY_SESSION = "session_id"
 KEY_TRANSCRIPT = "transcript_path"
-KEY_EVENT_CLAUDE = "hook_event_name"
+KEY_EVENT_HOOK = "hook_event_name"
 KEY_EVENT_GENERIC = "event"
 KEY_HOST = "host"
 KEY_ITEMS = "items"
 KEY_MUSE_DATA_HOME = "muse_data_home"
 KEY_MUSE_SETTINGS = "muse_settings"
-CLAUDE_OUTPUT_KEY = "hookSpecificOutput"
-CLAUDE_CONTEXT_KEY = "additionalContext"
-CLAUDE_EVENT_OUTPUT_KEY = "hookEventName"
+HOOK_OUTPUT_KEY = "hookSpecificOutput"
+HOOK_CONTEXT_KEY = "additionalContext"
+HOOK_EVENT_OUTPUT_KEY = "hookEventName"
 KEY_DISTILL = "distill"
 DISTILL_LAUNCHED = "launched"
 DISTILL_SKIPPED = "skipped"
@@ -56,7 +56,7 @@ MUSE_SETTINGS_FLAG = "--muse-settings"
 EXECUTOR_BINARY = "mnemobun"
 AUTO_DREAM_FLAG = "--auto-dream"
 JOB_FLAG = "--job"
-PRINTED_KEYS = (CLAUDE_OUTPUT_KEY, CLAUDE_CONTEXT_KEY)
+PRINTED_KEYS = (HOOK_OUTPUT_KEY, HOOK_CONTEXT_KEY)
 TRIGGER_SOURCE_HOOK = "hook"
 
 Launcher = Callable[[Store, str, str], bool]
@@ -76,7 +76,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     store: Store | None = None
     try:
         parser = argparse.ArgumentParser(prog="mem-hook")
-        parser.add_argument(HOST_FLAG, default=moments.HOST_CLAUDE_CODE)
+        parser.add_argument(HOST_FLAG, default="")
         parser.add_argument(STORE_FLAG, default="")
         parser.add_argument(MUSE_DATA_HOME_FLAG, default="")
         parser.add_argument(MUSE_SETTINGS_FLAG, default="")
@@ -110,8 +110,10 @@ def handle(
     dream_launch: DreamLauncher | None = None,
     drain_launch: DrainLauncher | None = None,
 ) -> dict[str, object]:
-    host = str(event.get(KEY_HOST) or moments.HOST_CLAUDE_CODE)
-    raw_event = str(event.get(KEY_EVENT_CLAUDE) or event.get(KEY_EVENT_GENERIC) or "")
+    host = str(event.get(KEY_HOST) or "")
+    if not host:
+        raise ValueError("a hook event must name its harness")
+    raw_event = str(event.get(KEY_EVENT_HOOK) or event.get(KEY_EVENT_GENERIC) or "")
     moment = moments.moment_for(host, raw_event)
     if moment == moments.MOMENT_INJECT:
         response = _inject(store, host)
@@ -138,24 +140,9 @@ def _offer_drain(store: Store, drain_launch: DrainLauncher | None) -> None:
 
 
 def _inject(store: Store, host: str) -> dict[str, object]:
-    context = ""  # mnemobun injects nothing at session start; rules ride the pinned block
-    if not context:
-        return {}
-    if host in (moments.HOST_CLAUDE_CODE, moments.HOST_CODEX):
-        return {
-            CLAUDE_OUTPUT_KEY: {
-                CLAUDE_EVENT_OUTPUT_KEY: "SessionStart",
-                CLAUDE_CONTEXT_KEY: context,
-            }
-        }
-    if host == moments.HOST_MUSE_CODE:
-        return {
-            CLAUDE_OUTPUT_KEY: {
-                CLAUDE_EVENT_OUTPUT_KEY: "SessionStart",
-                CLAUDE_CONTEXT_KEY: context,
-            }
-        }
-    return {CLAUDE_CONTEXT_KEY: context}
+    """Nothing is injected at session start: rules ride the pinned block, not a hook payload."""
+    return {}
+
 
 
 def _boundary(

@@ -86,7 +86,7 @@ def test_hook_injects_nothing_at_session_start(seeded):
     response = hook_entry.handle(
         seeded, {"host": moments.HOST_CODEX, "hook_event_name": "SessionStart"}
     )
-    assert hook_entry.CLAUDE_CONTEXT_KEY not in str(response)
+    assert hook_entry.HOOK_CONTEXT_KEY not in str(response)
 
 
 @pytest.mark.parametrize(
@@ -120,7 +120,7 @@ def test_every_host_hook_archives_the_increment_and_launches_the_same_executor_c
     assert response["pending"] == len(SEGMENTS)
     assert response[hook_entry.KEY_DISTILL] == hook_entry.DISTILL_LAUNCHED
     assert launches == [(store.root, host, host)]
-    assert hook_entry.CLAUDE_CONTEXT_KEY not in response
+    assert hook_entry.HOOK_CONTEXT_KEY not in response
     assert len(sessions.read(store.layout, host)) == len(SEGMENTS)
 
 

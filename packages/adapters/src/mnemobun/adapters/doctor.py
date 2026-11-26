@@ -502,16 +502,9 @@ def _mcp_check(
             and str(store_root) in rendered
         )
         return Check("MCP_OK" if ok else "MCP_INVALID", ok, "Codex MCP server configuration")
-    if host == moments.HOST_CLAUDE_CODE:
-        key = "mcpServers"
-        servers = _mcp_servers(target, key)
-        if servers is None:
-            candidate = configured.get(key) if isinstance(configured, dict) else None
-            servers = candidate if isinstance(candidate, dict) else None
-    else:
-        key = "mcp_servers"
-        candidate = configured.get(key) if isinstance(configured, dict) else None
-        servers = candidate if isinstance(candidate, dict) else None
+    key = "mcp_servers"
+    candidate = configured.get(key) if isinstance(configured, dict) else None
+    servers = candidate if isinstance(candidate, dict) else None
     server = servers.get(setup.MCP_SERVER) if isinstance(servers, dict) else None
     # ensure_ascii=False keeps a non-ASCII path readable, so a host whose
     # install path is not plain ASCII is still matched.
@@ -528,7 +521,7 @@ def _mcp_servers(target: pathlib.Path, key: str) -> dict[str, object] | None:
     instead of in the home directory. Look in both places before reporting the
     server as absent.
     """
-    for path in (target.parent / "mcp.json", target.parent.parent / ".claude.json"):
+    for path in (target.parent / "mcp.json",):
         try:
             found = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):

@@ -20,7 +20,6 @@ from . import moments
 HOOK_COMMAND = "mem-hook"
 WINDOWS_PLAIN_WORD = re.compile(r"[\w./:+=@-]+")
 HOST_FLAG = "--host"
-CLAUDE_SETTINGS = pathlib.Path("~/.claude/settings.json")
 CODEX_SETTINGS = pathlib.Path("~/.codex/hooks.json")
 MUSE_SETTINGS = pathlib.Path("muse/settings.json")
 HOOKS_KEY = "hooks"
@@ -30,7 +29,6 @@ SKILL_PATH = pathlib.Path("skills") / "mnemobun" / "SKILL.md"
 SETTINGS_INDENT = 2
 
 SETTINGS_FOR = {
-    moments.HOST_CLAUDE_CODE: CLAUDE_SETTINGS,
     moments.HOST_CODEX: CODEX_SETTINGS,
     moments.HOST_MUSE_CODE: MUSE_SETTINGS,
 }
@@ -42,7 +40,6 @@ STORE_FLAG = "--store"
 MCP_SERVER = "mnemobun"
 MCP_COMMAND = "mem-mcp"
 BINARIES = {
-    moments.HOST_CLAUDE_CODE: "claude",
     moments.HOST_CODEX: "codex",
     moments.HOST_MUSE_CODE: "muse",
 }
@@ -217,15 +214,6 @@ def _merge_json_mcp(
 def _install_external_mcp(
     host: str, target: pathlib.Path, store_root: pathlib.Path | None
 ) -> None:
-    if host == moments.HOST_CLAUDE_CODE:
-        home = target.parent.parent
-        claude_config = home / ".claude.json"
-        settings = _read_settings(claude_config)
-        _merge_json_mcp(settings, host, store_root)
-        rendered = json.dumps(settings, indent=SETTINGS_INDENT, sort_keys=True) + "\n"
-        if not claude_config.exists() or claude_config.read_text(encoding="utf-8") != rendered:
-            _atomic_write(claude_config, rendered)
-        return
     if host != moments.HOST_CODEX:
         return
     binary = shutil.which(BINARIES[host])

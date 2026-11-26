@@ -23,16 +23,6 @@ def test_a_server_beside_the_settings_is_found(tmp_path):
     assert "mnemobun" in servers
 
 
-def test_the_home_file_is_still_found(tmp_path):
-    settings = tmp_path / "home" / "settings.json"
-    _write(settings, {"hooks": {}})
-    _write(
-        tmp_path / ".claude.json",
-        {"mcpServers": {"mnemobun": {"command": "/opt/mem-mcp"}}},
-    )
-    servers = doctor._mcp_servers(settings, "mcpServers")
-    assert servers is not None
-    assert "mnemobun" in servers
 
 
 def test_no_configuration_anywhere_is_not_a_crash(tmp_path):

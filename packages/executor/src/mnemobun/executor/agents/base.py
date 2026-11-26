@@ -36,7 +36,6 @@ HOST_CODEX = "codex"
 HOST_HERMES = "hermes"
 HOST_MUSE_CODE = "muse-code"
 
-DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 BINARIES = {
     HOST_CODEX: ("codex", "gpt-5.6-sol"),
     HOST_HERMES: ("hermes", "google/gemini-3.7-flash"),
@@ -131,7 +130,7 @@ class ToolServer:
 class HostSpec:
     name: str
     binary: str
-    model: str = DEFAULT_MODEL
+    model: str = ""  # no model is chosen for you: a host spec must name one
     timeout_seconds: float = 300.0
     attempts: int = 3
     retry_backoff_seconds: float = 5.0

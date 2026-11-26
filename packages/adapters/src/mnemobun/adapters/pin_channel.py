@@ -55,13 +55,6 @@ REGISTRY: dict[str, PinChannel] = {
         refresh=REFRESH_PER_TURN,
         max_bytes=8192,
     ),
-    "claude-code": PinChannel(
-        host="claude-code",
-        surface=SURFACE_SYSTEM_PROMPT_FILE,
-        preserved=True,
-        refresh=REFRESH_PER_RUN,
-        max_bytes=32768,
-    ),
     "codex": PinChannel(
         host="codex",
         surface=SURFACE_INSTRUCTIONS_FILE,
@@ -173,7 +166,7 @@ def sync(store, host: str, target: pathlib.Path) -> Delivery:
     return deliver(channel_, block, target=target, state_dir=store.layout.state_dir)
 
 
-HOST_ALIASES = {"muse-code": "muse", "claude": "claude-code"}
+HOST_ALIASES = {"muse-code": "muse"}
 
 
 def host_name(spec_name: str) -> str:
