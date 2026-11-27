@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
+import os
 import sys
 from pathlib import Path
 
@@ -50,7 +52,14 @@ except Exception:  # pragma: no cover
     _HOST_BASE = object  # type: ignore[assignment]
 
 DEFAULT_STORE_DIRNAME = "mnemobun-store"
-CONFIG_FILENAME = "mnemobun-plugin.json"
+MODEL_LABEL_SEP = " \u00b7 "  # display only: "Provider - model"
+# The host's display reader (web_server_memory._read_memory_provider_existing_values)
+# looks at $HERMES_HOME/<name>/config.json - the mirror lives exactly there.
+CONFIG_DIRNAME = "mnemobun"
+CONFIG_FILENAME = "config.json"
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class AgentMemoryHermesProvider(_HOST_BASE):
@@ -69,23 +78,12 @@ class AgentMemoryHermesProvider(_HOST_BASE):
         self._unavailable: str | None = None
         self._last_recall_count = 0
 
-    # -- config (D2: config field store_path; env honoured, config wins) ----
-    def _config_path(self, hermes_home: str | None) -> Path:
-        base = Path(hermes_home) if hermes_home else _default_home()
-        return base / CONFIG_FILENAME
-
+    # -- store path (env or the default dir; the store records everything else) --
     def _resolve_store_path(self, hermes_home: str | None) -> Path:
-        import os
 
         env = os.environ.get("MNEMOBUN_STORE")
         if env:
             return Path(env)
-        try:
-            raw = json.loads(self._config_path(hermes_home).read_text(encoding="utf-8"))
-            if raw.get("store_path"):
-                return Path(str(raw["store_path"]))
-        except Exception:
-            pass
         base = Path(hermes_home) if hermes_home else _default_home()
         return base / DEFAULT_STORE_DIRNAME
 
@@ -109,9 +107,9 @@ class AgentMemoryHermesProvider(_HOST_BASE):
         self._hermes_home = kwargs.get("hermes_home")  # type: ignore[assignment]
         return self.is_available()
 
-    def _ensure_store(self) -> bool:
+    def _ensure_store(self, hermes_home: str | None = None) -> bool:
         try:
-            return self._ensure_store_inner()
+            return self._ensure_store_inner(hermes_home)
         except Exception as error:
             import logging
 
@@ -123,16 +121,18 @@ class AgentMemoryHermesProvider(_HOST_BASE):
                 return False
             raise
 
-    def _ensure_store_inner(self) -> bool:
+    def _ensure_store_inner(self, hermes_home: str | None = None) -> bool:
         if self._store is not None:
             return True
-        path = self._resolve_store_path(self._hermes_home)
+        path = self._resolve_store_path(hermes_home or self._hermes_home)
         if not path.exists():
             self._unavailable = f"store not found: {path}"
             return False
         self._store_path = str(path)
         self._store = Store(root=path)
-        self._provider_instance = HermesMemoryProvider(store=self._store, reasoner=None)
+        self._provider_instance = HermesMemoryProvider(
+            store=self._store, reasoner=getattr(self, "_ask", None)
+        )
         return True
 
     def _provider(self) -> HermesMemoryProvider:
@@ -142,11 +142,27 @@ class AgentMemoryHermesProvider(_HOST_BASE):
 
     # -- read side -----------------------------------------------------------
     def system_prompt_block(self) -> str:
-        return (
+        """Tools blurb plus the pinned rules.
+
+        The pinned block rides here because this surface is rebuilt into the system prompt on
+        every turn, and a system message is the only place compaction does not drop (a rule as a
+        memory entry decays +45 points; here it decays 0).
+        """
+        blurb = (
             "Memory is available (mnemobun). Verify claims you rely on with"
             " memory_verify; record durable beliefs as claims (they start"
             " `proposed` and are accepted only after a ruling)."
         )
+        if not self._ensure_store():
+            return blurb
+        try:
+            from mnemobun.core import pinned as pinned_rules
+
+            block = pinned_rules.render(self._provider().store).strip()
+        except Exception as error:  # a broken store must not break the host's prompt
+            _LOGGER.warning("mnemobun: pinned block unavailable: %s", error)
+            return blurb
+        return f"{blurb}\n\n{block}" if block else blurb
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
         if not self._ensure_store():
@@ -196,76 +212,152 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             "store": self._store_path or self._resolve_store_path(self._hermes_home).as_posix(),
         }
 
-    # -- config surface --------------------------------------------------------
+    # -- model suggestions (one read-only probe, cached; never on read) -------
+    # -- model menu (a read-only peek at the host's own picker list) ---------
+    # The panel turns every choice into {value: choice}: labels are display
+    # only, so each choice reads "Provider - model" and save_config strips the
+    # label back to the bare id ctx.llm needs.
+    @staticmethod
+    def _model_menu() -> list[tuple[str, str, str]]:
+        """(label, provider-slug, model-id) from the host picker; nothing is written."""
+        try:
+            from hermes_cli.inventory import (
+                build_model_options_payload,
+                load_picker_context,
+            )
+
+            payload = build_model_options_payload(load_picker_context())
+        except Exception:
+            return []
+        pairs: list[tuple[str, str, str]] = []
+        seen: set[str] = set()
+        for entry in payload.get("providers") or []:
+            slug = str(entry.get("slug") or "").strip()
+            name = str(entry.get("name") or slug).strip()
+            if not slug:
+                continue
+            for model in entry.get("models") or []:
+                value = str(model)
+                label = f"{name}{MODEL_LABEL_SEP}{value}"
+                if label not in seen:
+                    seen.add(label)
+                    pairs.append((label, slug, value))
+        return pairs
+
+    def _labelled_model(self, provider: str, model: str) -> str:
+        """The menu label for a saved pair (falls back to "slug - model")."""
+        if not model:
+            return ""
+        for label, slug, value in self._model_menu():
+            if slug == provider and value == model:
+                return label
+        return f"{provider}{MODEL_LABEL_SEP}{model}" if provider else model
+
+    def _effective(self) -> dict:
+        """Effective settings straight from the store - the panel shows these."""
+        if not self._ensure_store():
+            return {}
+        return effective_settings(self._store)
+
+    def _model_choices(self) -> list[str]:
+        """'' (unset) + labelled menu entries + a saved value the menu lacks."""
+        menu = self._model_menu()
+        choices = [""]
+        for label, _slug, _value in menu:
+            if label not in choices:
+                choices.append(label)
+        effective = self._effective()
+        saved_provider = str(effective.get("provider") or "")
+        saved_model = str(effective.get("model") or "")
+        if saved_model:
+            labelled = self._labelled_model(saved_provider, saved_model)
+            if labelled and labelled not in choices:
+                choices.append(labelled)  # never drop a saved pair the menu lacks
+        return choices
+
     def get_config_schema(self) -> list[dict]:
-        return [
+        effective = self._effective()
+        store_path = str(self._resolve_store_path(self._hermes_home))
+        fields: list[dict] = [
             {
-                "name": "store_path",
-                "type": "string",
-                "description": "Filesystem path of the mnemobun store",
-            },
-            {
-                "name": "model",
-                "type": "string",
+                "key": "model",
+                "type": "text",
                 "description": (
-                    "LLM model for memory work. Never inherited; "
-                    "empty = deterministic-only"
+                    "LLM model for memory work, picked from the host model menu. "
+                    "Never inherited; empty = deterministic-only"
+                ),
+                "placeholder": "unset - deterministic-only, jobs refuse loudly",
+                "default": self._labelled_model(
+                    str(effective.get("provider") or ""), str(effective.get("model") or "")
                 ),
             },
             {
-                "name": "endpoint",
-                "type": "string",
-                "description": "OpenAI-compatible base URL for memory work (required)",
-            },
-            {
-                "name": "key_env",
-                "type": "string",
-                "description": "Env var name holding the endpoint API key (e.g. LITELLM_API_KEY)",
-            },
-            {
-                "name": "distill_model",
-                "type": "string",
-                "description": "Optional override: model for feed/distill",
-            },
-            {
-                "name": "dream_model",
-                "type": "string",
-                "description": "Optional override: model for dream/review",
-            },
-            {
-                "name": "max_calls_per_run",
-                "type": "float",
+                "key": "max_calls_per_run",
+                "type": "number",
                 "description": "Hard cap: LLM calls per run",
+                "default": effective.get("max_calls_per_run", 40.0),
             },
             {
-                "name": "max_tokens_per_day",
-                "type": "float",
+                "key": "max_tokens_per_day",
+                "type": "number",
                 "description": "Hard cap: input tokens per day",
+                "default": effective.get("max_tokens_per_day", 2000000.0),
+            },
+            {
+                "key": "store_path",
+                "type": "text",
+                "description": "Filesystem path of the mnemobun store",
+                "default": store_path,
             },
         ]
+        choices = self._model_choices()
+        if len(choices) > 1:  # a select needs real options; else typing
+            fields[0]["choices"] = choices
+        return fields
 
     def save_config(self, values: dict, hermes_home: str) -> None:
-        path = self._config_path(hermes_home)
-        current: dict = {}
-        with contextlib.suppress(Exception):
-            current = json.loads(path.read_text(encoding="utf-8"))
-        current.update({k: v for k, v in values.items() if k in {"store_path"}})
-        path.write_text(json.dumps(current, indent=2), encoding="utf-8")
-        settings = {k: v for k, v in values.items() if k in SETTINGS_KEYS and v not in (None, "")}
-        if settings and self._ensure_store():
-            apply_settings(self._store, settings, actor="gui")
+        submitted = {
+            key: ("" if value is None else value)
+            for key, value in values.items()
+            if key in SETTINGS_KEYS
+        }
+        if not self._ensure_store(hermes_home):
+            raise ValueError(self._unavailable or "store not found")
+        raw_model = str(submitted.get("model") or "").strip()
+        if raw_model:
+            menu = self._model_menu()
+            if not menu:
+                # fail closed: an unreadable catalogue must never accept free text
+                raise ValueError("model menu unavailable")
+            picked = next(
+                ((slug, value) for label, slug, value in menu if label == raw_model), None
+            )
+            if picked is None:
+                raise ValueError(
+                    "model pair is not offered by any configured provider: "
+                    f"{raw_model!r}"
+                )
+            submitted["provider"], submitted["model"] = picked
+        submitted_path = str(values.get("store_path") or "").strip()
+        resolved = str(self._resolve_store_path(hermes_home))
+        if submitted_path and submitted_path != resolved:
+            raise ValueError(
+                f"store path is fixed at {resolved}; set MNEMOBUN_STORE to move it"
+            )
+        if submitted:
+            apply_settings(self._store, submitted, actor="gui")
 
     def read_config_fields(self, hermes_home: str) -> dict:
-        """Pull: display reads the store (single source), not a cached copy."""
-        fields: dict = {}
-        try:
-            raw = json.loads(self._config_path(hermes_home).read_text(encoding="utf-8"))
-            fields.update({k: v for k, v in raw.items() if k in {"store_path"}})
-        except Exception:
-            pass
-        if self._ensure_store():
-            fields.update(effective_settings(self._store))
-        return fields
+        effective = self._effective()
+        return {
+            "values": {
+                "model": str(effective.get("model") or ""),
+                "max_calls_per_run": effective.get("max_calls_per_run", 40.0),
+                "max_tokens_per_day": effective.get("max_tokens_per_day", 2000000.0),
+                "store_path": str(self._resolve_store_path(hermes_home)),
+            },
+            "placeholders": {},
+        }
 
     def write_config_fields(self, values: dict, hermes_home: str) -> None:
         self.save_config(values, hermes_home)
@@ -288,20 +380,74 @@ class AgentMemoryHermesProvider(_HOST_BASE):
             return None
         return "deterministic sleep ran (proposals queued, none ruled)"
 
+    def feed_tick(self, run) -> str | None:
+        """Called by the registered idle task. Feed when the trigger fires (D4).
+
+        ``run`` is the host's IdleTaskRun (kept for signature parity with
+        ``dream_tick``; feed keeps its own internal watermark).
+        """
+        if not self._ensure_store():
+            return None
+        report = self._provider().feed_tick()
+        if report.get("needs_model"):
+            return None
+        written = int(report.get("written") or 0)
+        if written:
+            return f"feed extracted {written} new record(s)"
+        return None
+
 
 def _default_home() -> Path:
-    import os
 
     return Path(os.environ.get("HERMES_HOME", str(Path.home() / ".hermes")))
 
 
 provider = AgentMemoryHermesProvider()
 
+def _make_plugin_ask(llm):
+    """str->str ask backed by the host's ctx.llm - the recorded pair names the route."""
+    from mnemobun.core.errors import ReasonerUnavailableError
+
+    def ask(prompt: str) -> str:
+        if not provider._ensure_store():
+            raise ReasonerUnavailableError("mnemobun store not found")
+        settings = effective_settings(provider._store)
+        model = str(settings.get("model") or "").strip()
+        slug = str(settings.get("provider") or "").strip()
+        if not model or not slug:  # never silently inherit a route
+            raise ReasonerUnavailableError(
+                "no route configured: record provider and model in the mnemobun panel"
+            )
+        try:
+            result = llm.complete(
+                [{"role": "user", "content": prompt}],
+                provider=slug,
+                model=model,
+                purpose="mnemobun",
+            )
+        except Exception as error:
+            raise ReasonerUnavailableError(
+                f"plugin LLM failed for {slug}{MODEL_LABEL_SEP}{model}: {error}"
+            ) from error
+        text = getattr(result, "text", None) or getattr(result, "content", None) or result
+        text = str(text)
+        if not text.strip():
+            raise ReasonerUnavailableError(
+                f"plugin LLM returned an empty reply for {model!r}"
+            )
+        return text
+
+    return ask
+
+
+
 
 def register(ctx) -> None:
     """Loader hook: the released loader calls ``register(ctx)`` before the
     subclass scan and passes a real PluginContext — this is the only way a
     memory plugin reaches host surfaces like ``register_idle_task`` (HP4/D4)."""
+    with contextlib.suppress(Exception):
+        provider._ask = _make_plugin_ask(ctx.llm)  # host-owned routing/auth/keys
     with contextlib.suppress(Exception):
         ctx.register_memory_provider(provider)  # else loader falls through to the subclass scan
     try:

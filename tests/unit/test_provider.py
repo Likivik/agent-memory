@@ -23,11 +23,9 @@ def test_prefetch_respects_byte_budget_and_top_k(store):
     for index in range(12):
         _claim(store, f"claim-{index}", f"Claim number {index} about deploying things")
     provider = _provider(store)
-    block = provider.prefetch("")
-    lines = [line for line in block.splitlines() if line.startswith("- ")]
-    assert len(lines) <= store.config.provider.prefetch_top_k
+    block = provider.prefetch("deploying things")
     assert len(block.encode("utf-8")) <= store.config.provider.prefetch_budget_bytes
-    assert block  # the floor is filled
+    assert block  # recall still fills the budget
 
 
 def test_prefetch_with_query_prefers_recall_hits(store):
@@ -92,7 +90,7 @@ def test_run_sleep_not_due_skips(store):
 
 def test_run_sleep_accepts_only_via_menu_with_stub_reasoner(store, clock, tmp_path, config):
     config.manage.trigger_min_sessions = 1
-    second = type(store)(tmp_path / "sleep", config=config, clock=clock, agent="t")
+    second = type(store)(tmp_path / "sleep", config=config, clock=clock, writer="t")
     second.init()
     second.record(abstract="A thing worth keeping", type="fact", body="x", name="keep-me")
     second.record(abstract="A thing worth keeping", type="fact", body="x", name="keep-me-2")
@@ -108,4 +106,4 @@ def test_hermes_moments_mapping():
     assert moments.moment_for("hermes", "SessionStart") == moments.MOMENT_INJECT
     assert moments.moment_for("hermes", "PreCompact") == moments.MOMENT_EVICT
     assert moments.moment_for("hermes", "Stop") == moments.MOMENT_PAUSE
-    assert "hermes" in moments.hosts()
+    assert "hermes" in moments.harnesses()

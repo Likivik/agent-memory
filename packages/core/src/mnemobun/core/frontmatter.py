@@ -62,7 +62,10 @@ def _parse_mapping(lines: list[str]) -> dict[str, object]:
             pending_key = key
             continue
         pending_key = None
-        fields[key] = _parse_scalar(value)
+        try:
+            fields[key] = _parse_scalar(value)
+        except ValueError as error:
+            raise ValueError(f"{key}: {error}") from error
     return {key: value for key, value in fields.items()}
 
 
@@ -96,11 +99,9 @@ def _parse_scalar(value: str) -> object:
 
 def _split_items(inner: str) -> list[str]:
     items = _split_items_with(inner, escapes=True)
-    if items is not None and all(_is_whole_item(item) for item in items):
-        return items
-    # Earlier renders did not escape backslashes, so a legacy item such as "C:\" reads
-    # as an unterminated quote here; fall back to the escape-unaware split they used.
-    return _split_items_with(inner, escapes=False) or []
+    if items is None or not all(_is_whole_item(item) for item in items):
+        raise ValueError(f"malformed list value: {inner!r}")
+    return items
 
 
 def _is_whole_item(item: str) -> bool:

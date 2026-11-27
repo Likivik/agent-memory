@@ -34,7 +34,7 @@ STATUS_SUCCEEDED = "succeeded"
 @dataclasses.dataclass(frozen=True)
 class DreamClaim:
     id: str
-    host: str
+    harness: str
     sessions: tuple[str, ...]
     attempt: int
     trigger_source: str = ""
@@ -72,7 +72,7 @@ def write_is_settled(store: Store) -> bool:
 
 def claim_due(
     store: Store,
-    host: str,
+    harness: str,
     *,
     trigger_source: str = "hook",
     reasoner: str = "endpoint",
@@ -127,7 +127,7 @@ def claim_due(
                 "version": STATE_VERSION,
                 "status": STATUS_RUNNING,
                 "claim_id": claim_id,
-                "host": host,
+                "harness": harness,
                 "trigger_source": trigger_source,
                 "reasoner": reasoner,
                 "model": model,
@@ -142,7 +142,7 @@ def claim_due(
         return ClaimResult(
             DreamClaim(
                 claim_id,
-                host,
+                harness,
                 sessions,
                 attempt,
                 trigger_source=trigger_source,
@@ -166,7 +166,7 @@ def current_claim(store: Store, claim_id: str) -> DreamClaim | None:
             return None
         return DreamClaim(
             id=claim_id,
-            host=str(state.get("host") or ""),
+            harness=str(state.get("harness") or ""),
             sessions=tuple(_strings(state.get("sessions"))),
             attempt=_integer(state.get("attempt"), 1),
             trigger_source=str(state.get("trigger_source") or ""),
@@ -230,7 +230,7 @@ def record_manual_success(store: Store, report: str) -> None:
                 "version": STATE_VERSION,
                 "status": STATUS_SUCCEEDED,
                 "claim_id": "",
-                "host": "manual",
+                "harness": "manual",
                 "trigger_source": "manual",
                 "reasoner": "",
                 "model": "",
@@ -304,7 +304,7 @@ def _empty() -> dict[str, object]:
         "version": STATE_VERSION,
         "status": STATUS_IDLE,
         "claim_id": "",
-        "host": "",
+        "harness": "",
         "trigger_source": "",
         "reasoner": "",
         "model": "",

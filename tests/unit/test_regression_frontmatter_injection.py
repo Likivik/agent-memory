@@ -1,7 +1,7 @@
 """A line break in a rendered field would become a second frontmatter line on the next read.
 
-The dialect is line-based: `author: "evil` followed by `superseded_by: real-note"` parses
-back as `author='"evil'` plus a `superseded_by` of `real-note"`. The later key wins, so an
+The dialect is line-based: `writer: "evil` followed by `superseded_by: real-note"` parses
+back as `writer='"evil'` plus a `superseded_by` of `real-note"`. The later key wins, so an
 agent identity or a batch payload could silently mark a memory as superseded — or set
 `invalid_at` and retire it.
 
@@ -20,18 +20,18 @@ def test_a_newline_in_the_author_never_reaches_the_file(store):
             abstract="ok",
             type="fact",
             body="body",
-            author="evil\nsuperseded_by: real-note",
+            writer="evil\nsuperseded_by: real-note",
         )
 
-    assert any(error.field == "author" for error in rejected.value.errors)
+    assert any(error.field == "writer" for error in rejected.value.errors)
     assert store.find("poisoned") is None
 
 
 def test_a_carriage_return_is_refused_too(store):
     with pytest.raises(ValidationError) as rejected:
-        store.record(name="poisoned", abstract="ok", type="fact", body="b", author="evil\rx")
+        store.record(name="poisoned", abstract="ok", type="fact", body="b", writer="evil\rx")
 
-    assert any(error.field == "author" for error in rejected.value.errors)
+    assert any(error.field == "writer" for error in rejected.value.errors)
     assert store.find("poisoned") is None
 
 
@@ -57,8 +57,8 @@ def test_a_single_line_abstract_is_still_refused(store):
 
 def test_a_normal_record_still_writes_and_round_trips(store):
     written = store.record(
-        name="clean", abstract="ok", type="fact", body="body", author="test-agent"
+        name="clean", abstract="ok", type="fact", body="body", writer="test-agent"
     )
 
-    assert written.author == "test-agent"
-    assert store.read("clean").record.author == "test-agent"
+    assert written.writer == "test-agent"
+    assert store.read("clean").record.writer == "test-agent"

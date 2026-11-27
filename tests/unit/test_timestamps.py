@@ -56,7 +56,7 @@ def test_rendering_a_naive_datetime_is_refused():
 
 def test_a_store_writes_the_same_utc_instant_whatever_offset_its_clock_reports(tmp_path, config):
     local = dt.datetime(2026, 1, 15, 17, 0, tzinfo=TOKYO)
-    store = Store(tmp_path / "store", config=config, clock=FrozenClock(local), agent="test-agent")
+    store = Store(tmp_path / "store", config=config, clock=FrozenClock(local), writer="test-agent")
     store.init()
     written = store.record(abstract="Tea is served at five", type="fact", name="tea")
     assert written.created == written.updated == written.valid_from

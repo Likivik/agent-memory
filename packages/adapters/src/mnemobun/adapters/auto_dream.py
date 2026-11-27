@@ -28,10 +28,10 @@ REASON_MODEL_FLAG = "--reason-model"
 
 def launch(store: Store, *, trigger_source: str = "hook") -> dreaming.ClaimResult:
     """Claim with the configured Dream reasoner and launch its one-shot worker."""
-    reasoner_kind, host, model = _manage_target(store)
+    reasoner_kind, harness, model = _manage_target(store)
     result = dreaming.claim_due(
         store,
-        host,
+        harness,
         trigger_source=trigger_source,
         reasoner=reasoner_kind,
         model=model,
@@ -71,14 +71,14 @@ def run_due(
     reasoner: Reasoner | None,
     *,
     reasoner_kind: str,
-    host: str = "",
+    harness: str = "",
     model: str = "",
     trigger_source: str,
 ) -> dict[str, object]:
     """Run the same claimed Dream pipeline used by a detached Hook worker."""
     result = dreaming.claim_due(
         store,
-        host,
+        harness,
         trigger_source=trigger_source,
         reasoner=reasoner_kind,
         model=model,
@@ -149,8 +149,11 @@ def _manage_target(store: Store) -> tuple[str, str, str]:
     """Resolve the configured Dream target without borrowing the Write source Host."""
     executor = store.config.executor
     manage = executor.manage
+    from mnemobun.core.config import REASONER_DRIVERS
+
     reasoner = manage.reasoner or executor.reasoner
-    return reasoner, "", manage.model or executor.model
+    driver = reasoner if reasoner in REASONER_DRIVERS else ""
+    return reasoner, driver, executor.model
 
 
 def _reasoner_diagnostic(kind: str, model: str) -> dict[str, str]:

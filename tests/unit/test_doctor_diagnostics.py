@@ -8,7 +8,9 @@ from mnemobun.core.store import Store
 
 
 def _store(tmp_path):
-    store = Store(tmp_path / "store", config=Config.default(), agent="doctor-test")
+    config = Config.default()
+    config.executor.reasoner = "codex"  # no production default exists; doctor needs one named
+    store = Store(tmp_path / "store", config=config, writer="doctor-test")
     store.init()
     return store
 
@@ -17,56 +19,23 @@ def _details(checks) -> str:
     return " | ".join(f"{check.code}: {check.detail}" for check in checks)
 
 
-def test_the_reasoner_check_names_an_explicit_endpoint(tmp_path):
+def test_the_reasoner_check_names_the_host(tmp_path):
     store = _store(tmp_path)
-    store.config.executor.model = "gemini-test"
-    store.config.executor.endpoint = "https://models.example/v1"
 
-    checks = doctor._reasoner_checks(store, "", {"GEMINI_API_KEY": "user-key"})
+    checks = doctor._reasoner_checks(store, "", {})
 
-    assert "explicit model endpoint" in _details(checks)
     assert all(check.ok for check in checks)
+    assert "codex CLI" in _details(checks)
 
 
-def test_the_reasoner_check_refuses_a_non_endpoint_reasoner(tmp_path):
+def test_the_reasoner_check_refuses_a_non_host_reasoner(tmp_path):
     store = _store(tmp_path)
-    store.config.executor.reasoner = "host"
-    store.config.executor.model = "m"
+    store.config.executor.reasoner = "endpoint"
 
     checks = doctor._reasoner_checks(store, "", {})
 
     assert any(not check.ok for check in checks)
     assert "unsupported reasoner" in _details(checks)
-
-
-def test_the_reasoner_check_reports_missing_credentials(tmp_path):
-    store = _store(tmp_path)
-
-    checks = doctor._reasoner_checks(store, "", {})
-
-    assert any(not check.ok for check in checks)
-    assert "requires a user-owned endpoint and API key" in _details(checks)
-
-
-def test_the_reasoner_check_honors_the_configured_key_env(tmp_path):
-    store = _store(tmp_path)
-    store.config.executor.endpoint = "https://models.example/v1"
-    store.config.executor.key_env = "MY_OWN_KEY"
-
-    checks = doctor._reasoner_checks(store, "", {"MY_OWN_KEY": "user-key"})
-
-    assert all(check.ok for check in checks)
-
-
-def test_the_reasoner_check_accepts_a_vertex_project(tmp_path):
-    store = _store(tmp_path)
-
-    checks = doctor._reasoner_checks(
-        store, "", {"GOOGLE_CLOUD_PROJECT": "user-project"}
-    )
-
-    assert all(check.ok for check in checks)
-    assert "Vertex AI project user-project" in _details(checks)
 
 
 def test_store_checks_confirm_the_store_is_initialized_and_writable(tmp_path):
@@ -76,7 +45,8 @@ def test_store_checks_confirm_the_store_is_initialized_and_writable(tmp_path):
 
     codes = {check.code for check in checks}
     assert "STORE_INITIALIZED" in codes
-    assert all(check.ok for check in checks)
+    assert all(check.ok for check in checks if check.required)
+    assert {"CAPTURE_HEALTHY", "ROUTE_UNSET"} <= codes  # advisory, not required
 
 
 def test_smoke_reports_success_with_a_working_reasoner(tmp_path, monkeypatch):
@@ -98,4 +68,42 @@ def test_smoke_reports_failure_instead_of_raising_when_unconfigured(tmp_path):
     report = doctor.smoke(store)
 
     assert report["answered"] is False
-    assert "no model configured" in str(report["reason"])
+
+
+def test_pinned_block_over_budget_is_reported(tmp_path):
+    from mnemobun.core import pinned
+
+    store = _store(tmp_path)
+    store.config.recall.pinned_max_bytes = 60
+    store.record(name="rule-one", abstract="a rule long enough to overflow the pinned block",
+                 type="claim")
+    pinned.set_pinned(store, "rule-one", pinned=True)
+
+    codes = {check.code for check in doctor._store_checks(store)}
+
+    assert "PINNED_BUDGET" in codes
+
+
+def test_stale_pin_is_reported(tmp_path):
+    from mnemobun.core import pinned
+    from mnemobun.core.standing import set_standing
+
+    store = _store(tmp_path)
+    store.record(name="rule-one", abstract="always ask first", type="claim")
+    pinned.set_pinned(store, "rule-one", pinned=True)
+    set_standing(store, "rule-one", "contested", cause="test", force=True)
+
+    codes = {check.code for check in doctor._store_checks(store)}
+
+    assert "PINNED_STANDING" in codes
+
+
+def test_unreadable_roster_does_not_kill_the_block(tmp_path):
+    from mnemobun.core import pinned
+
+    store = _store(tmp_path)
+    store.record(name="rule-one", abstract="always ask first", type="claim")
+    pinned.set_pinned(store, "rule-one", pinned=True)
+    (store.layout.state_dir / "pins.json").write_text("{not json")
+
+    assert "always ask first" in pinned.render(store)

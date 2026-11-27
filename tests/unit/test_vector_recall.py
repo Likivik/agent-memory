@@ -39,7 +39,7 @@ class StubEmbedder:
 def _vector_store(tmp_path, config, clock):
     config.index.vector_enabled = True
     store = Store(
-        tmp_path / "vstore", config=config, clock=clock, agent="t",
+        tmp_path / "vstore", config=config, clock=clock, writer="t",
         embedder=StubEmbedder(),
     )
     store.init()
@@ -63,7 +63,7 @@ def test_vector_recall_finds_paraphrase_bm25_misses(tmp_path, config, clock):
 
 def test_vector_disabled_keeps_bm25_only(tmp_path, config, clock):
     config.index.vector_enabled = False
-    store = Store(tmp_path / "plain", config=config, clock=clock, agent="t")
+    store = Store(tmp_path / "plain", config=config, clock=clock, writer="t")
     store.init()
     store.record(
         abstract="Deploys ship every Tuesday afternoon",
@@ -97,5 +97,5 @@ def test_vector_enabled_without_dependency_fails_loud(tmp_path, config, clock, m
     monkeypatch.setattr(store_module, "create_embedder", broken)
     config.index.vector_enabled = True
     with pytest.raises(RuntimeError) as excinfo:
-        Store(tmp_path / "loud", config=config, clock=clock, agent="t")
+        Store(tmp_path / "loud", config=config, clock=clock, writer="t")
     assert "mnemobun-core[vector]" in str(excinfo.value)

@@ -10,8 +10,8 @@ A shared memory store on disk. Markdown files are the truth; `mem` is the way in
 
 ## Host setup
 
-Use the deterministic installer for the active host: `mem setup --host claude-code`,
-`mem setup --host codex`, or `mem setup --host muse-code --provider openrouter`. If setup
+Use the deterministic installer for the active harness: `mem setup --harness <harness>`,
+`mem setup --harness codex`, or `mem setup --harness muse-code --provider openrouter`. If setup
 reports FAILED, run `mem doctor --host <host>` with the same provider options. Do not edit
 mnemobun-managed hooks, Store paths, provider routing, or MCP entries yourself. Ask the user
 for a credential only when doctor reports a credential-missing code; ask before replacing a

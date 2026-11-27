@@ -16,7 +16,7 @@ class AccessEntry:
     name: str
     query: str
     kind: str
-    agent: str
+    writer: str
 
 
 class AccessLog:
@@ -25,8 +25,8 @@ class AccessLog:
 
     def append(self, entries: list[AccessEntry]) -> None:
         self._connection.executemany(
-            "INSERT INTO access_log(at, name, query, kind, agent) VALUES(?, ?, ?, ?, ?)",
-            [(entry.at, entry.name, entry.query, entry.kind, entry.agent) for entry in entries],
+            "INSERT INTO access_log(at, name, query, kind, writer) VALUES(?, ?, ?, ?, ?)",
+            [(entry.at, entry.name, entry.query, entry.kind, entry.writer) for entry in entries],
         )
 
     def entries(self) -> list[sqlite3.Row]:
@@ -43,6 +43,13 @@ class AccessLog:
                 (since.isoformat(),),
             ).fetchall()
         return {row["name"]: int(row["hits"]) for row in rows}
+
+    def queries_per_name(self) -> dict[str, int]:
+        """Distinct queries that cited each record: a proxy for independent sessions."""
+        rows = self._connection.execute(
+            "SELECT name, COUNT(DISTINCT query) AS queries FROM access_log GROUP BY name"
+        ).fetchall()
+        return {str(row["name"]): int(row["queries"]) for row in rows}
 
     def last_access(self) -> dict[str, str]:
         rows = self._connection.execute(

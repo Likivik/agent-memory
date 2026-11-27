@@ -1,6 +1,6 @@
 """In-process Hermes provider (P3, design doc v1.2 §11 / decisions 4–7).
 
-The provider is the only component that speaks both dialects: it presents the store as the
+The provider is the only component that speaks both sides: it presents the store as the
 Hermes MemoryProvider surface (prefetch / sync_turn / verify) and backs it entirely with
 core calls — no MCP hop, no LLM in the write path. `agent.memory_provider` is the host-side
 base class; it is imported defensively so this package stays installable without Hermes.
@@ -25,7 +25,6 @@ from typing import Any, Protocol, runtime_checkable
 from mnemobun.core.audit import LABEL_ABSTAIN
 from mnemobun.core.audit import verify as audit_verify
 from mnemobun.core.recall import Recall
-from mnemobun.core.record import STANDING_ACCEPTED, STANDING_PROPOSED
 from mnemobun.core.store import Store
 
 PROVIDER_NAME = "mnemobun"
@@ -49,6 +48,15 @@ def _base_class() -> tuple[bool, type | None]:
     except Exception:
         return False, None
     return True, MemoryProvider
+
+
+def _pinned(store, name: str) -> bool:
+    """True when this record is a pinned rule: delivered by the system-prompt channel instead."""
+    try:
+        record = store.find(name)
+    except Exception:
+        return False
+    return str((record.fields or {}).get("pinned", "")).strip().lower() in {"true", "yes", "1"}
 
 
 @dataclasses.dataclass
@@ -100,75 +108,65 @@ class HermesMemoryProvider:
             result["reason"] = model_resolution.NEEDS_MODEL
             return result
         ask = None
-        try:
-            ask = distiller_module.distiller(
-                selection.resolve(self.store.config.executor, "write"), store=self.store
-            )
-        except Exception:
-            ask = None  # decision-only report instead of a dead idle task
+        if self.reasoner is not None:  # host-injected (ctx.llm); None = decision-only
+            try:
+                ask = distiller_module.distiller(
+                    selection.resolve(self.store.config.executor, "write"),
+                    store=self.store,
+                    ask=self.reasoner,
+                )
+            except Exception:
+                ask = None  # decision-only report instead of a dead idle task
         result = feed.run(self.store, ask=ask).as_dict()
         result["model"] = route.label()
         return result
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
+        """Query recall only. Standing rules live in the system-prompt block, not here.
+
+        Rules are stable text; the host re-runs this on every turn, so carrying them here both
+        repeats them and delivers them through the channel compaction eats (a memory entry decays
+        +45 points, a preserved system message decays 0). Events are the raw log, not memory, and
+        pinned claims are excluded because they are already pinned.
+        """
         settings = self.store.config.provider
         budget = settings.prefetch_budget_bytes or INJECTION_FLOOR_BYTES
-        sections = self._claims_block(settings.prefetch_top_k)
-        if query.strip():
-            for hit in Recall(self.store).recall(query, log=False):
-                line = f"- {hit.name}: {hit.abstract}"
-                sections.append(("recall", line))
-        out: list[str] = []
+        if not query.strip():
+            self.last_recall_count = 0
+            return ""
+        lines: list[str] = []
         used = 0
-        for _, line in sections:
-            encoded = line.encode("utf-8")
-            if used + len(encoded) + 1 > budget:
+        for hit in Recall(self.store).recall(query, log=False):
+            if getattr(hit, "type", "") == "event":
+                continue
+            if _pinned(self.store, hit.name):
+                continue
+            line = f"- {hit.name}: {hit.abstract}"
+            size = len(line.encode("utf-8")) + 1
+            if used + size > budget:
                 break
-            out.append(line)
-            used += len(encoded) + 1
-        self.last_recall_count = len(out)
-        return "\n".join(out)
-
-    def _claims_block(self, top_k: int) -> list[tuple[str, str]]:
-        claims = [
-            record
-            for record in self.store.records()
-            if record.type == "claim"
-            and record.standing in (STANDING_ACCEPTED, STANDING_PROPOSED)
-        ]
-        claims.sort(key=lambda record: record.updated, reverse=True)
-        lines = ["Standing claims:"]
-        for record in claims[:top_k]:
-            marker = "" if record.standing == STANDING_ACCEPTED else " (proposed)"
-            lines.append(f"- {record.name}{marker}: {record.abstract}")
-        return [("claims", line) for line in lines]
-
-    # -- write side --------------------------------------------------------
+            lines.append(line)
+            used += size
+        self.last_recall_count = len(lines)
+        return "\n".join(lines)
     def sync_turn(
         self, user_content: str, assistant_content: str, *, session_id: str = ""
-    ) -> None:
-        """Append the raw turn. No extraction: the agent writes claims explicitly."""
-        user = user_content.strip()
-        assistant = assistant_content.strip()
-        if not user and not assistant:
-            return
-        abstract = user[: self.store.config.storage.abstract_max_chars]
-        self.store.record(
-            abstract=abstract,
-            type="event",
-            body=f"USER: {user}\nASSISTANT: {assistant}",
-            name=f"turn-{session_id or 'anon'}-{self.store.clock.stamp().lower()}",
-            provenance=[PROVENANCE_TURN],
+    ) -> dict[str, Any]:
+        """Append the raw turn. Identity and dedupe live in TurnCaptureService."""
+        from mnemobun.executor.capture import TurnCaptureService
+
+        return TurnCaptureService(self.store).capture(
+            user_content, assistant_content, session_id=session_id
         )
 
     # -- audit side --------------------------------------------------------
-    def verify(self, draft: str, query: str, *, agent: str = PROVIDER_NAME) -> dict[str, Any]:
+    def verify(self, draft: str, query: str, *, writer: str = PROVIDER_NAME) -> dict[str, Any]:
         if self.reasoner is None:
-            result = audit_verify(self.store, draft, query, labeler=None, agent=agent)
+            result = audit_verify(self.store, draft, query, labeler=None, writer=writer)
             if result["label"] == LABEL_ABSTAIN and result["reason"] is None:
                 result["reason"] = "no labeler bound"
             return result
-        return audit_verify(self.store, draft, query, labeler=self.reasoner, agent=agent)
+        return audit_verify(self.store, draft, query, labeler=self.reasoner, writer=writer)
 
     # -- sleep / dream wiring (P6) ------------------------------------------
     def sleep_due(self, sessions_since: int) -> bool:

@@ -28,9 +28,24 @@ TOOL_TIMELINE = "memory_timeline"
 TOOL_VERIFY = "memory_verify"
 TOOL_STATS = "memory_stats"
 TOOL_FORGET_SESSION = "memory_forget_session"
+TOOL_PIN = "memory_pin"
+TOOL_UNPIN = "memory_unpin"
 
 
 SCHEMAS: dict[str, dict[str, object]] = {
+    TOOL_PIN: {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "order": {"type": "integer"},
+        },
+        "required": ["name"],
+    },
+    TOOL_UNPIN: {
+        "type": "object",
+        "properties": {"name": {"type": "string"}},
+        "required": ["name"],
+    },
     TOOL_RECALL: {
         "type": "object",
         "properties": {
@@ -182,6 +197,16 @@ DESCRIPTIONS = {
 }
 
 
+DESCRIPTIONS[TOOL_PIN] = (
+    "Promote an existing claim to a standing rule: it is then delivered in the system prompt on "
+    "every turn, where compaction cannot drop it. Refuses a non-claim and a full pinned block."
+)
+DESCRIPTIONS[TOOL_UNPIN] = (
+    "Stop delivering a claim always-on. The claim stays in the store; only its pinned delivery is "
+    "removed."
+)
+
+
 def catalogue() -> list[dict[str, object]]:
     return [
         {"name": name, "description": DESCRIPTIONS[name], "inputSchema": SCHEMAS[name]}
@@ -329,6 +354,23 @@ def _correct(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     }
 
 
+def _pin(store: Store, arguments: dict[str, object]) -> dict[str, object]:
+    """Promote a claim to a standing rule: it then rides the system prompt every turn."""
+    from mnemobun.core.docket import Docket
+
+    order = arguments.get("order")
+    placement = int(str(order)) if order is not None else None
+    result = Docket(store).pin(str(arguments["name"]), order=placement)
+    return {"result": result}
+
+
+def _unpin(store: Store, arguments: dict[str, object]) -> dict[str, object]:
+    """Stop delivering a claim always-on; the claim itself stays in the store."""
+    from mnemobun.core.docket import Docket
+
+    return {"result": Docket(store).unpin(str(arguments["name"]))}
+
+
 def _feedback(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     step = store.config.usage.boost_step
     delta = step if arguments["direction"] == "boost" else -step
@@ -422,10 +464,6 @@ def _verify(store: Store, arguments: dict[str, object]) -> dict[str, object]:
 
 def _setup(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     brain = store.config.executor
-    value = _optional(arguments, "endpoint")
-    if value:
-        brain.reasoner = "endpoint"
-        brain.endpoint = str(value)
     if _optional(arguments, "model"):
         from mnemobun.core.settings import apply_settings
 
@@ -434,7 +472,6 @@ def _setup(store: Store, arguments: dict[str, object]) -> dict[str, object]:
     return {
         "model": brain.model,
         "model_source": brain.model_source,
-        "endpoint": brain.endpoint,
     }
 
 
@@ -472,17 +509,22 @@ def _doctor(store: Store, arguments: dict[str, object]) -> dict[str, object]:
                 if store.config.executor.model
                 else "needs_model"
             ),
-            "endpoint": store.config.executor.endpoint,
         },
     }
     if bool(arguments.get("smoke")):
         from mnemobun.adapters import doctor as doctor_module
 
-        result["smoke"] = doctor_module.smoke(store, host="")
+        harness = store.config.executor.write.reasoner
+        if harness:
+            result["smoke"] = doctor_module.smoke(store, harness=harness)
+        else:
+            result["smoke"] = {"error": "no reasoner configured"}
     return result
 
 
 _HANDLERS = {
+    TOOL_PIN: _pin,
+    TOOL_UNPIN: _unpin,
     TOOL_SETUP: _setup,
     TOOL_DOCTOR: _doctor,
     TOOL_RECALL: _recall,

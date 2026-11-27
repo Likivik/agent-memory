@@ -1,6 +1,6 @@
 """Translate a root Muse session log into the adapter's plain conversation segments.
 
-Muse's append-only envelope is a host implementation detail. This module is the only place
+Muse's append-only envelope is a harness implementation detail. This module is the only place
 that knows it, and deliberately refuses child-session paths so observers and subagents are not
 distilled as independent user conversations.
 """

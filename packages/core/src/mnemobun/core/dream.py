@@ -95,7 +95,7 @@ def _duplicate_key(record: MemoryRecord) -> str:
             "abstract": record.abstract,
             "body": record.body,
             "valid_from": record.valid_from or record.created,
-            "author": record.author,
+            "writer": record.writer,
             "links": record.links,
             "provenance": record.provenance,
         },
@@ -122,6 +122,8 @@ PROPOSAL_SPLIT = reasoning.PROPOSAL_SPLIT
 PROPOSAL_DELETE = reasoning.PROPOSAL_DELETE
 PROPOSAL_ACCEPT_STANDING = reasoning.PROPOSAL_ACCEPT_STANDING
 PROPOSAL_CONFLICT_REVIEW = reasoning.PROPOSAL_CONFLICT_REVIEW
+PROPOSAL_PIN = reasoning.PROPOSAL_PIN
+PROPOSAL_UNPIN = reasoning.PROPOSAL_UNPIN
 CONFLICT_OVERLAP_MIN = 0.5
 NEGATION_CUES = frozenset({
     "not", "never", "no", "cannot", "cant", "dont", "doesnt", "isnt",
@@ -325,13 +327,13 @@ class Dream:
     def _add_cooccurrence_links(self, records: list[MemoryRecord]) -> list[Action]:
         with self._database.connect() as connection:
             rows = connection.execute(
-                "SELECT at, agent, query, name FROM access_log "
+                "SELECT at, writer, query, name FROM access_log "
                 "WHERE query != '' AND kind = 'recall'"
             ).fetchall()
         together: dict[tuple[str, str], int] = {}
         by_query: dict[tuple[str, str, str], set[str]] = {}
         for row in rows:
-            key = (str(row["at"]), str(row["agent"]), str(row["query"]))
+            key = (str(row["at"]), str(row["writer"]), str(row["query"]))
             by_query.setdefault(key, set()).add(str(row["name"]))
         for names in by_query.values():
             for left in names:

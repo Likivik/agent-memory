@@ -22,7 +22,7 @@ from mnemobun.core.watermark import Watermark
 
 
 def _store(tmp_path, name="s"):
-    store = Store(tmp_path / name, config=Config.default(), agent="t")
+    store = Store(tmp_path / name, config=Config.default(), writer="t")
     store.init()
     config = store.config.usage
     config.quiet_seconds = 0.0
@@ -75,7 +75,7 @@ def test_chain_feed_proposes_rules_and_recalls(tmp_path):
     # 1. settings round-trip and the model bridge
     apply_settings(
         store,
-        {"model": "mimo", "endpoint": "https://x.test/v1", "key_env": "K"},
+        {"model": "mimo"},
         actor="gui",
     )
     assert effective_settings(store)["model"] == "mimo"
@@ -180,7 +180,7 @@ def test_newer_store_version_is_a_named_error(tmp_path):
         json.dumps({"schema_version": 99, "writer_version": "9.9.9"})
     )
     with pytest.raises(StoreVersionError):
-        Store(store.root, config=Config.load(store.root), agent="t").init()
+        Store(store.root, config=Config.load(store.root), writer="t").init()
 
 
 def test_unpaired_user_turn_is_carried_not_dropped(tmp_path):
@@ -255,7 +255,7 @@ def test_reopening_the_store_mid_lifecycle_is_consistent(tmp_path):
     db = _state_db(tmp_path, AURORA)
     feed.run(store, state_db=db, ask=_counted(store), now=dt.datetime.now(dt.UTC))
 
-    reopened = Store(store.root, config=Config.load(store.root), agent="t")
+    reopened = Store(store.root, config=Config.load(store.root), writer="t")
     reopened.init()  # handshake runs on every open
     assert len(reopened.records()) == 1
     assert Watermark(reopened.layout).read("s1").distilled > 0

@@ -39,11 +39,11 @@ def test_a_batch_writes_every_record_in_one_call(store):
 def test_a_batch_leaves_the_same_store_as_records_written_one_by_one(tmp_path, config, clock):
     from mnemobun.core.store import Store
 
-    batched = Store(tmp_path / "batched", config=config, clock=clock, agent="t")
+    batched = Store(tmp_path / "batched", config=config, clock=clock, writer="t")
     batched.init()
     batched.record_many(SPECS)
 
-    sequential = Store(tmp_path / "sequential", config=config, clock=clock, agent="t")
+    sequential = Store(tmp_path / "sequential", config=config, clock=clock, writer="t")
     sequential.init()
     for spec in SPECS:
         sequential.record(**spec)
@@ -209,8 +209,6 @@ def test_failed_batches_restore_all_canonical_changes(store, monkeypatch, failur
         for name in ("edited", "predecessor", "last-predecessor")
     ]
     before = {path: path.read_bytes() for path in store.layout.truth_files()}
-    memory_path = store.root / "MEMORY.md"
-    memory_before = memory_path.read_bytes()
     archive_before = {path for path in store.layout.archive.rglob("*") if path.is_file()}
     specs = [
         {
@@ -294,7 +292,6 @@ def test_failed_batches_restore_all_canonical_changes(store, monkeypatch, failur
         store.record_many(specs)
 
     assert {path: path.read_bytes() for path in store.layout.truth_files()} == before
-    assert memory_path.read_bytes() == memory_before
     assert {hit.name for hit in Recall(store).recall("orchid")} == {
         record.name for record in originals
     }
@@ -302,7 +299,6 @@ def test_failed_batches_restore_all_canonical_changes(store, monkeypatch, failur
     archive_after = {path for path in store.layout.archive.rglob("*") if path.is_file()}
     assert archive_before < archive_after
     store.rebuild_index()
-    assert memory_path.read_bytes() == memory_before
     assert {hit.name for hit in Recall(store).recall("orchid")} == {
         record.name for record in originals
     }

@@ -9,12 +9,12 @@ import shutil
 import subprocess
 import tempfile
 
-from agent_memory.core.store import Store
+from mnemobun.core.store import Store
 
 SENTINEL = "muse-sandbox-probe-7f31"
 TIMEOUT_SECONDS = 240
 AUTH_MARKERS = ("missing meta credentials", "muse login", "model api onboarding")
-MUSE_MCP_RECORD_TOOL = "mcp__agent_memory__memory_record"
+MUSE_MCP_RECORD_TOOL = "mcp__mnemobun__memory_record"
 
 
 def _run(

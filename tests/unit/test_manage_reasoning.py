@@ -281,7 +281,8 @@ def test_every_shape_of_empty_reply_is_survivable(seeded, reply):
 def test_rendering_and_parsing_are_inverse_enough_to_round_trip(seeded):
     _twins(seeded)
     proposals = Docket(seeded).proposals()
-    prompt = render(proposals, seeded.records())
+    request = prepare(proposals, seeded.records(), ReviewLimits(8, 24, 120.0, 8000, 32000))
+    prompt = render(request)
     assert all(proposal.id in prompt for proposal in proposals)
     replies = "\n".join(_verdict(proposal.id, "reject") for proposal in proposals)
     assert [verdict.proposal_id for verdict in parse(replies)] == [
@@ -305,7 +306,7 @@ def test_review_request_freezes_scoped_sources_and_their_hashes(seeded):
     assert {source.name for proposal in request.proposals for source in proposal.sources} <= {
         target for proposal in proposals for target in proposal.targets
     }
-    assert render(request) == render(proposals, seeded.records())
+    assert all(source.name in render(request) for source in request.sources)
 
 
 def test_text_and_native_expose_distinct_temporal_semantics_for_supersede(store, clock):

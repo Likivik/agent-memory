@@ -2,7 +2,7 @@
 
 One extraction for every host (ADR-002 as amended). What is sent and what the reply may do
 are decided in the core; this module only picks the pipe the text travels through. A host
-whose dialect has an MCP posture runs as a tool-use agent over the Write toolkit; the rest
+whose transport has an MCP posture runs as a tool-use agent over the Write toolkit; the rest
 keep the text protocol.
 """
 
@@ -11,16 +11,9 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 
-from mnemobun.core.config import (
-    REASONER_ENDPOINT,
-    TOOL_MODE_TEXT,
-    ExecutorConfig,
-)
+from mnemobun.core.config import ExecutorConfig
 from mnemobun.core.errors import ReasonerUnavailableError
 from mnemobun.core.store import Store
-
-from .credentials import VertexCredentials
-from .reasoners import EndpointReasoner, EndpointTextReasoner
 
 
 class CountedAsk:
@@ -51,32 +44,19 @@ class CountedAsk:
 
 
 def distiller(
-    config: ExecutorConfig, *, store: Store | None = None
-) -> EndpointReasoner | EndpointTextReasoner | CountedAsk:
-    if config.reasoner not in (REASONER_ENDPOINT,):
+    config: ExecutorConfig,
+    *,
+    store: Store | None = None,
+    ask: Callable[[str], str] | None = None,
+) -> Callable[[str], str]:
+    """The counted ask for memory jobs: the caller's reasoner, never config-built.
+
+    The host CLI supplies a ``DriverReasoner``; the Hermes plugin supplies its
+    ``ctx.llm`` adapter. Nothing here reaches the network on its own.
+    """
+    if ask is None:
         raise ReasonerUnavailableError(
-            f"unsupported reasoner {config.reasoner!r}: memory jobs run one endpoint "
-            "completion; configure one: mnemobun setup --endpoint <url> "
-            "--key-env <env> --model <m>"
+            "no reasoner configured: supply a driver reasoner or the plugin LLM "
+            f"(executor reasoner {config.reasoner!r})"
         )
-    if not config.model.strip():  # no silent model selection
-        raise ReasonerUnavailableError(
-            "no model configured: record memory settings (model, endpoint, key_env) "
-            "via mnemobun setup or memory_setup"
-        )
-    if config.reasoner == REASONER_ENDPOINT:
-        endpoint = EndpointReasoner(
-            model=config.model,
-            timeout_seconds=config.timeout_seconds,
-            credentials=VertexCredentials(project=config.project, location=config.location),
-            base_url=config.endpoint,
-            key_env=config.key_env,
-            attempts=config.attempts,
-        )
-        reasoner: EndpointReasoner | EndpointTextReasoner
-        if config.tool_mode == TOOL_MODE_TEXT:
-            reasoner = EndpointTextReasoner(endpoint)
-        else:
-            reasoner = endpoint
-        return CountedAsk(reasoner, store) if store is not None else reasoner
-    raise ReasonerUnavailableError(f"unsupported reasoner {config.reasoner!r}")
+    return CountedAsk(ask, store) if store is not None else ask

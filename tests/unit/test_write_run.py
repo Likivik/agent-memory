@@ -121,7 +121,7 @@ def test_a_failing_reasoner_fails_the_job_and_schedules_a_redacted_retry(store):
     job = WriteJobs(store).enqueue("boundary", "codex")
 
     def ask(_prompt: str) -> str:
-        raise ReasonerUnavailableError("claude unavailable; token sk-ABCDEFGHIJKLMNOPQR")
+        raise ReasonerUnavailableError("codex unavailable; token sk-ABCDEFGHIJKLMNOPQR")
 
     with pytest.raises(ReasonerUnavailableError):
         write_run.run_job(store, job.id, ask, owner="worker-1")

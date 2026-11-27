@@ -1,0 +1,127 @@
+# Plan: vocabulary rewrite
+
+## 1. Vocabulary (read this first)
+
+Six words. Each means exactly one thing. No word may mean two.
+
+| Word | Means | Never means |
+|---|---|---|
+| **store** | The memory: record files plus the index. Knows nothing about who reads it. | A harness, a process, a model |
+| **record** | One memory file in the store. | A row, a hit, a prompt block |
+| **writer** | Who authored a record. Stored per record, used for provenance and audits. | A model, a harness, a process |
+| **harness** | The thing that embeds mnemobun and owns the prompt: Hermes, Codex, anything later. | A process we launch |
+| **driver** | How we reach a harness. `plugin` = it calls us in-process; `cli` = we spawn it and parse stdout. | The harness itself |
+| **worker** | Background labour: distill, dream, write jobs. | A harness, a driver |
+| **channel** | Where text enters a harness prompt: `system_prompt`, `prompt_prefix`, `file`. | A transport, a driver |
+| **reasoner** | The model that thinks for a worker. | The harness, the writer |
+
+One sentence holds the model: **a driver speaks to a harness through its channels; workers write records to the store.**
+
+Rules that follow:
+
+- No host-specific default anywhere. An unset reasoner, channel or driver is an error, never a guess.
+- `agent` is retired as a word. It meant three things (a dialect module, a record's author, any model-driven worker) and that is why the code reads badly.
+- `host` is retired. It meant both "the thing that embeds us" and "the thing we spawn".
+
+## 2. Where we are
+
+Two cleanup changes are in the working tree, uncommitted:
+
+- `MEMORY.md` and the injection track are deleted (one always-on surface: the pinned block).
+- The Claude Code executor dialect is deleted, and an unknown host now raises instead of falling back to Claude.
+
+## 3. Mapping
+
+| Now | Becomes | Notes |
+|---|---|---|
+| `executor/agents/` | `executor/drivers/` | Modules that launch a process and read its output |
+| `ClaudeCodeDialect`, `CodexDialect`, `HermesDialect` | `CliDriver` subclasses | One class per CLI shape |
+| `DIALECTS` | `DRIVERS` | Keyed by harness name |
+| `HOST_CLAUDE_CODE`, `HOST_CODEX`, `HOST_HERMES`, `HOST_MUSE_CODE` | `HARNESS_*` | Constants name harnesses, not hosts |
+| `moments.py` host map | `moments.py` harness map | Same content, `HARNESS_*` keys |
+| `hook_entry` `--harness` flag | `--harness` flag, no default | A hook with no harness is an error |
+| `pin_channel.py` | `channels.py` | `PinChannel` → `Channel`, registry keyed by harness |
+| `record.agent` | `record.writer` | On-disk field changes: see §4 |
+| `executor` package | stays | It is already the workers' home |
+| `Store(agent=...)` | `Store(writer=...)` | Constructor keyword |
+
+## 4. On-disk compatibility
+
+`agent:` is written into every record's frontmatter. Renaming it is a format change, so it needs a migration, not a sweep.
+
+- Read: accept both `writer:` and legacy `agent:`; `writer` wins if both exist.
+- Write: always `writer:`.
+- Migrate: `mnemobun manage migrate-writer` rewrites legacy files in place, one record per file, provenance preserved, and reports the count.
+- A record with neither field is invalid, not defaulted.
+
+Ship read-compat and write-new in R4; ship the migration command in R5; keep read-compat for one release.
+
+## 5. Deletions that ride along
+
+Claude Code is a future harness, not a current one. Nothing about it may remain as a default or as untested code.
+
+- `adapters/setup.py` Claude settings template and its entry in the harness map.
+- `adapters/doctor.py:505` Claude-specific check.
+- `adapters/hook_entry.py` `CLAUDE_*` response keys: generalize to `response_keys(harness)`, with the Claude shape as data, not as a branch.
+- Tests that exist only for Claude: `test_host_encoding.py`, `test_tool_host_postures.py`, and the Claude cases inside `test_host_dialects.py`, `test_write_triggers.py`, `test_judge_hosts.py`, `test_reasoners.py`.
+- `tests/system/claude_live.py` and anything that shells out to a `claude` binary.
+
+Dead code is paid for on every refactor. Rebuild it when a second harness is actually on the table; the driver interface is what makes that cheap.
+
+## 6. Increments
+
+Each increment is one commit, tests first where the change has behaviour.
+
+**R1 — glossary lands first.** Add this file's §1 to `docs/design/vocabulary.md` and link it from `README.md`. No code. Reason: the words must exist before the rename, or reviewers argue about them per file.
+
+**R2 — harness constants.** Rename `HOST_*` to `HARNESS_*` across packages and tests, `moments` host map included. Mechanical, no behaviour change. Test: full gate unchanged.
+
+**R3 — driver package.** Done. `executor/agents/` is `executor/drivers/`; `Host` → `Driver`,
+`HostSpec`/`HostResult`/`HostUsage` → `DriverSpec`/`DriverResult`/`DriverUsage`. The old
+`Dialect` abstraction had to be named apart from `Driver` or the two would have collided:
+it is now `Transport` — the argv/stdout shape of one harness — and `TRANSPORTS` maps a
+harness to it. `REASONER_DIALECTS` → `REASONER_DRIVERS`; `moments.DIALECTS` → `moments.MOMENTS`.
+
+`base.py` was 915 lines doing four jobs; it is now five modules:
+`transport.py` (the ABC), `driver.py` (one run: process, timeouts, retries, error mapping),
+`types.py` (the dataclasses), `constants.py` (harness names, binaries, prompt strings),
+`helpers.py` (trace parsing, credential staging, provider settings). Reading a harness's
+own usage numbers is a transport concern, so `_host_usage` lives in `transport.py`; `helpers.py`
+never imports `transport.py`, and `transport.py` imports only `constants.py` and `types.py`. Transports import
+`transport.py`, `types.py`, `constants.py` only — never `driver.py`. `__init__.py` is the
+single wiring point and the only module that imports the concrete transports.
+Every `from .base import *` is gone, so the ruff `F403`/`F405` per-file-ignore is gone too.
+Test: gate unchanged, 1023 passed.
+
+**R4 — channels.** Done. `pin_channel.py` is `channels.py`, `PinChannel` is `Channel` with a
+`harness` field, `REGISTRY` is `CHANNELS`, `channel(host)` is `for_harness(name)` and refuses an
+unknown harness by name. `sync` is now `deliver(store, harness, target)` - the one public entry -
+and the old low-level `deliver` is `place(channel, block, ...)`; one function, one meaning.
+`host_name` became `channel_name`. Doctor's `PIN_HOST` code is `PIN_CHANNEL`.
+Test: digest parity across harnesses still holds.
+
+**R5 — writer, data half.** Done without the compatibility half: this project is pre-release, so
+the disk key is `writer:` and nothing else. A record whose standing is missing or unknown is
+refused rather than defaulted, and `manage migrate-writer` is not written — there is no old store
+to migrate. `author` is gone from the record, the index column and the search text.
+
+**R6 — writer, code half.** Done. `Store(agent=)` is `Store(writer=)`, `store.agent` is
+`store.writer`, the access-log column and every audit parameter follow, and `SCHEMA_VERSION` moved
+from 3 to 4 because the column name changed. The index is a cache: it is rebuilt, not migrated.
+
+**R7 — no defaults.** Done. The hook's `--harness` is `required=True`, so a hook wired without
+it never runs. An empty `write.reasoner` still reaches `selection.resolve` and is refused there
+by name. `channels.for_harness` refuses an unknown harness by name. `tests/unit/test_no_defaults.py`
+holds one test per refusal.
+
+**R8 — Claude Code removal.** Delete §5's list. Test: gate green with those modules gone; no `claude` string in `packages/`.
+
+## 7. Gate
+
+`uv run --group dev pytest tests/unit/ -q --no-header -p no:cacheprovider`, plus `ruff check`. Green at every commit; a rename that leaves the gate red is not finished.
+
+## 8. Out of scope
+
+- Adding a second harness. That is a driver, written when it is needed.
+- The unification items reviewed but not chosen: a single byte-budget helper, a single digest helper, a single atomic-write helper. They are real, they are separate, and they are cheaper after the vocabulary settles.
+- Merging `injection`-style floors back in. There is one always-on surface: the pinned block.

@@ -61,7 +61,7 @@ jieba = pytest.importorskip("jieba", reason="cjk tokenization tests need the cjk
 def cjk_store(tmp_path, clock):
     config = Config.default()
     config.index.tokenizer = TOKENIZER_CJK
-    store = Store(tmp_path / "store", config=config, clock=clock, agent="test-agent")
+    store = Store(tmp_path / "store", config=config, clock=clock, writer="test-agent")
     store.init()
     return store
 
@@ -128,7 +128,7 @@ def test_cjk_heading_stays_readable(cjk_seeded):
 
 def test_switching_tokenizer_rebuilds_the_projection(tmp_path, clock):
     config = Config.default()
-    store = Store(tmp_path / "store", config=config, clock=clock, agent="test-agent")
+    store = Store(tmp_path / "store", config=config, clock=clock, writer="test-agent")
     store.init()
     store.record(
         abstract="构件命名采用 wc 格式",
@@ -153,7 +153,7 @@ def test_enabling_cjk_rebuilds_a_legacy_projection_without_tokenizer_metadata(
     tmp_path, clock
 ):
     config = Config.default()
-    store = Store(tmp_path / "store", config=config, clock=clock, agent="test-agent")
+    store = Store(tmp_path / "store", config=config, clock=clock, writer="test-agent")
     store.init()
     store.record(
         abstract="构件命名采用 wc 格式",

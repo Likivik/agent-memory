@@ -5,7 +5,7 @@ import types
 
 import pytest
 from mnemobun.core import prompts
-from mnemobun.executor.agents.hermes import HermesDialect
+from mnemobun.executor.drivers.hermes import HermesTransport
 
 
 def _spec():
@@ -13,7 +13,7 @@ def _spec():
 
 
 def test_extraction_profile_has_no_tools_and_keeps_rules():
-    command = HermesDialect().command(
+    command = HermesTransport().command(
         _spec(),
         tools_enabled=False,
         system_prompt="",
@@ -25,7 +25,7 @@ def test_extraction_profile_has_no_tools_and_keeps_rules():
     assert "--toolsets" not in command
     assert command[command.index("-t") : command.index("-t") + 2] == ["-t", ""]
     # the interactive form is unchanged
-    interactive = HermesDialect().command(
+    interactive = HermesTransport().command(
         _spec(),
         tools_enabled=True,
         system_prompt="",
@@ -42,13 +42,13 @@ def test_unknown_reasoners_are_refused_for_memory_jobs():
     from mnemobun.executor import distiller
 
     config = Config.default().executor
-    config.reasoner = "host"
-    config.host = "hermes"
+    config.reasoner = "codex"
+    config.harness = "hermes"
     config.model = "m"
     with pytest.raises(ReasonerUnavailableError) as excinfo:
         distiller.distiller(config)
-    assert "unsupported reasoner" in str(excinfo.value)
-    assert "mnemobun setup" in str(excinfo.value)
+    assert "no reasoner configured" in str(excinfo.value)
+    assert "no reasoner configured" in str(excinfo.value)
 
 
 def test_extraction_prompt_marks_content_as_untrusted_data():

@@ -20,7 +20,7 @@ def test_memory_only_recall_and_explicit_limit(store):
 
 def test_validity_is_derived_from_interval():
     record = MemoryRecord(
-        name="example", abstract="Example", type="decision", author="agent",
+        name="example", abstract="Example", type="decision", writer="agent",
         created="2026-01-01T00:00:00Z", updated="2026-01-01T00:00:00Z",
     )
     assert record.is_active()

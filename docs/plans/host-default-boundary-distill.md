@@ -18,7 +18,7 @@ memories with no key and no further configuration, and a new session recalls the
 
 ## Work units
 
-1. Update CLAUDE.md Invariant 5 and the README: the host CLI is the default reasoner, an
+1. Update AGENTS.md Invariant 5 and the README: the host CLI is the default reasoner, an
    endpoint is opt-in configuration.
 2. Tests first, then code, one per defect:
    - the launched executor call is accepted by the CLI and names its store and session;

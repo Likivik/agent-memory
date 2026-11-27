@@ -13,13 +13,10 @@ import json
 from mnemobun.core.store import Store
 
 SETTINGS_KEYS = (
+    "provider",
     "model",
-    "distill_model",
-    "dream_model",
     "max_calls_per_run",
     "max_tokens_per_day",
-    "endpoint",
-    "key_env",
 )
 
 
@@ -30,37 +27,28 @@ def apply_settings(store: Store, payload: dict[str, object], *, actor: str) -> d
         raise ValueError(f"unknown settings: {sorted(unknown)}")
     before = effective_settings(store)
     brain = store.config.executor
-    for key in ("model", "distill_model", "dream_model"):
-        value = payload.get(key)
-        if value is None:
-            continue
+    value = payload.get("model")
+    if value is not None:
+        text = str(value).strip()  # an explicit empty value clears (brain reads "" as unset)
+        if brain.model != text:  # idempotent re-assert is a no-op
+            brain.model_source = actor if text else "unset"
+        brain.model = text
+    value = payload.get("provider")
+    if value is not None:
         text = str(value).strip()
-        if not text:
-            raise ValueError(f"{key} must be a non-empty string")
-        if key == "model":
-            if brain.model != text:  # idempotent re-assert is a no-op
-                brain.model_source = actor
-            brain.model = text
-        else:
-            getattr(brain, "write" if key == "distill_model" else "manage").model = text
-    for key in ("endpoint", "key_env"):
-        value = payload.get(key)
-        if value is None:
-            continue
-        text = str(value).strip()
-        if not text:
-            raise ValueError(f"{key} must be a non-empty string")
-        if key == "endpoint":
-            brain.reasoner = "endpoint"
-            brain.endpoint = text
-        else:
-            brain.key_env = text
+        if brain.provider != text:
+            brain.provider_source = actor if text else "unset"
+        brain.provider = text
     for key in ("max_calls_per_run", "max_tokens_per_day"):
         value = payload.get(key)
         if value is None:
             continue
+        text = str(value).strip()
+        if not text:  # an explicit empty value resets the cap to its default
+            setattr(store.config.budget, key, getattr(type(store.config.budget)(), key))
+            continue
         try:
-            number = float(str(value))
+            number = float(text)
         except ValueError as error:
             raise ValueError(f"{key} must be a number") from error
         if number <= 0:
@@ -76,14 +64,12 @@ def effective_settings(store: Store) -> dict[str, object]:
     """Pull the current settings from the store. Every surface reads this."""
     brain = store.config.executor
     return {
+        "provider": brain.provider,
+        "provider_source": brain.provider_source,
         "model": brain.model,
         "model_source": brain.model_source,
-        "distill_model": brain.write.model,
-        "dream_model": brain.manage.model,
         "max_calls_per_run": store.config.budget.max_calls_per_run,
         "max_tokens_per_day": store.config.budget.max_tokens_per_day,
-        "endpoint": brain.endpoint,
-        "key_env": brain.key_env,
     }
 
 

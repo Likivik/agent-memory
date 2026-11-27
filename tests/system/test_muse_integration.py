@@ -19,7 +19,7 @@ def test_muse_hook_capture_distill_and_read(store, tmp_path, monkeypatch, capsys
     response = hook_entry.handle(
         store,
         {
-            "host": "muse-code",
+            "harness": "muse-code",
             "hook_event_name": "Stop",
             "session_id": session_id,
             "transcript_path": None,
@@ -38,7 +38,7 @@ def test_muse_hook_capture_distill_and_read(store, tmp_path, monkeypatch, capsys
         }
     )
     monkeypatch.setattr(
-        "mnemobun.executor.distiller.distiller", lambda config: lambda prompt: reply
+        "mnemobun.executor.distiller.distiller", lambda config, **_kw: lambda prompt: reply
     )
     assert main(["--store", str(store.root), "--json", "distill", "--session", session_id]) == 0
     report = json.loads(capsys.readouterr().out)

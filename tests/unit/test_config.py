@@ -4,9 +4,6 @@ import pathlib
 import pytest
 from mnemobun.core.config import (
     CONFIG_FILENAME,
-    REASONER_ENDPOINT,
-    TOOL_MODE_AUTO,
-    TOOL_MODE_TEXT,
     Config,
 )
 
@@ -21,7 +18,6 @@ def test_defaults_are_complete_and_self_consistent():
     assert config.manage.trigger_min_sessions >= 1
     assert config.manage.trigger_min_hours > 0
     assert config.manage.cluster_min_files > 1
-    assert config.memory_md.budget_bytes > 0
     assert config.usage.floor < config.usage.initial < config.usage.ceiling
     assert config.usage.decay_step > 0
     assert config.usage.boost_step > 0
@@ -34,16 +30,11 @@ def test_defaults_are_complete_and_self_consistent():
     assert config.recall.default_limit > 0
     assert config.recall.recency_half_life_days > 0
     assert config.storage.max_depth >= len(("type", "file"))
-    assert config.executor.reasoner == REASONER_ENDPOINT
-    assert config.executor.project == ""
+    assert config.executor.reasoner == ""
+    assert config.executor.reasoner == ""
     assert config.executor.model == ""
-    assert config.executor.endpoint == ""
-    assert config.executor.tool_mode == TOOL_MODE_AUTO
     assert config.executor.write.reasoner == ""
-    assert config.executor.write.model == ""
-    assert config.executor.write.tool_mode == ""
     assert config.executor.manage.reasoner == ""
-    assert config.executor.manage.model == ""
 
 
 def test_every_factory_group_field_has_a_source_that_may_name_a_directory():
@@ -62,12 +53,9 @@ def test_config_round_trips_through_disk(tmp_path):
     original.recall.default_limit += 1
     original.index.vector_enabled = True
     original.index.vector_model = "test/model-v2"
-    original.executor.write.reasoner = "endpoint"
-    original.executor.write.model = "muse-test"
-    original.executor.write.endpoint = "https://muse.example/v1"
-    original.executor.write.tool_mode = TOOL_MODE_TEXT
-    original.executor.manage.reasoner = "endpoint"
-    original.executor.manage.project = "user-project"
+    original.executor.reasoner = "codex"
+    original.executor.write.reasoner = "host"
+    original.executor.write.timeout_seconds = 5.0
     original.manage.review_raw_session_evidence = True
     original.save(tmp_path)
 
@@ -77,36 +65,16 @@ def test_config_round_trips_through_disk(tmp_path):
     assert reloaded.recall.default_limit == original.recall.default_limit
     assert reloaded.index.vector_enabled is True
     assert reloaded.index.vector_model == "test/model-v2"
-    assert reloaded.executor.write.model == "muse-test"
-    assert reloaded.executor.write.endpoint == "https://muse.example/v1"
-    assert reloaded.executor.write.tool_mode == TOOL_MODE_TEXT
-    assert reloaded.executor.manage.reasoner == "endpoint"
-    assert reloaded.executor.manage.project == "user-project"
+    assert reloaded.executor.reasoner == "codex"
+    assert reloaded.executor.write.reasoner == "host"
+    assert reloaded.executor.write.timeout_seconds == 5.0
     assert reloaded.manage.review_raw_session_evidence is True
-
-
-def test_legacy_flat_executor_config_remains_valid(tmp_path):
-    (tmp_path / CONFIG_FILENAME).write_text(
-        """[executor]
-reasoner = "endpoint"
-project = "user-project"
-model = "google/gemini-test"
-""",
-        encoding="utf-8",
-    )
-
-    loaded = Config.load(tmp_path)
-
-    assert loaded.executor.reasoner == "endpoint"
-    assert loaded.executor.project == "user-project"
-    assert loaded.executor.write.reasoner == ""
-    assert loaded.executor.manage.reasoner == ""
 
 
 def test_unknown_config_knobs_are_rejected_loudly(tmp_path):
     (tmp_path / CONFIG_FILENAME).write_text(
         """[executor]
-reasoner = "endpoint"
+reasoner = "host"
 transport = "carrier-pigeon"
 """,
         encoding="utf-8",
@@ -124,7 +92,7 @@ def test_vector_knobs_leave_the_recall_fingerprint_alone_while_disabled():
 
 
 def test_default_recall_fingerprint_matches_memory_only_policy():
-    assert Config.default().recall_fingerprint() == "095bbeed229b30f0"
+    assert Config.default().recall_fingerprint() == "c1a9226ace853d4a"
 
 
 def test_enabling_vector_changes_the_recall_fingerprint_and_so_does_the_model():

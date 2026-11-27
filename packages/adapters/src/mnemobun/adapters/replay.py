@@ -7,7 +7,7 @@ Decisions implemented (docs/plans/import-replay-path.md):
   (standing_policy="proposed" available for replay-strict runs).
 - D4: exactly ONE deterministic dream pass at the end; the reasoner never runs —
   proposals stay open and drain through the normal nightly docket.
-- D6: synthetic access entries (agent="import") so the first decay pass counts from
+- D6: synthetic access entries (writer="import") so the first decay pass counts from
   import time, not from the historical timestamps.
 - Idempotency (hard requirement): record names derive from the source turn's
   identity (session + instant + content), never from run counters. Re-running a
@@ -135,7 +135,7 @@ def replay(
                     name=name,
                     query="",
                     kind=KIND_READ,
-                    agent="import",
+                    writer="import",
                 )
                 for name in names
             ]
@@ -170,7 +170,7 @@ def replay(
                 "name": name,
                 "abstract": abstract_source[:max_abstract],
                 "body": f"USER: {user}\nASSISTANT: {assistant}",
-                "author": "import",
+                "writer": "import",
                 "standing": standing_policy,
                 "provenance": [marker],
                 "created": at,

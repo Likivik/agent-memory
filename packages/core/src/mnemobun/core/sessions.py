@@ -156,7 +156,7 @@ def read_file(path: pathlib.Path) -> list[Message]:
 def resolve(layout: StoreLayout, pointer: Pointer, *, strict: bool = True) -> list[Message]:
     """Read original message indices; strict reads never return an incomplete range.
 
-    Write's evidence-date check explicitly keeps its legacy best-effort behavior.
+    Write's evidence-date check stays best-effort.
     """
     if pointer.start < 0 or pointer.end < pointer.start:
         raise ValidationError([FieldError("pointer", "invalid message range")])

@@ -127,7 +127,7 @@ def test_t0_preserves_distinct_text(store, field, left, right):
             id="custom-field",
         ),
         pytest.param({"valid_from": "2025-01-01"}, id="validity"),
-        pytest.param({"author": "another-agent"}, id="author"),
+        pytest.param({"writer": "another-agent"}, id="writer"),
         pytest.param({"links": ["target"]}, id="links"),
         pytest.param({"provenance": ["Independent source evidence."]}, id="provenance"),
     ],

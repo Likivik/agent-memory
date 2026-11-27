@@ -16,7 +16,6 @@ def test_init_creates_the_schema_set_and_the_archive_buckets(store):
     assert store.schemas.load()
     for bucket in (store.layout.provenance, store.layout.sessions):
         assert bucket.is_dir()
-    assert store.layout.memory_index.exists()
 
 
 def test_recorded_file_round_trips_through_frontmatter(store):
@@ -63,7 +62,7 @@ def test_bad_date_is_rejected(store, config):
         name="bad-date",
         abstract="has an unparseable date",
         type="fact",
-        author="test",
+        writer="test",
         created="not-a-date",
         updated="2026-01-15",
     )
@@ -85,7 +84,7 @@ def test_multiline_custom_field_is_rejected_before_it_can_corrupt(config, break_
         name="multiline-extra",
         abstract="a custom field with a line break",
         type="fact",
-        author="test",
+        writer="test",
         created="2026-01-15",
         updated="2026-01-15",
         fields={"note": f"line one{break_char}line two"},

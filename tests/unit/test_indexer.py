@@ -69,20 +69,4 @@ def test_removing_a_file_drops_it_from_the_projection(seeded):
         assert SearchIndex(connection).row("file-truth-invariant") is None
 
 
-def test_memory_md_holds_one_line_per_active_record_within_budget(seeded):
-    text = seeded.layout.memory_index.read_text(encoding="utf-8")
-    lines = [line for line in text.splitlines() if line.startswith("- ")]
-    assert len(lines) == len([record for record in seeded.records() if record.is_active()])
-    assert len(text.encode("utf-8")) <= seeded.config.memory_md.budget_bytes
 
-
-def test_memory_md_budget_is_a_hard_ceiling(store):
-    store.config.memory_md.budget_bytes = len(store.config.memory_md.header) + len("\n\n")
-    for index in range(store.config.memory_md.max_lines):
-        store.record(
-            abstract=f"Filler memory number {index} with a reasonably long abstract line",
-            type="fact",
-            name=f"filler-{index}",
-        )
-    text = store.layout.memory_index.read_text(encoding="utf-8")
-    assert len(text.encode("utf-8")) <= store.config.memory_md.budget_bytes

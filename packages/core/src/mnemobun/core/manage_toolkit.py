@@ -73,7 +73,7 @@ CATALOGUE = (
         "Read a bounded page of evidence for one proposal target. Only targets listed for this "
         "run are readable. Use offset from the prior result to continue a long body. When this "
         "run explicitly enables raw Session evidence, pointer may name one complete Session "
-        "pointer frozen on that same target; arbitrary, neighboring, and legacy sources are "
+        "pointer frozen on that same target; arbitrary, neighboring, and unrelated sources are "
         "refused.",
         {
             "type": "object",
@@ -569,7 +569,7 @@ class ManageReviewToolkit:
     def from_directory(cls, directory: pathlib.Path) -> ManageReviewToolkit:
         seed = json.loads((directory / SEED_FILENAME).read_text(encoding="utf-8"))
         return cls(
-            Store(str(seed["store"]), agent="manage-review-toolkit"),
+            Store(str(seed["store"]), writer="manage-review-toolkit"),
             _request(_dict(seed.get("request"))),
         )
 

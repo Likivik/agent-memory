@@ -9,7 +9,7 @@ import os
 import pathlib
 import sys
 from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from mnemobun.core import context as context_module
 from mnemobun.core import distill as distill_module
@@ -26,21 +26,28 @@ from mnemobun.core import (
     write_run,
     write_trace,
 )
-from mnemobun.core import migrate as migrate_module
-from mnemobun.core.config import REASONER_ENDPOINT, ExecutorConfig
+from mnemobun.core.config import REASONER_DRIVERS, REASONER_PLUGIN, ExecutorConfig
 from mnemobun.core.docket import Docket
 from mnemobun.core.dream import Dream
-from mnemobun.core.errors import FieldError, MemoryStoreError, ValidationError
+from mnemobun.core.errors import (
+    FieldError,
+    MemoryStoreError,
+    ReasonerUnavailableError,
+    ValidationError,
+)
 from mnemobun.core.locking import file_lock
 from mnemobun.core.observation import invoke as observe_invocation
 from mnemobun.core.reasoning import Reasoner
+
+if TYPE_CHECKING:
+    from mnemobun.executor.reasoners import ToolDriverReasoner
 from mnemobun.core.recall import Recall
 from mnemobun.core.store import LEVEL_FULL, LEVELS, Store
 from mnemobun.core.watermark import Watermark
 from mnemobun.executor import distiller, selection
 
 SESSION_FLAG = "--session"
-REASON_ENDPOINT = REASONER_ENDPOINT
+REASON_HOST = REASONER_DRIVERS[0]
 REASON_NONE = "none"
 EMIT_INDENT = 2
 FIELD_ERROR_KEYS = frozenset({"field", "reason"})
@@ -57,7 +64,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not getattr(args, "handler", None):
         parser.print_help()
         return EXIT_OK
-    store = Store(args.store, agent=args.agent)
+    store = Store(args.store, writer=args.writer)
     try:
         payload = observe_invocation(args.handler, store, args)
     except ValidationError as error:
@@ -82,7 +89,9 @@ def _global_options(parser: argparse.ArgumentParser) -> None:
         default=argparse.SUPPRESS,
         help="store root (defaults to MNEMOBUN_STORE)",
     )
-    parser.add_argument("--agent", default=argparse.SUPPRESS, help="calling agent identity")
+    parser.add_argument(
+        "--writer", default=argparse.SUPPRESS, help="calling writer identity"
+    )
     parser.add_argument(
         "--json",
         action="store_true",
@@ -100,7 +109,7 @@ def _parser() -> argparse.ArgumentParser:
             "command groups:\n"
             "  records  record · read · correct · supersede · merge · delete\n"
             "           trace · feedback · recall|search\n"
-            "  data     import <format> <path> · export · migrate\n"
+            "  data     import <format> <path> · export\n"
             "  index    index sync · index rebuild\n"
             "  court    docket · case show · case decide · dream run/status/worker\n"
             "           distill · jobs\n"
@@ -111,7 +120,7 @@ def _parser() -> argparse.ArgumentParser:
     _global_options(parser)
     # A subparser would overwrite values parsed before the subcommand with its own
     # defaults, so the shared options suppress theirs and the main parser sets them.
-    parser.set_defaults(store=None, agent="cli", json=False)
+    parser.set_defaults(store=None, writer="cli", json=False)
     subparsers = parser.add_subparsers(dest="command")
 
     def subcommand(name: str, **kwargs: Any) -> argparse.ArgumentParser:
@@ -203,7 +212,7 @@ def _parser() -> argparse.ArgumentParser:
     still.add_argument(
         "--force", action="store_true", help="distill every backlog regardless of thresholds"
     )
-    still.add_argument("--reason", choices=(REASON_ENDPOINT,), default=None)
+    still.add_argument("--reason", choices=(REASON_HOST,), default=None)
     still.add_argument("--reason-model", default="")
     still.add_argument("--auto-dream", action="store_true", help=argparse.SUPPRESS)
     job_mode = still.add_mutually_exclusive_group()
@@ -252,7 +261,7 @@ def _parser() -> argparse.ArgumentParser:
 
     dreamer = subcommand("dream-worker", help=argparse.SUPPRESS)
     dreamer.add_argument("--claim", required=True)
-    dreamer.add_argument("--reason", choices=(REASON_ENDPOINT,), default=None)
+    dreamer.add_argument("--reason", choices=(REASON_HOST,), default=None)
     dreamer.add_argument("--reason-model", default="")
     dreamer.set_defaults(handler=_dream_worker)
 
@@ -264,10 +273,6 @@ def _parser() -> argparse.ArgumentParser:
     remover = subcommand("delete", help="end one memory's validity; retain its history")
     remover.add_argument("name")
     remover.set_defaults(handler=_delete)
-
-    migrator = subcommand("migrate", help="upgrade a four-domain store to the schema layout"
-    )
-    migrator.set_defaults(handler=_migrate)
 
     voter = subcommand("feedback", help="explicit boost or penalty")
     voter.add_argument("name")
@@ -281,12 +286,12 @@ def _parser() -> argparse.ArgumentParser:
     index_sync.set_defaults(handler=_index_sync)
     index_rebuild = index_actions.add_parser("rebuild", help="drop and rebuild the index")
     index_rebuild.set_defaults(handler=_rebuild)
+    index_inspect = index_actions.add_parser(
+        "inspect", help="sync the index, then report the store"
+    )
+    _global_options(index_inspect)
+    index_inspect.set_defaults(handler=_inspect)
 
-    rebuilder = subcommand("rebuild", help="deprecated: use index rebuild")
-    rebuilder.set_defaults(handler=_rebuild)
-
-    inspector = subcommand("inspect", help="deprecated: store health — use doctor")
-    inspector.set_defaults(handler=_inspect)
 
     dream_status = subcommand(
         "dream-status", help="show automatic Dream claim, failure, and progress state"
@@ -370,10 +375,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     sleeper.add_argument(
         "--reason",
-        choices=(REASON_ENDPOINT, REASON_NONE),
+        choices=(REASON_HOST, REASON_NONE),
         default=None,
         help="who rules on the open proposals: the configured executor (default), "
-        "a model endpoint, or nobody",
+        "the host CLI, or nobody",
     )
     sleeper.add_argument("--reason-model", default="")
     sleeper.set_defaults(handler=_sleep)
@@ -464,16 +469,10 @@ def _parser() -> argparse.ArgumentParser:
     skiller = subcommand("skill", help="print the agent skill text")
     skiller.set_defaults(handler=_skill)
 
-    installer = subcommand("setup", help="configure the endpoint and run preflight")
+    installer = subcommand("setup", help="record the memory model and run preflight")
     installer.add_argument("--settings", default=None)
     installer.add_argument("--provider", default=None)
     installer.add_argument("--model", default=None)
-    installer.add_argument(
-        "--endpoint", default=None, help="model endpoint/base URL for the reasoner"
-    )
-    installer.add_argument(
-        "--key-env", default=None, help="env var name holding the endpoint API key"
-    )
     installer.add_argument("--mcp", action="store_true", help="also configure the stdio MCP server")
     installer.add_argument(
         "--no-live", action="store_true", help="skip live reasoner checks (never reports READY)"
@@ -481,7 +480,7 @@ def _parser() -> argparse.ArgumentParser:
     installer.set_defaults(handler=_setup)
 
     doctor = subcommand("doctor", help="diagnose host, Store and provider setup")
-    doctor.add_argument("--host", required=True)
+    doctor.add_argument("--harness", required=True)
     doctor.add_argument("--settings", default=None)
     doctor.add_argument("--provider", default=None)
     doctor.add_argument("--model", default=None)
@@ -653,11 +652,14 @@ def _distill(store: Store, args: argparse.Namespace) -> dict[str, object]:
 
 
 def _distill_job(store: Store, args: argparse.Namespace) -> dict[str, object]:
-    executor = _executor(store, args, selection.WRITE)
+    job = write_jobs.WriteJobs(store).get(args.job)
+    if job is None:
+        return {"job": args.job, "status": "skipped", "reason": "no such job"}
+    executor = _executor(store, args, selection.WRITE, reasoner=job.harness)
     payload = write_run.run_job(
         store,
         args.job,
-        distiller.distiller(executor, store=store),
+        _reasoner(store, args, selection.WRITE, tools=True, fallback=job.harness),
         owner=_owner(),
         transport=_transport(executor),
     )
@@ -671,7 +673,7 @@ def _distill_drain(store: Store, args: argparse.Namespace) -> dict[str, object]:
     payload: dict[str, object] = {
         "drained": write_run.drain(
             store,
-            distiller.distiller(executor, store=store),
+            _reasoner(store, args, selection.WRITE, tools=True),
             owner=_owner(),
             transport=_transport(executor),
             limit=args.max,
@@ -696,7 +698,7 @@ def _auto_dream_payload(store: Store) -> dict[str, object]:
             {
                 "claim": scheduled.claim.id,
                 "reasoner": scheduled.claim.reasoner,
-                "host": scheduled.claim.host,
+                "harness": scheduled.claim.harness,
             }
             if scheduled.claim
             else {}
@@ -729,9 +731,9 @@ def _owner() -> str:
 
 
 def _transport(executor: ExecutorConfig) -> str:
-    if executor.reasoner == REASONER_ENDPOINT:
-        return f"{REASONER_ENDPOINT}/{executor.model}"
-    return executor.reasoner
+    if executor.reasoner == REASONER_PLUGIN:
+        return REASONER_PLUGIN
+    return f"{executor.reasoner}/{executor.model}"
 
 
 def _dream_worker(store: Store, args: argparse.Namespace) -> dict[str, object]:
@@ -759,10 +761,6 @@ def _trace(store: Store, args: argparse.Namespace) -> dict[str, object]:
 def _delete(store: Store, args: argparse.Namespace) -> dict[str, object]:
     removed = store.delete(args.name)
     return {"name": removed.name, "status": removed.status, "invalid_at": removed.invalid_at}
-
-
-def _migrate(store: Store, args: argparse.Namespace) -> dict[str, object]:
-    return migrate_module.migrate(store.root).as_dict()
 
 
 def _fields(pairs: list[str]) -> dict[str, str]:
@@ -887,8 +885,7 @@ def _feed(store: Store, args: argparse.Namespace) -> dict[str, object]:
 
     if not args.execute:
         return feed_module.run(store, ask=None).as_dict()
-    executor = _executor(store, args, selection.WRITE)
-    return feed_module.run(store, ask=distiller.distiller(executor, store=store)).as_dict()
+    return feed_module.run(store, ask=_reasoner(store, args, selection.WRITE)).as_dict()
 
 
 def _sleep(store: Store, args: argparse.Namespace) -> dict[str, object]:
@@ -907,9 +904,9 @@ def _sleep(store: Store, args: argparse.Namespace) -> dict[str, object]:
         model = executor.model
         return auto_dream.run_due(
             store,
-            distiller.distiller(executor, store=store),
+            _reasoner(store, args, selection.MANAGE),
             reasoner_kind=executor.reasoner,
-            host="",
+            harness="",
             model=model,
             trigger_source=args.trigger_source,
         )
@@ -944,22 +941,39 @@ def _reasoner(
     store: Store,
     args: argparse.Namespace,
     operation: str,
-) -> Reasoner | None:
+    *,
+    tools: bool = False,
+    fallback: str = "",
+) -> Reasoner | ToolDriverReasoner | None:
     if args.reason == REASON_NONE:
         return None
     executor = _executor(store, args, operation)
-    return distiller.distiller(executor, store=store)
+    from mnemobun.executor.drivers import TRANSPORTS
+    from mnemobun.executor.reasoners import DriverReasoner, ToolDriverReasoner
+
+    harness = getattr(args, "reason_harness", "") or executor.reasoner or fallback
+    if not harness:  # nobody chose a reasoner: deterministic-only, no LLM
+        return None
+    if harness == REASONER_PLUGIN:  # the plugin injects ctx.llm; the CLI cannot
+        raise ReasonerUnavailableError("reasoner 'plugin' needs the Hermes plugin")
+    model = getattr(args, "reason_model", "") or executor.model
+    if tools and getattr(TRANSPORTS.get(harness), "supports_tools", False):
+        return ToolDriverReasoner.for_harness(harness, model=model)
+    ask = DriverReasoner.for_harness(harness, model=model)
+    return cast(Reasoner, distiller.distiller(executor, store=store, ask=ask))
 
 
 def _executor(
     store: Store,
     args: argparse.Namespace,
     operation: str,
+    *,
+    reasoner: str = "",
 ) -> ExecutorConfig:
     return selection.resolve(
         store.config.executor,
         operation,
-        reasoner=args.reason or "",
+        reasoner=args.reason or reasoner,
         model=args.reason_model,
     )
 
@@ -1002,16 +1016,12 @@ def _setup(store: Store, args: argparse.Namespace) -> dict[str, object]:
     payload: dict[str, object] = {}
     if getattr(args, "model", None):
         payload["model"] = args.model
-    if getattr(args, "endpoint", None):
-        payload["endpoint"] = args.endpoint
-    if getattr(args, "key_env", None):
-        payload["key_env"] = args.key_env
     settings = apply_settings(store, payload, actor="cli") if payload else effective_settings(store)
     return {
         "status": "READY",
         "store": str(store.root),
         "settings": settings,
-        "note": "host wizards were removed: memory jobs use direct endpoints",
+        "note": "memory jobs reason through the host CLI or the Hermes plugin",
     }
 
 
@@ -1019,10 +1029,10 @@ def _doctor(store: Store, args: argparse.Namespace) -> dict[str, object]:
     from mnemobun.adapters import doctor
 
     if getattr(args, "smoke", False):
-        return {"smoke": doctor.smoke(store, host=getattr(args, "host", "") or "")}
+        return {"smoke": doctor.smoke(store, harness=getattr(args, "harness", "") or "")}
     return doctor.run(
         store,
-        args.host,
+        args.harness,
         settings_path=pathlib.Path(args.settings) if args.settings else None,
         provider=args.provider,
         model=args.model,

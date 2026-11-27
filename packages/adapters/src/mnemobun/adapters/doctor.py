@@ -1,4 +1,4 @@
-"""Read-only host preflight with stable failure codes."""
+"""Read-only harness preflight with stable failure codes."""
 
 from __future__ import annotations
 
@@ -11,7 +11,10 @@ import subprocess
 import tempfile
 import tomllib
 
+from mnemobun.core import health as health_events
 from mnemobun.core import prompts, timestamp, write_jobs
+from mnemobun.core.config import PINNED_REFUSED_STANDING
+from mnemobun.core.route import resolve_route
 from mnemobun.core.store import Store
 
 from . import moments, openrouter, setup
@@ -33,7 +36,7 @@ class Check:
 
 @dataclasses.dataclass(frozen=True)
 class Report:
-    host: str
+    harness: str
     store: pathlib.Path
     settings: pathlib.Path
     checks: tuple[Check, ...]
@@ -46,7 +49,7 @@ class Report:
     def as_dict(self) -> dict[str, object]:
         return {
             "status": self.status,
-            "host": self.host,
+            "harness": self.harness,
             "version": self.version,
             "store": str(self.store),
             "settings": str(self.settings),
@@ -54,7 +57,7 @@ class Report:
         }
 
 
-def smoke(store: Store, host: str = "", model: str = "") -> dict[str, object]:
+def smoke(store: Store, harness: str = "", model: str = "") -> dict[str, object]:
     """One trivial spawn through the production reasoner path: the auth gate.
 
     Proves LLM credentials reach the isolated sandbox profile (P13.4 blocker).
@@ -74,9 +77,14 @@ def smoke(store: Store, host: str = "", model: str = "") -> dict[str, object]:
     if credential is not None and not os.environ.get("OPENROUTER_API_KEY"):
         os.environ["OPENROUTER_API_KEY"] = credential.value
 
-    config = selection.resolve(store.config.executor, "write", model=model)
+    config = selection.resolve(
+        store.config.executor, "write", reasoner=harness, model=model
+    )
     try:
-        reasoner = distiller_module.distiller(config, store=store)
+        from mnemobun.executor.reasoners import DriverReasoner
+
+        ask = DriverReasoner.for_harness(config.reasoner, model=config.model)
+        reasoner = distiller_module.distiller(config, store=store, ask=ask)
         answer = reasoner("Reply with exactly the two letters: OK")
     except Exception as error:  # the doctor reports, it does not crash
         return {"answered": False, "answer": "", "reason": f"{type(error).__name__}: {error}"}
@@ -85,7 +93,7 @@ def smoke(store: Store, host: str = "", model: str = "") -> dict[str, object]:
 
 def run(
     store: Store,
-    host: str,
+    harness: str,
     *,
     settings_path: pathlib.Path | None = None,
     provider: str | None = None,
@@ -94,21 +102,21 @@ def run(
     live: bool = True,
     environment: dict[str, str] | None = None,
 ) -> Report:
-    host = setup.canonical_host(host)
-    target = settings_path or setup.default_settings_path(host, environment)
+    harness = setup.canonical_host(harness)
+    target = settings_path or setup.default_settings_path(harness, environment)
     checks: list[Check] = []
     version = ""
     try:
-        version = setup.probe(host)
-        checks.append(Check("HOST_BINARY_OK", True, version))
+        version = setup.probe(harness)
+        checks.append(Check("DRIVER_BINARY_OK", True, version))
     except Exception as error:
-        # An endpoint reasoner never runs the host binary: it posts to an
-        # OpenAI-shaped URL. A missing binary is then a note about the host,
+        # An endpoint reasoner never runs the harness binary: it posts to an
+        # OpenAI-shaped URL. A missing binary is then a note about the harness,
         # not a reason to refuse the store.
-        needed = _host_binary_needed(store)
+        needed = _driver_binary_needed(store)
         checks.append(
             Check(
-                "HOST_BINARY_MISSING" if needed else "HOST_BINARY_NOT_REQUIRED",
+                "DRIVER_BINARY_MISSING" if needed else "DRIVER_BINARY_NOT_REQUIRED",
                 not needed,
                 str(error),
                 required=needed,
@@ -118,8 +126,8 @@ def run(
     checks.append(_write_jobs_check(store))
     configured = _settings(target, checks)
     if configured is not None:
-        checks.extend(_hook_checks(configured, host, store.root, target))
-    skill = setup.skill_path(host, target)
+        checks.extend(_hook_checks(configured, harness, store.root, target))
+    skill = setup.skill_path(harness, target)
     skill_ok = False
     if skill.is_file():
         # A site may extend the skill with its own notes, so the upstream text
@@ -133,10 +141,10 @@ def run(
             f"installed at {skill}" if skill.is_file() else f"missing at {skill}",
         )
     )
-    checks.extend(_reasoner_checks(store, host, environment))
+    checks.extend(_reasoner_checks(store, harness, environment))
     for operation in ("write", "manage"):
         checks.append(
-            _live_reasoner_check(store, host, operation)
+            _live_reasoner_check(store, harness, operation)
             if live
             else Check(
                 f"{operation.upper()}_LIVE_PREFLIGHT_SKIPPED",
@@ -145,10 +153,10 @@ def run(
             )
         )
     if mcp:
-        checks.append(_mcp_check(host, target, store.root, configured, environment))
-    if host == moments.HOST_CODEX:
+        checks.append(_mcp_check(harness, target, store.root, configured, environment))
+    if harness == moments.HARNESS_CODEX:
         checks.extend(_codex_checks(target, store.root))
-    if host == moments.HOST_MUSE_CODE and provider:
+    if harness == moments.HARNESS_MUSE_CODE and provider:
         checks.extend(
             _muse_provider_checks(
                 configured,
@@ -159,7 +167,7 @@ def run(
             )
         )
     return Report(
-        host=host, store=store.root, settings=target, checks=tuple(checks), version=version
+        harness=harness, store=store.root, settings=target, checks=tuple(checks), version=version
     )
 
 
@@ -187,7 +195,87 @@ def _store_checks(store: Store) -> list[Check]:
         except OSError as error:
             detail = f"{store.root}: {error}"
     checks.append(Check("STORE_WRITABLE" if writable else "STORE_NOT_WRITABLE", writable, detail))
+    summary = health_events.summary(store)
+    counts = summary.get("counts") or {}
+    failures = int(counts.get("capture_failed", 0))
+    checks.append(
+        Check(
+            "CAPTURE_HEALTHY" if failures == 0 else "CAPTURE_FAILURES",
+            failures == 0,
+            f"capture_failed={failures} dedupe_refused={int(counts.get('dedupe_refused', 0))}",
+            required=False,
+        )
+    )
+    route = resolve_route(store, None).route
+    checks.append(
+        Check(
+            "ROUTE_SET" if route.is_set else "ROUTE_UNSET",
+            route.is_set,
+            route.label() or "unset - deterministic-only",
+            required=False,
+        )
+    )
+    checks.extend(_pinned_checks(store))
     return checks
+
+
+def _pinned_checks(store: Store) -> list[Check]:
+    """The pinned floor: size, staleness, readability, and whether a harness can honour it."""
+    from mnemobun.core import pinned as pinned_rules
+
+    out: list[Check] = []
+    try:
+        block = pinned_rules.block(store)
+    except Exception as error:  # unreadable roster or a vanished pinned record
+        out.append(Check("PINNED_UNREADABLE", False, str(error), required=False))
+        return out
+    budget = store.config.recall.pinned_max_bytes
+    out.append(
+        Check(
+            "PINNED_BUDGET",
+            not block.omitted,
+            f"{len(block.rules)} rule(s), {block.omitted} omitted, cap {budget} bytes",
+            required=False,
+        )
+    )
+    stale = [
+        record.name
+        for record in store.records()
+        if pinned_rules.is_pinned(record) and record.standing in PINNED_REFUSED_STANDING
+    ]
+    out.append(
+        Check(
+            "PINNED_STANDING",
+            not stale,
+            ", ".join(stale) or "every pinned rule still stands",
+            required=False,
+        )
+    )
+    try:
+        from mnemobun.adapters import channels
+
+        channel = channels.for_harness("hermes")
+        delivered = channels.recorded(store.layout.state_dir).get(channel.harness, "")
+        current = block.digest
+        out.append(
+            Check(
+                "PIN_DIGEST",
+                delivered == current,
+                f"delivered={delivered[:12] or 'never'} current={current[:12]}",
+                required=False,
+            )
+        )
+        out.append(
+            Check(
+                "PIN_CHANNEL",
+                not channel.degraded,
+                f"{channel.harness}: {channel.surface} (preserved={channel.preserved})",
+                required=False,
+            )
+        )
+    except Exception as error:  # the channel registry must never break doctor
+        out.append(Check("PIN_CHANNEL_UNREADABLE", False, str(error), required=False))
+    return out
 
 
 def _write_jobs_check(store: Store) -> Check:
@@ -242,7 +330,7 @@ def _settings(target: pathlib.Path, checks: list[Check]) -> dict[str, object] | 
 
 def _hook_checks(
     configured: dict[str, object],
-    host: str,
+    harness: str,
     store_root: pathlib.Path,
     settings_path: pathlib.Path,
 ) -> list[Check]:
@@ -251,7 +339,7 @@ def _hook_checks(
         return [Check("HOOK_INVALID", False, "settings.hooks is missing or not an object")]
     expected_store = setup.render_command([str(store_root.resolve())])
     failures = []
-    for event in moments.DIALECTS[host]:
+    for event in moments.MOMENTS[harness]:
         entries = hooks.get(event)
         if not isinstance(entries, list):
             failures.append(f"{event} missing")
@@ -263,7 +351,7 @@ def _hook_checks(
         if not _mentions(managed[0], expected_store):
             failures.append(f"{event} does not pin Store {expected_store}")
             continue
-        if host == moments.HOST_MUSE_CODE:
+        if harness == moments.HARNESS_MUSE_CODE:
             expected_settings = setup.render_command([str(settings_path.resolve())])
             if not _mentions(managed[0], setup.MUSE_SETTINGS_FLAG) or not _mentions(
                 managed[0], expected_settings
@@ -283,11 +371,11 @@ def _mentions(entry: object, text: str) -> bool:
 
 
 def _reasoner_checks(
-    store: Store, host: str, environment: dict[str, str] | None = None
+    store: Store, harness: str, environment: dict[str, str] | None = None
 ) -> list[Check]:
+    from mnemobun.core.config import REASONER_DRIVERS
     from mnemobun.executor import selection
 
-    available = os.environ if environment is None else environment
     checks = []
     for operation in selection.OPERATIONS:
         label = operation.upper()
@@ -297,25 +385,14 @@ def _reasoner_checks(
                 operation,
 
             )
-            if executor.reasoner == "endpoint":
-                endpoint = available.get("GEMINI_BASE_URL", "") or executor.endpoint
-                project = available.get("GOOGLE_CLOUD_PROJECT", "") or executor.project
-                api_key = available.get(executor.key_env or "GEMINI_API_KEY", "")
-                ok = bool(project or (endpoint and api_key))
-                if endpoint and api_key:
-                    detail = f"{operation} uses explicit model endpoint"
-                elif project:
-                    detail = f"Vertex AI project {project}"
-                else:
-                    detail = (
-                        f"{operation} endpoint reasoner requires a user-owned endpoint and "
-                        "API key or a Google Cloud project"
-                    )
+            if executor.reasoner in REASONER_DRIVERS:
+                ok = True
+                detail = f"{operation} reasons through the {executor.reasoner} CLI"
             else:
                 ok = False
                 detail = (
-                    f"{operation} reasoner must be an endpoint: "
-                    "configure a direct endpoint"
+                    f"{operation} reasoner must name a driver or 'plugin': "
+                    f"{executor.reasoner!r}"
                 )
         except Exception as error:
             ok = False
@@ -330,7 +407,7 @@ def _reasoner_checks(
     return checks
 
 
-def _live_reasoner_check(store: Store, host: str, operation: str) -> Check:
+def _live_reasoner_check(store: Store, harness: str, operation: str) -> Check:
     """Exercise the executor selected for one channel, with one bounded attempt."""
     try:
         from mnemobun.executor import selection
@@ -341,7 +418,10 @@ def _live_reasoner_check(store: Store, host: str, operation: str) -> Check:
             operation,
 
         )
-        reasoner = distiller(executor, store=store)
+        from mnemobun.executor.reasoners import DriverReasoner
+
+        ask = DriverReasoner.for_harness(executor.reasoner, model=executor.model)
+        reasoner = distiller(executor, store=store, ask=ask)
         reply = reasoner("Reply with exactly MNEMOBUN_READY.")
     except Exception as error:
         return Check(
@@ -365,17 +445,17 @@ def _live_reasoner_check(store: Store, host: str, operation: str) -> Check:
     )
 
 
-def _host_binary_needed(store: Store) -> bool:
-    """Whether any channel would actually launch the host binary.
+def _driver_binary_needed(store: Store) -> bool:
+    """Whether any channel would actually launch the harness binary.
 
-    Every channel resolved to the endpoint reasoner, so no host binary is ever
-    executed and its absence cannot break the store.
+    Every channel resolves to the harness reasoner, so the harness binary is what
+    reasons and its absence is a loud failure, not a silent abstain.
     """
-    from mnemobun.core.config import REASONER_ENDPOINT
+    from mnemobun.core.config import REASONER_DRIVERS
 
     executor = store.config.executor
     for policy in (executor.write, executor.manage):
-        if (policy.reasoner or executor.reasoner) != REASONER_ENDPOINT:
+        if (policy.reasoner or executor.reasoner) in REASONER_DRIVERS:
             return True
     return False
 
@@ -394,14 +474,14 @@ def _probe_matched(reply: str) -> bool:
 
 
 def _mcp_check(
-    host: str,
+    harness: str,
     target: pathlib.Path,
     store_root: pathlib.Path,
     configured: dict[str, object] | None,
     environment: dict[str, str] | None,
 ) -> Check:
-    if host == moments.HOST_CODEX:
-        binary = setup.BINARIES[host]
+    if harness == moments.HARNESS_CODEX:
+        binary = setup.BINARIES[harness]
         env = {
             **(os.environ if environment is None else environment),
             "CODEX_HOME": str(target.parent),
@@ -424,18 +504,11 @@ def _mcp_check(
             and str(store_root) in rendered
         )
         return Check("MCP_OK" if ok else "MCP_INVALID", ok, "Codex MCP server configuration")
-    if host == moments.HOST_CLAUDE_CODE:
-        key = "mcpServers"
-        servers = _mcp_servers(target, key)
-        if servers is None:
-            candidate = configured.get(key) if isinstance(configured, dict) else None
-            servers = candidate if isinstance(candidate, dict) else None
-    else:
-        key = "mcp_servers"
-        candidate = configured.get(key) if isinstance(configured, dict) else None
-        servers = candidate if isinstance(candidate, dict) else None
+    key = "mcp_servers"
+    candidate = configured.get(key) if isinstance(configured, dict) else None
+    servers = candidate if isinstance(candidate, dict) else None
     server = servers.get(setup.MCP_SERVER) if isinstance(servers, dict) else None
-    # ensure_ascii=False keeps a non-ASCII path readable, so a host whose
+    # ensure_ascii=False keeps a non-ASCII path readable, so a harness whose
     # install path is not plain ASCII is still matched.
     rendered = json.dumps(server, ensure_ascii=False) if server is not None else ""
     ok = setup.mcp_binary() in rendered and str(store_root.resolve()) in rendered
@@ -443,14 +516,14 @@ def _mcp_check(
 
 
 def _mcp_servers(target: pathlib.Path, key: str) -> dict[str, object] | None:
-    """The MCP servers a host keeps on disk, found where that host keeps them.
+    """The MCP servers a harness keeps on disk, found where that harness keeps them.
 
-    The installer writes one file, but the setting a host actually reads is not
-    always that one: a host may keep its MCP configuration beside its settings
+    The installer writes one file, but the setting a harness actually reads is not
+    always that one: a harness may keep its MCP configuration beside its settings
     instead of in the home directory. Look in both places before reporting the
     server as absent.
     """
-    for path in (target.parent / "mcp.json", target.parent.parent / ".claude.json"):
+    for path in (target.parent / "mcp.json",):
         try:
             found = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):

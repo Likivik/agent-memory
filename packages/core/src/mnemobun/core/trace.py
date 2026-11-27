@@ -10,8 +10,8 @@ from .paths import ARCHIVE_DIRNAME, PROVENANCE_DIRNAME, StoreLayout
 from .record import MemoryRecord
 from .sessions import Message, Pointer, parse_pointer, render_pointer, resolve
 
-LEGACY_PREFIX = (ARCHIVE_DIRNAME, PROVENANCE_DIRNAME)
-LEGACY_PATH_PARTS = 4
+EXCERPT_PREFIX = (ARCHIVE_DIRNAME, PROVENANCE_DIRNAME)
+EXCERPT_PATH_PARTS = 4
 ASCII_SPACE = 32
 
 EVIDENCE_NOTICE = (
@@ -30,7 +30,7 @@ class Evidence:
     def as_dict(self) -> dict[str, object]:
         return {
             "reference": self.reference,
-            "source": "raw" if self.session is not None else "legacy_provenance",
+            "source": "raw" if self.session is not None else "excerpt",
             "session": self.session,
             "messages": [message.as_dict() for message in self.messages],
             "text": self.text,
@@ -97,16 +97,16 @@ def read(layout: StoreLayout, record: MemoryRecord, reference: str | None = None
         if pointer is not None:
             evidence.append(Evidence(item, pointer.session, tuple(resolve(layout, pointer))))
         else:
-            evidence.append(Evidence(item, None, text=_legacy(layout, item)))
+            evidence.append(Evidence(item, None, text=_excerpt(layout, item)))
     return TraceResult(record, tuple(evidence))
 
 
-def _legacy(layout: StoreLayout, reference: str) -> str:
+def _excerpt(layout: StoreLayout, reference: str) -> str:
     """Only stored excerpt files, never arbitrary paths or synthetic numbered messages."""
     relative = pathlib.PurePosixPath(reference.replace("\\", "/"))
     if (
-        len(relative.parts) != LEGACY_PATH_PARTS
-        or relative.parts[: len(LEGACY_PREFIX)] != LEGACY_PREFIX
+        len(relative.parts) != EXCERPT_PATH_PARTS
+        or relative.parts[: len(EXCERPT_PREFIX)] != EXCERPT_PREFIX
         or any(part in (".", "..") for part in relative.parts)
         or relative.suffix != ".md"
         or any(ord(char) < ASCII_SPACE for char in reference)

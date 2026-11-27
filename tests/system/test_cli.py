@@ -124,7 +124,10 @@ def test_export_import_round_trip_preserves_the_recall_result_set(cli, tmp_path)
 
     destination_root = tmp_path / "migrated"
     assert main(["--store", str(destination_root), "--json", "init"]) == EXIT_OK
-    assert main(["--store", str(destination_root), "--json", "import", str(dump)]) == EXIT_OK
+    assert (
+        main(["--store", str(destination_root), "--json", "import", "mnemobun", str(dump)])
+        == EXIT_OK
+    )
 
     destination = Store(destination_root)
     after = {query: {hit.name for hit in Recall(destination).recall(query)} for query in queries}
@@ -132,9 +135,9 @@ def test_export_import_round_trip_preserves_the_recall_result_set(cli, tmp_path)
 
 
 def test_inspect_reports_the_recall_fingerprint_that_licenses_attribution(cli):
-    payload = cli("inspect")
+    payload = cli("index", "inspect")
     assert payload["recall_fingerprint"]
-    assert payload["recall_fingerprint"] == cli("inspect")["recall_fingerprint"]
+    assert payload["recall_fingerprint"] == cli("index", "inspect")["recall_fingerprint"]
 
 
 def test_rebuild_from_the_command_line_is_lossless(cli):
@@ -149,7 +152,7 @@ def test_rebuild_from_the_command_line_is_lossless(cli):
     )
     before = {hit["name"] for hit in cli("recall", "keeping rebuild")["hits"]}
     (cli.root / ".index" / "index.db").unlink()
-    cli("rebuild")
+    cli("index", "rebuild")
     assert {hit["name"] for hit in cli("recall", "keeping rebuild")["hits"]} == before
 
 
@@ -220,14 +223,11 @@ def test_batch_input_rejections_keep_valid_siblings_projected(cli, tmp_path, inv
     store = Store(cli.root)
     assert {record.name for record in store.records()} == set(names)
     assert {hit["name"] for hit in cli("recall", "batch recovery")["hits"]} == set(names)
-    projected = store.layout.memory_index.read_bytes()
-    assert all(name.encode() in projected for name in names)
-    assert b"invalid" not in projected
+    assert not (store.root / "MEMORY.md").exists()
 
-    cli("rebuild")
+    cli("index", "rebuild")
 
     assert {hit["name"] for hit in cli("recall", "batch recovery")["hits"]} == set(names)
-    assert store.layout.memory_index.read_bytes() == projected
 
 
 def test_batch_missing_predecessor_rolls_back_accepted_siblings(cli, tmp_path):
@@ -242,7 +242,6 @@ def test_batch_missing_predecessor_rolls_back_accepted_siblings(cli, tmp_path):
     )
     store = Store(cli.root)
     original = {path: path.read_bytes() for path in store.layout.truth_files()}
-    projected = store.layout.memory_index.read_bytes()
     names = {hit["name"] for hit in cli("recall", "batch recovery")["hits"]}
     batch = tmp_path / "aborted-batch.jsonl"
     specs = [
@@ -266,13 +265,11 @@ def test_batch_missing_predecessor_rolls_back_accepted_siblings(cli, tmp_path):
     assert payload["code"] == "not_found"
     assert "batch-missing" in payload["message"]
     assert {path: path.read_bytes() for path in store.layout.truth_files()} == original
-    assert store.layout.memory_index.read_bytes() == projected
     assert {hit["name"] for hit in cli("recall", "batch recovery")["hits"]} == names
 
-    cli("rebuild")
+    cli("index", "rebuild")
 
     assert {hit["name"] for hit in cli("recall", "batch recovery")["hits"]} == names
-    assert store.layout.memory_index.read_bytes() == projected
 
 
 def test_record_without_a_batch_still_demands_its_fields(cli):
@@ -379,7 +376,8 @@ def test_rule_only_sleep_preserves_crowded_system_groups(cli, memory_type, group
     assert set(before) == names
     assert {hit["name"] for hit in cli("recall", "latency", "--scope", scope)["hits"]} == names
 
-    for command in (("sleep", "--reason", "none"), ("rebuild",), ("sleep", "--reason", "none")):
+    for command in (("sleep", "--reason", "none"), ("index", "rebuild"),
+        ("sleep", "--reason", "none")):
         cli(*command)
         assert _system_group_records(cli) == before
         assert {
@@ -401,7 +399,8 @@ def test_rule_only_sleep_keeps_similarly_spelled_projects_separate(cli):
         )
     before = _system_group_records(cli)
 
-    for command in (("sleep", "--reason", "none"), ("rebuild",), ("sleep", "--reason", "none")):
+    for command in (("sleep", "--reason", "none"), ("index", "rebuild"),
+        ("sleep", "--reason", "none")):
         cli(*command)
         assert _system_group_records(cli) == before
         for project, name in expected.items():
@@ -432,7 +431,8 @@ def test_rule_only_sleep_preserves_add_only_identity_and_evidence(cli, operation
     before = {record.name: record for record in store.records()}
     evidence = {name: cli("trace", name) for name in before}
 
-    for command in (("sleep", "--reason", "none"), ("rebuild",), ("sleep", "--reason", "none")):
+    for command in (("sleep", "--reason", "none"), ("index", "rebuild"),
+        ("sleep", "--reason", "none")):
         cli(*command)
         after = {record.name: record for record in store.records()}
         assert after.keys() == before.keys()
@@ -476,15 +476,14 @@ def test_rule_only_sleep_preserves_distinct_memories_and_projections(cli, conten
     assert not any(action["kind"] == "duplicate-merged" for action in report["actions"])
     assert {record.name for record in Store(cli.root).records()} == names
     assert {hit["name"] for hit in cli("recall", "retention")["hits"]} == names
-    memory_index = (cli.root / "MEMORY.md").read_text(encoding="utf-8")
-    assert all(f"[{name}]" in memory_index for name in names)
+    assert not (cli.root / "MEMORY.md").exists()
 
 
 def test_rule_only_sleep_supersedes_exact_copies_and_retains_their_history(cli):
     names = {"exact-copy-a", "exact-copy-b"}
     for name in sorted(names):
         cli(
-            "--agent", "dedup-test", "record", "--type", "fact", "--name", name,
+            "--writer", "dedup-test", "record", "--type", "fact", "--name", name,
             "--abstract", "Retention requires signed receipts",
             "--body", "Keep the signed receipts for later review.",
             "--field", "project=dedup", "--field", "subject=retention",
@@ -506,34 +505,30 @@ def test_rule_only_sleep_supersedes_exact_copies_and_retains_their_history(cli):
     assert {
         hit["name"] for hit in cli("recall", "retention", "--as-of", "2001-01-01")["hits"]
     } == names
-    memory_index = (cli.root / "MEMORY.md").read_text(encoding="utf-8")
-    assert "[exact-copy-a]" in memory_index
-    assert "[exact-copy-b]" not in memory_index
+    assert not (cli.root / "MEMORY.md").exists()
     assert not any(
         action["kind"] == "duplicate-merged"
         for action in cli("sleep", "--reason", "none")["actions"]
     )
 
 
-def test_a_plain_sleep_asks_the_library_executor(cli, monkeypatch):
+def test_a_plain_sleep_without_a_reasoner_runs_deterministic_only(cli, monkeypatch):
     _near_duplicates(cli)
-    proposal = cli("proposals")["proposals"][0]
-    reply = json.dumps({"proposal": proposal["id"], "verdict": "reject"})
-    monkeypatch.setattr(
-        "mnemobun.executor.distiller.distiller", lambda config: lambda prompt: reply
-    )
+
+    def never(_config, **_kw):
+        raise AssertionError("a plain sleep must not reach for a reasoner")
+
+    monkeypatch.setattr("mnemobun.executor.distiller.distiller", never)
+
     report = cli("sleep")
-    assert [decision["proposal"] for decision in report["decisions"]] == [proposal["id"]]
+
+    assert report.get("decisions", []) == []
 
 
 def test_write_and_manage_select_their_own_reasoners_and_cli_wins(cli, monkeypatch):
     store = Store(cli.root)
-    store.config.executor.write = OperationExecutorConfig(
-        reasoner="endpoint", model="write-model"
-    )
-    store.config.executor.manage = OperationExecutorConfig(
-        reasoner="endpoint", model="manage-model"
-    )
+    store.config.executor.write = OperationExecutorConfig(reasoner="codex")
+    store.config.executor.manage = OperationExecutorConfig(reasoner="")
     store.config.save(store.root)
     capture_module.capture(store, "source-session", ["user: deploys happen on Friday"])
     selected = []
@@ -552,7 +547,7 @@ def test_write_and_manage_select_their_own_reasoners_and_cli_wins(cli, monkeypat
     monkeypatch.setattr("mnemobun.executor.distiller.distiller", reasoner)
 
     cli("distill", "--session", "source-session")
-    assert selected[-1].model == "write-model"
+    assert selected[-1].reasoner == "codex"
 
     capture_module.capture(store, "override-session", ["user: releases happen on Monday"])
     cli(
@@ -560,33 +555,29 @@ def test_write_and_manage_select_their_own_reasoners_and_cli_wins(cli, monkeypat
         "--session",
         "override-session",
         "--reason",
-        "endpoint",
+        "codex",
         "--reason-model",
         "cli-model",
     )
+    assert selected[-1].reasoner == "codex"
     assert selected[-1].model == "cli-model"
 
     _near_duplicates(cli)
-    cli("sleep")
-    assert selected[-1].model == "manage-model"
-
-    cli("sleep", "--reason", "endpoint", "--reason-model", "other-model")
-    assert selected[-1].model == "other-model"
+    cli("sleep", "--reason", "codex")
+    assert selected[-1].reasoner == "codex"
 
 
 def test_sleep_reports_a_reasoner_failure_instead_of_succeeding_silently(cli, monkeypatch):
     _near_duplicates(cli)
 
-    def unavailable(_prompt):
-        raise ReasonerUnavailableError("host reasoner failed")
+    def unavailable(_self, _prompt):
+        raise ReasonerUnavailableError("reasoner failed")
 
-    monkeypatch.setattr(
-        "mnemobun.executor.distiller.distiller", lambda _config: unavailable
-    )
+    monkeypatch.setattr("mnemobun.executor.reasoners.DriverReasoner.__call__", unavailable)
 
-    error = cli("sleep", expect=EXIT_ERROR)
+    error = cli("sleep", "--reason", "codex", expect=EXIT_ERROR)
 
-    assert error == {"code": "reasoner_unavailable", "message": "host reasoner failed"}
+    assert error["code"] == "reasoner_unavailable"
 
 
 def test_sleep_can_be_handed_a_reasoner_whose_verdicts_reach_the_store(cli, monkeypatch):
@@ -594,10 +585,10 @@ def test_sleep_can_be_handed_a_reasoner_whose_verdicts_reach_the_store(cli, monk
     proposal = cli("proposals")["proposals"][0]
     reply = json.dumps({"proposal": proposal["id"], "verdict": "reject"})
     monkeypatch.setattr(
-        "mnemobun.executor.reasoners.HostReasoner.__call__",
+        "mnemobun.executor.reasoners.DriverReasoner.__call__",
         lambda self, prompt: reply,
     )
-    report = cli("sleep", "--reason", "host")
+    report = cli("sleep", "--reason", "codex")
     assert [decision["proposal"] for decision in report["decisions"]] == [proposal["id"]]
     assert proposal["id"] not in {open_one["id"] for open_one in cli("proposals")["proposals"]}
 
@@ -615,18 +606,18 @@ def test_global_flags_are_accepted_after_the_subcommand(tmp_path, capsys):
         "--store",
         str(root),
         "--json",
-        "--agent",
+        "--writer",
         "flag-order",
     ]) == EXIT_OK
     payload = json.loads(capsys.readouterr().out)
-    assert Store(root).find(payload["name"]).author == "flag-order"
+    assert Store(root).find(payload["name"]).writer == "flag-order"
 
 
 def test_global_flags_keep_working_before_the_subcommand(tmp_path, capsys):
     root = tmp_path / "store"
     assert main(["--store", str(root), "init"]) == EXIT_OK
     capsys.readouterr()
-    assert main(["--store", str(root), "--json", "inspect"]) == EXIT_OK
+    assert main(["--store", str(root), "--json", "index", "inspect"]) == EXIT_OK
     assert json.loads(capsys.readouterr().out)["store"] == str(root)
 
 
@@ -639,9 +630,9 @@ def test_global_flags_work_in_mixed_positions(tmp_path, capsys):
 @pytest.mark.parametrize("subcommands", [("cron", "status"), ("jobs", "list")])
 def test_global_flags_are_accepted_after_a_nested_subcommand(subcommands):
     args = _parser().parse_args(
-        [*subcommands, "--store", "/tmp/store", "--json", "--agent", "nested-flags"]
+        [*subcommands, "--store", "/tmp/store", "--json", "--writer", "nested-flags"]
     )
 
     assert args.store == "/tmp/store"
     assert args.json is True
-    assert args.agent == "nested-flags"
+    assert args.writer == "nested-flags"

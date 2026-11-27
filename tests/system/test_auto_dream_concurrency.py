@@ -58,7 +58,7 @@ def test_two_hosts_can_create_only_one_claim(tmp_path):
     output = context.Queue()
     workers = [
         context.Process(target=_claim, args=(str(store.root), host, output))
-        for host in (moments.HOST_CODEX, moments.HOST_CLAUDE_CODE)
+        for host in (moments.HARNESS_CODEX,)
     ]
     for worker in workers:
         worker.start()
@@ -75,7 +75,7 @@ def test_duplicate_workers_execute_one_claim_once_and_exit(tmp_path):
     store.init()
     for number in range(store.config.manage.trigger_min_sessions):
         _complete(store, f"session-{number}")
-    claim = dreaming.claim_due(store, moments.HOST_CODEX).claim
+    claim = dreaming.claim_due(store, moments.HARNESS_CODEX).claim
     assert claim is not None
     context = mp.get_context("spawn")
     output = context.Queue()
@@ -127,7 +127,7 @@ def test_abnormally_exited_worker_releases_lock_and_next_event_reclaims(tmp_path
     store.init()
     for number in range(store.config.manage.trigger_min_sessions):
         _complete(store, f"session-{number}")
-    claim = dreaming.claim_due(store, moments.HOST_CODEX).claim
+    claim = dreaming.claim_due(store, moments.HARNESS_CODEX).claim
     assert claim is not None
     context = mp.get_context("spawn")
     ready = context.Event()
@@ -141,7 +141,7 @@ def test_abnormally_exited_worker_releases_lock_and_next_event_reclaims(tmp_path
     assert dreaming.state(store)["status"] == dreaming.STATUS_RUNNING
 
     clock.advance(seconds=store.config.manage.claim_lease_seconds + 1)
-    retried = dreaming.claim_due(store, moments.HOST_CLAUDE_CODE).claim
+    retried = dreaming.claim_due(store, moments.HARNESS_CODEX).claim
 
     assert retried is not None
     assert retried.id == claim.id

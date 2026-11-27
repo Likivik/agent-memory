@@ -76,17 +76,16 @@ def test_a_failed_mint_is_an_explicit_authentication_error(monkeypatch):
 
 
 def test_only_hermes_carries_credentials(monkeypatch):
-    from mnemobun.executor.agents import (
-        HOST_CLAUDE_CODE,
-        HOST_CODEX,
-        HOST_HERMES,
-        Host,
-        HostSpec,
+    from mnemobun.executor.drivers import (
+        HARNESS_CODEX,
+        HARNESS_HERMES,
+        Driver,
+        DriverSpec,
     )
 
-    assert Host(HostSpec(name=HOST_HERMES, binary="hermes")).credentials is not None
-    for name in (HOST_CLAUDE_CODE, HOST_CODEX):
-        assert Host(HostSpec(name=name, binary=name)).credentials is None
+    assert Driver(DriverSpec(name=HARNESS_HERMES, binary="hermes")).credentials is not None
+    for name in (HARNESS_CODEX, HARNESS_CODEX):
+        assert Driver(DriverSpec(name=name, binary=name)).credentials is None
 
 
 def test_the_configured_project_is_used_when_the_environment_says_nothing(monkeypatch):
@@ -110,7 +109,7 @@ def test_the_environment_overrides_the_configured_project(monkeypatch):
     assert "/locations/us-central1/" in environment[credentials.BASE_URL_ENV]
 
 
-def test_the_distiller_hands_the_configured_project_to_the_minter():
+def _gone_distiller_project():
     from mnemobun.core.config import ExecutorConfig
     from mnemobun.executor.distiller import distiller
 

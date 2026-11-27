@@ -47,16 +47,16 @@ def _twins(store) -> None:
 def test_first_claim_counts_distinct_completed_sessions_not_boundary_events(store):
     _complete(store, "same", ["user: one"])
     _complete(store, "same", ["user: one", "assistant: two"])
-    assert dreaming.claim_due(store, moments.HOST_CODEX).claim is None
+    assert dreaming.claim_due(store, moments.HARNESS_CODEX).claim is None
 
     _complete(store, "second")
     _complete(store, "third")
-    first = dreaming.claim_due(store, moments.HOST_CODEX)
-    duplicate = dreaming.claim_due(store, moments.HOST_CLAUDE_CODE)
+    first = dreaming.claim_due(store, moments.HARNESS_CODEX)
+    duplicate = dreaming.claim_due(store, moments.HARNESS_CODEX)
 
     assert first.claim is not None
     assert first.claim.sessions == ("same", "second", "third")
-    assert first.claim.host == moments.HOST_CODEX
+    assert first.claim.harness == moments.HARNESS_CODEX
     assert duplicate.claim is None
     assert duplicate.reason == "dream claim active"
 
@@ -65,7 +65,7 @@ def test_any_unfinished_write_delays_a_due_dream(store):
     _enough(store)
     capture.capture(store, "still-distilling", ["user: not written yet"], source="pause")
 
-    result = dreaming.claim_due(store, moments.HOST_CODEX)
+    result = dreaming.claim_due(store, moments.HARNESS_CODEX)
 
     assert result.claim is None
     assert result.reason == "write pipeline not settled"
@@ -73,7 +73,7 @@ def test_any_unfinished_write_delays_a_due_dream(store):
 
 def test_worker_success_resets_baseline_and_preserves_time_gate(store, clock):
     _enough(store)
-    claim = dreaming.claim_due(store, moments.HOST_CODEX).claim
+    claim = dreaming.claim_due(store, moments.HARNESS_CODEX).claim
     assert claim is not None
 
     result = auto_dream.run_worker(store, claim.id, reasoner=None)
@@ -83,9 +83,9 @@ def test_worker_success_resets_baseline_and_preserves_time_gate(store, clock):
     assert dreaming.state(store)["status"] == dreaming.STATUS_SUCCEEDED
     for number in range(store.config.manage.trigger_min_sessions):
         _complete(store, f"later-{number}")
-    assert dreaming.claim_due(store, moments.HOST_CODEX).claim is None
+    assert dreaming.claim_due(store, moments.HARNESS_CODEX).claim is None
     clock.advance(hours=store.config.manage.trigger_min_hours + 1)
-    assert dreaming.claim_due(store, moments.HOST_CODEX).claim is not None
+    assert dreaming.claim_due(store, moments.HARNESS_CODEX).claim is not None
 
 
 def test_due_runner_uses_persisted_three_session_and_twenty_four_hour_gates(store, clock):
@@ -124,12 +124,12 @@ def test_due_runner_uses_persisted_three_session_and_twenty_four_hour_gates(stor
 
 def test_report_recovers_success_if_worker_died_before_state_write(store):
     _enough(store)
-    claim = dreaming.claim_due(store, moments.HOST_CODEX).claim
+    claim = dreaming.claim_due(store, moments.HARNESS_CODEX).claim
     assert claim is not None
     report = Dream(store).sleep(dream_id=claim.id)
     assert pathlib.Path(report.path).is_file()
 
-    result = dreaming.claim_due(store, moments.HOST_CODEX)
+    result = dreaming.claim_due(store, moments.HARNESS_CODEX)
 
     assert result.claim is None
     recovered = dreaming.state(store)
@@ -140,7 +140,7 @@ def test_report_recovers_success_if_worker_died_before_state_write(store):
 def test_failed_worker_is_observable_and_next_event_retries_same_decision(store):
     _twins(store)
     _enough(store)
-    claim = dreaming.claim_due(store, moments.HOST_MUSE_CODE).claim
+    claim = dreaming.claim_due(store, moments.HARNESS_MUSE_CODE).claim
     assert claim is not None
 
     def unavailable(_prompt: str) -> str:
@@ -152,21 +152,21 @@ def test_failed_worker_is_observable_and_next_event_retries_same_decision(store)
     failed = dreaming.state(store)
     assert failed["status"] == dreaming.STATUS_FAILED
     assert "host unavailable" in str(failed["last_error"])
-    retried = dreaming.claim_due(store, moments.HOST_CODEX).claim
+    retried = dreaming.claim_due(store, moments.HARNESS_CODEX).claim
     assert retried is not None
     assert retried.id == claim.id
     assert retried.attempt == claim.attempt + 1
-    assert retried.host == moments.HOST_CODEX
+    assert retried.harness == moments.HARNESS_CODEX
 
 
 def test_expired_claim_recovers_without_pid_scanning(store, clock):
     store.config.manage.claim_lease_seconds = 1
     _enough(store)
-    first = dreaming.claim_due(store, moments.HOST_CODEX).claim
+    first = dreaming.claim_due(store, moments.HARNESS_CODEX).claim
     assert first is not None
     clock.advance(seconds=store.config.manage.claim_lease_seconds + 1)
 
-    second = dreaming.claim_due(store, moments.HOST_CODEX).claim
+    second = dreaming.claim_due(store, moments.HARNESS_CODEX).claim
 
     assert second is not None
     assert second.id == first.id
@@ -176,22 +176,22 @@ def test_expired_claim_recovers_without_pid_scanning(store, clock):
 def test_expired_lease_does_not_replace_a_worker_holding_the_run_lock(store, clock):
     store.config.manage.claim_lease_seconds = 1
     _enough(store)
-    first = dreaming.claim_due(store, moments.HOST_CODEX).claim
+    first = dreaming.claim_due(store, moments.HARNESS_CODEX).claim
     assert first is not None
     clock.advance(seconds=store.config.manage.claim_lease_seconds + 1)
 
     with file_lock(store.layout.dream_run_lock, timeout=None):
-        result = dreaming.claim_due(store, moments.HOST_CLAUDE_CODE)
+        result = dreaming.claim_due(store, moments.HARNESS_CODEX)
 
     assert result.claim is None
     assert result.reason == "dream worker still running"
-    assert dreaming.state(store)["host"] == moments.HOST_CODEX
+    assert dreaming.state(store)["harness"] == moments.HARNESS_CODEX
 
 
 def test_duplicate_worker_lock_timeout_does_not_mark_the_owner_failed(store):
     store.config.storage.lock_timeout_seconds = 0.01
     _enough(store)
-    claim = dreaming.claim_due(store, moments.HOST_CODEX).claim
+    claim = dreaming.claim_due(store, moments.HARNESS_CODEX).claim
     assert claim is not None
 
     with file_lock(store.layout.dream_run_lock, timeout=None):
@@ -204,9 +204,8 @@ def test_duplicate_worker_lock_timeout_does_not_mark_the_owner_failed(store):
 
 def test_detached_launcher_uses_manage_host_and_executor_environment(store, monkeypatch):
     _enough(store)
-    store.config.executor.manage = OperationExecutorConfig(
-        reasoner="endpoint", model="muse-test"
-    )
+    store.config.executor.manage = OperationExecutorConfig(reasoner="codex")
+    store.config.executor.model = "muse-test"
     store.config.save(store.root)
     launched = {}
 
@@ -217,12 +216,12 @@ def test_detached_launcher_uses_manage_host_and_executor_environment(store, monk
     result = auto_dream.launch(store, trigger_source="hook")
 
     assert result.claim is not None
-    assert result.claim.host == ""
+    assert result.claim.harness == "codex"
     assert result.claim.trigger_source == "hook"
-    assert result.claim.reasoner == "endpoint"
+    assert result.claim.reasoner == "codex"
     assert launched["command"][-4:] == [
         "--reason",
-        "endpoint",
+        "codex",
         "--reason-model",
         "muse-test",
     ]
@@ -230,11 +229,10 @@ def test_detached_launcher_uses_manage_host_and_executor_environment(store, monk
     assert launched["kwargs"]["stdin"] is auto_dream.subprocess.DEVNULL
 
 
-def test_detached_launcher_does_not_fallback_from_explicit_endpoint(store, monkeypatch):
+def test_detached_launcher_does_not_fallback_to_a_default_driver(store, monkeypatch):
     _enough(store)
-    store.config.executor.manage = OperationExecutorConfig(
-        reasoner="endpoint", model="managed-model"
-    )
+    store.config.executor.model = "managed-model"
+    store.config.executor.manage = OperationExecutorConfig(reasoner="codex")
     store.config.save(store.root)
     launched = {}
     monkeypatch.setattr(
@@ -246,12 +244,12 @@ def test_detached_launcher_does_not_fallback_from_explicit_endpoint(store, monke
     result = auto_dream.launch(store, trigger_source="hook")
 
     assert result.claim is not None
-    assert result.claim.host == ""
-    assert result.claim.reasoner == "endpoint"
+    assert result.claim.harness == "codex"
+    assert result.claim.reasoner == "codex"
     assert "--reason-host" not in launched["command"]
     assert launched["command"][-4:] == [
         "--reason",
-        "endpoint",
+        "codex",
         "--reason-model",
         "managed-model",
     ]
@@ -262,7 +260,7 @@ def test_manual_sleep_covers_completed_sessions_for_automatic_counting(store):
     report = Dream(store).sleep()
     dreaming.record_manual_success(store, report.path)
 
-    assert dreaming.claim_due(store, moments.HOST_CODEX).sessions_since == 0
+    assert dreaming.claim_due(store, moments.HARNESS_CODEX).sessions_since == 0
 
 
 def test_sleep_if_due_skips_without_a_report(store, capsys):
@@ -312,9 +310,8 @@ def test_sleep_if_due_runs_t0_t1_and_records_the_actual_manage_reasoner(
             valid_from="2000-01-01",
         )
     _enough(store)
-    store.config.executor.manage = OperationExecutorConfig(
-        reasoner="endpoint", model="codex-test"
-    )
+    store.config.executor.manage = OperationExecutorConfig(reasoner="codex")
+    store.config.executor.model = "codex-test"
     store.config.save(store.root)
     proposal = next(
         item
@@ -349,7 +346,7 @@ def test_sleep_if_due_runs_t0_t1_and_records_the_actual_manage_reasoner(
     assert payload["slept"] is True
     assert payload["status"] == "succeeded"
     assert payload["trigger_source"] == "cron"
-    assert payload["reasoner"] == {"kind": "endpoint", "model": "codex-test"}
+    assert payload["reasoner"] == {"kind": "codex", "model": "codex-test"}
     assert selected[-1].model == "codex-test"
     assert any(action["kind"] == "duplicate-merged" for action in payload["actions"])
     assert [decision["proposal"] for decision in payload["decisions"]] == [proposal.id]
@@ -363,9 +360,7 @@ def test_sleep_if_due_reasoner_failure_is_persisted_without_a_report(
 ):
     _twins(store)
     _enough(store)
-    store.config.executor.manage = OperationExecutorConfig(
-        reasoner="endpoint", model="codex-test"
-    )
+    store.config.executor.manage = OperationExecutorConfig(reasoner="codex")
     store.config.save(store.root)
 
     def unavailable(_prompt: str) -> str:
@@ -386,15 +381,15 @@ def test_sleep_if_due_reasoner_failure_is_persisted_without_a_report(
     assert error["code"] == "reasoner_unavailable"
     status = dreaming.state(store)
     assert status["status"] == dreaming.STATUS_FAILED
-    assert status["host"] == ""
-    assert status["reasoner"] == "endpoint"
+    assert status["harness"] == ""
+    assert status["reasoner"] == "codex"
     assert "configured Codex unavailable" in str(status["last_error"])
     assert not list(store.layout.dream_reports.glob("auto-*.md"))
 
 
 def test_duplicate_boundary_is_still_a_retry_tick_without_incrementing_sessions(store):
     event = {
-        "host": moments.HOST_CODEX,
+        "harness": moments.HARNESS_CODEX,
         "hook_event_name": "Stop",
         "session_id": "same",
         "items": ["user: one"],
@@ -410,7 +405,7 @@ def test_duplicate_boundary_is_still_a_retry_tick_without_incrementing_sessions(
     )
 
     assert response == {}
-    assert launches == [(store, moments.HOST_CODEX)]
+    assert launches == [(store, moments.HARNESS_CODEX)]
     assert len(dreaming.completed_sessions(store)) == 0
 
 
@@ -419,16 +414,16 @@ def test_session_start_is_the_next_event_time_threshold_tick(store):
 
     hook_entry.handle(
         store,
-        {"host": moments.HOST_CODEX, "hook_event_name": "SessionStart"},
+        {"harness": moments.HARNESS_CODEX, "hook_event_name": "SessionStart"},
         dream_launch=lambda *args: launches.append(args),
     )
 
-    assert launches == [(store, moments.HOST_CODEX)]
+    assert launches == [(store, moments.HARNESS_CODEX)]
 
 
 def test_dream_status_exposes_failure_and_retry_progress(store, capsys):
     _enough(store)
-    claim = dreaming.claim_due(store, moments.HOST_CODEX).claim
+    claim = dreaming.claim_due(store, moments.HARNESS_CODEX).claim
     assert claim is not None
     dreaming.mark_failed(store, claim.id, "Codex unavailable")
 
@@ -484,9 +479,8 @@ def test_hook_distill_checks_dream_only_after_watermark_settles(
 
 def test_hook_distill_uses_manage_model_instead_of_the_source(store, monkeypatch, capsys):
     store.config.manage.trigger_min_sessions = 1
-    store.config.executor.manage = OperationExecutorConfig(
-        reasoner="endpoint", model="muse-test"
-    )
+    store.config.executor.manage = OperationExecutorConfig(reasoner="codex")
+    store.config.executor.model = "muse-test"
     store.config.save(store.root)
     capture.capture(store, "boundary", ["user: remember the green queue"], source="pause")
     launched = {}
@@ -523,9 +517,9 @@ def test_hook_distill_uses_manage_model_instead_of_the_source(store, monkeypatch
     )
     payload = json.loads(capsys.readouterr().out)
 
-    assert payload["auto_dream"]["reasoner"] == "endpoint"
-    assert payload["auto_dream"]["host"] == ""
+    assert payload["auto_dream"]["reasoner"] == "codex"
+    assert payload["auto_dream"]["harness"] == "codex"
     assert launched["command"][-2:] == ["--reason-model", "muse-test"]
     state = dreaming.state(store)
-    assert state["host"] == ""
+    assert state["harness"] == "codex"
     assert state["trigger_source"] == "hook"

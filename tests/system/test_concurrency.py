@@ -9,7 +9,7 @@ DECISIONS_PER_WRITER = 6
 
 
 def _write(root: str, name: str) -> None:
-    store = Store(root, agent=name)
+    store = Store(root, writer=name)
     store.record(
         abstract=f"Concurrent write from {name} about the shared memory store",
         type="fact",
@@ -35,8 +35,7 @@ def test_two_processes_recording_at_once_lose_nothing(tmp_path):
     store.sync_index()
     names = {record.name for record in store.records()}
     assert {"writer-alpha", "writer-beta"} <= names
-    index_lines = store.layout.memory_index.read_text(encoding="utf-8")
-    assert "writer-alpha" in index_lines and "writer-beta" in index_lines
+    assert not (store.root / "MEMORY.md").exists()
 
 
 def _append(root: str, name: str) -> None:

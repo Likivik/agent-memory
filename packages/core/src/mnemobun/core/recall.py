@@ -125,7 +125,7 @@ class Recall:
                         hit.name,
                         query,
                         KIND_RECALL,
-                        self._store.agent,
+                        self._store.writer,
                     )
                     for hit in hits
                 ]

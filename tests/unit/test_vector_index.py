@@ -314,6 +314,8 @@ def test_distilled_raw_bindings_survive_read_and_rebuild_with_either_index(
 
     monkeypatch.setattr("mnemobun.core.store.create_embedder", backend)
     config = Config.default()
+    config.executor.write.reasoner = "codex"  # no production default exists
+    config.executor.manage.reasoner = "codex"
     config.index.vector_enabled = enabled
     config.index.vector_model = "fake/v1"
     store = Store(tmp_path / "store", config=config, clock=clock)

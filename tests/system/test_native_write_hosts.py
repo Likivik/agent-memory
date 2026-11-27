@@ -7,12 +7,10 @@ import sys
 
 import pytest
 from mnemobun.core import distill, sessions, toolkit
-from mnemobun.core.config import ExecutorConfig
 from mnemobun.core.errors import ValidationError
 from mnemobun.core.watermark import Watermark
-from mnemobun.executor import agents
-from mnemobun.executor import distiller as executor_distiller
-from mnemobun.executor.reasoners import ToolHostReasoner
+from mnemobun.executor import drivers
+from mnemobun.executor.reasoners import ToolDriverReasoner
 
 FAKE_HOST = """#!{python}
 import json, os, subprocess, sys, tomllib
@@ -96,8 +94,8 @@ def _fake_host(install, tmp_path, name):
 
 
 def _reasoner(name, binary):
-    spec = agents.HostSpec(name=name, binary=str(binary), model="a-model", attempts=1)
-    return ToolHostReasoner(host=agents.Host(spec))
+    spec = drivers.DriverSpec(name=name, binary=str(binary), model="a-model", attempts=1)
+    return ToolDriverReasoner(driver=drivers.Driver(spec))
 
 
 def _batch(store):
@@ -125,12 +123,17 @@ def _supersede(handle):
 
 @pytest.mark.parametrize(
     "name",
-    [agents.HOST_CLAUDE_CODE, agents.HOST_CODEX, agents.HOST_HERMES, agents.HOST_MUSE_CODE],
+    [
+        drivers.HARNESS_CODEX,
+        drivers.HARNESS_CODEX,
+        drivers.HARNESS_HERMES,
+        drivers.HARNESS_MUSE_CODE,
+    ],
 )
 def test_a_host_distills_a_batch_through_the_toolkit_adapter(
     name, store, tmp_path, monkeypatch, python_executable
 ):
-    if name == agents.HOST_HERMES:
+    if name == drivers.HARNESS_HERMES:
         monkeypatch.setenv("HERMES_HOME", str(tmp_path / "hermes-root"))
     old, messages = _batch(store)
     log = tmp_path / "host-log.json"
@@ -156,12 +159,12 @@ def test_a_host_distills_a_batch_through_the_toolkit_adapter(
     assert all(reply["result"]["isError"] is False for reply in seen["replies"])
     assert "our queue timeout is 30 seconds" in seen["stdin"].lower()
     assert ("our queue timeout is 30 seconds" in seen["system"].lower()) == (
-        name in (agents.HOST_HERMES, agents.HOST_MUSE_CODE)
+        name in (drivers.HARNESS_HERMES, drivers.HARNESS_MUSE_CODE)
     )
     assert toolkit.TOOL_SUBMIT in seen["system"]
     assert seen["executor"] == "1"
     assert count.read_text(encoding="utf-8") == "1"
-    if name == agents.HOST_MUSE_CODE:
+    if name == drivers.HARNESS_MUSE_CODE:
         assert "run.toolset" not in seen["settings"]
         override = seen["argv"][seen["argv"].index("-c") + 1]
         assert json.loads(override.removeprefix("run.toolset=")) == [
@@ -170,9 +173,9 @@ def test_a_host_distills_a_batch_through_the_toolkit_adapter(
             "mcp__memory__submit_operations",
         ]
         assert set(seen["settings"]["mcp_servers"]) == {"memory"}
-    if name == agents.HOST_HERMES:
-        assert set(seen["settings"]["mcp_servers"]) == {agents.HERMES_WRITE_SERVER_NAME}
-        configured = seen["settings"]["mcp_servers"][agents.HERMES_WRITE_SERVER_NAME]
+    if name == drivers.HARNESS_HERMES:
+        assert set(seen["settings"]["mcp_servers"]) == {drivers.HERMES_WRITE_SERVER_NAME}
+        configured = seen["settings"]["mcp_servers"][drivers.HERMES_WRITE_SERVER_NAME]
         assert configured["tools"] == {
             "include": ["recall", "read", "submit_operations"],
             "resources": False,
@@ -182,12 +185,17 @@ def test_a_host_distills_a_batch_through_the_toolkit_adapter(
 
 @pytest.mark.parametrize(
     "name",
-    [agents.HOST_CLAUDE_CODE, agents.HOST_CODEX, agents.HOST_HERMES, agents.HOST_MUSE_CODE],
+    [
+        drivers.HARNESS_CODEX,
+        drivers.HARNESS_CODEX,
+        drivers.HARNESS_HERMES,
+        drivers.HARNESS_MUSE_CODE,
+    ],
 )
 def test_a_host_run_without_a_submission_writes_nothing(
     name, store, tmp_path, monkeypatch, python_executable
 ):
-    if name == agents.HOST_HERMES:
+    if name == drivers.HARNESS_HERMES:
         monkeypatch.setenv("HERMES_HOME", str(tmp_path / "hermes-root"))
     old, messages = _batch(store)
     monkeypatch.setenv(
@@ -224,10 +232,9 @@ def test_muse_auto_native_write_creates_a_new_memory_with_source_provenance(
         json.dumps([[toolkit.TOOL_SUBMIT, {toolkit.ARG_OPERATIONS: [operation]}]]),
     )
     monkeypatch.setenv("FAKE_HOST_LOG", str(log))
-    binary = _fake_host(python_executable, tmp_path, agents.BINARIES[agents.HOST_MUSE_CODE][0])
+    binary = _fake_host(python_executable, tmp_path, drivers.BINARIES[drivers.HARNESS_MUSE_CODE][0])
     monkeypatch.setenv("PATH", str(binary.parent) + os.pathsep + os.environ["PATH"])
-    reasoner = executor_distiller.distiller(ExecutorConfig(host=agents.HOST_MUSE_CODE))
-    assert isinstance(reasoner, ToolHostReasoner)
+    reasoner = ToolDriverReasoner.for_harness(drivers.HARNESS_MUSE_CODE, model="")
 
     report = distill.distill(
         store,
@@ -242,7 +249,7 @@ def test_muse_auto_native_write_creates_a_new_memory_with_source_provenance(
     assert written.provenance == ["sessions/muse-new#0-0"]
 
 
-@pytest.mark.parametrize("name", [agents.HOST_CLAUDE_CODE, agents.HOST_MUSE_CODE])
+@pytest.mark.parametrize("name", [drivers.HARNESS_CODEX, drivers.HARNESS_MUSE_CODE])
 def test_native_write_returns_tool_errors_to_the_same_run_then_skips(
     name, store, tmp_path, monkeypatch, python_executable
 ):

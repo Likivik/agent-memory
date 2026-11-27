@@ -69,7 +69,7 @@ def test_a_boundary_hook_enqueues_the_job_and_spawns_its_worker(store, monkeypat
     response = hook_entry.handle(
         store,
         {
-            "host": "codex",
+            "harness": "codex",
             "hook_event_name": "Stop",
             "session_id": "boundary",
             "items": ["user: one"],
@@ -82,13 +82,12 @@ def test_a_boundary_hook_enqueues_the_job_and_spawns_its_worker(store, monkeypat
     assert job.state == STATE_QUEUED
     assert job.session == "boundary"
     assert job.target == 1
-    assert launched["command"][-5:] == [
+    assert launched["command"][-3:] == [
         hook_entry.JOB_FLAG,
         job.id,
-        hook_entry.SOURCE_HOST_FLAG,
-        "codex",
         hook_entry.AUTO_DREAM_FLAG,
     ]
+    assert job.harness == "codex"
 
 
 def test_a_failed_spawn_leaves_the_job_queued(store, monkeypatch):
@@ -99,7 +98,7 @@ def test_a_failed_spawn_leaves_the_job_queued(store, monkeypatch):
     response = hook_entry.handle(
         store,
         {
-            "host": "codex",
+            "harness": "codex",
             "hook_event_name": "Stop",
             "session_id": "boundary",
             "items": ["user: one"],
@@ -120,7 +119,7 @@ def test_session_start_drains_due_jobs_through_one_detached_worker(store, monkey
         launched.update(command=command, kwargs=kwargs)
 
     monkeypatch.setattr(hook_entry.subprocess, "Popen", popen)
-    hook_entry.handle(store, {"host": "codex", "hook_event_name": "SessionStart"})
+    hook_entry.handle(store, {"harness": "codex", "hook_event_name": "SessionStart"})
 
     assert launched["command"][-2:] == ["distill", "--drain"]
     assert launched["kwargs"]["stdin"] is hook_entry.subprocess.DEVNULL
@@ -131,7 +130,7 @@ def test_an_undrained_queue_launches_no_drain_worker(store, monkeypatch):
 
     hook_entry.handle(
         store,
-        {"host": "codex", "hook_event_name": "SessionStart"},
+        {"harness": "codex", "hook_event_name": "SessionStart"},
         dream_launch=lambda *_: None,
         drain_launch=lambda _target: drains.append(_target),
     )
@@ -146,7 +145,7 @@ def test_a_capturing_boundary_offers_no_drain_but_an_empty_one_does(store):
     hook_entry.handle(
         store,
         {
-            "host": "codex",
+            "harness": "codex",
             "hook_event_name": "Stop",
             "session_id": "boundary",
             "items": ["user: one"],
@@ -157,7 +156,7 @@ def test_a_capturing_boundary_offers_no_drain_but_an_empty_one_does(store):
     )
     hook_entry.handle(
         store,
-        {"host": "codex", "hook_event_name": "Stop", "session_id": "boundary", "items": []},
+        {"harness": "codex", "hook_event_name": "Stop", "session_id": "boundary", "items": []},
         launch=lambda *_: pytest.fail("an empty boundary launches no distiller"),
         dream_launch=lambda *_: None,
         drain_launch=drains.append,
@@ -206,9 +205,9 @@ def test_a_killed_worker_leaves_the_job_to_the_next_run(
     root = tmp_path / "store"
     store = _real_store(root, lease_seconds=1.5, heartbeat_seconds=0.4)
     _capture(store)
-    job = WriteJobs(store).enqueue("boundary", "claude-code")
+    job = WriteJobs(store).enqueue("boundary", "codex")
     blocking = python_executable(
-        tmp_path / "bin-block" / "claude", BLOCKING_HOST.format(python=sys.executable)
+        tmp_path / "bin-block" / "codex", BLOCKING_HOST.format(python=sys.executable)
     )
     monkeypatch.setenv("PATH", f"{blocking.parent}{os.pathsep}{os.environ.get('PATH', '')}")
     monkeypatch.setenv("FAKE_HOST_STOP", str(tmp_path / "stop-host"))
@@ -257,7 +256,7 @@ def test_a_crash_between_settle_and_complete_is_recovered_by_the_next_run(
     root = tmp_path / "store"
     store = _real_store(root, lease_seconds=1.0)
     _capture(store)
-    job = WriteJobs(store).enqueue("boundary", "claude-code")
+    job = WriteJobs(store).enqueue("boundary", "codex")
     first: list[str] = []
 
     def crash_on_complete(self, job, now=None):
@@ -323,7 +322,7 @@ def test_the_host_transport_traces_its_tool_calls_end_to_end(
     store, tmp_path, monkeypatch, python_executable, capsys
 ):
     _capture(store)
-    job = WriteJobs(store).enqueue("boundary", "claude-code")
+    job = WriteJobs(store).enqueue("boundary", "codex")
     binary = _fake_host(python_executable, tmp_path)
     monkeypatch.setenv("PATH", f"{binary.parent}{os.pathsep}{os.environ.get('PATH', '')}")
     monkeypatch.setenv(
@@ -403,20 +402,29 @@ FAKE_HOST = """#!{python}
 import json, os, subprocess, sys
 
 argv = sys.argv[1:]
+overrides = {{}}
+index = 0
+while index < len(argv) - 1:
+    if argv[index] == "-c":
+        key, _, value = argv[index + 1].partition("=")
+        overrides[key] = json.loads(value)
+        index += 2
+        continue
+    index += 1
 
-def after(flag):
-    return argv[argv.index(flag) + 1]
+sys.stdin.read()
+answer_file = argv[argv.index("--output-last-message") + 1]
+prefixes = [key[: -len(".command")] for key in overrides if key.endswith(".command")]
+if not prefixes:
+    raise SystemExit("unexpected codex invocation: no mcp server override")
 
-if "--mcp-config" in argv:
-    prompt = sys.stdin.read()
-    server = next(iter(json.loads(after("--mcp-config"))["mcpServers"].values()))
-else:
-    raise SystemExit("unexpected claude invocation")
-
+prefix = prefixes[0]
+server = {{"command": overrides[prefix + ".command"], "args": overrides[prefix + ".args"]}}
 child = subprocess.Popen(
     [server["command"], *server["args"]],
     stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
 )
+
 
 def rpc(request_id, method, params=None):
     message = {{"jsonrpc": "2.0", "id": request_id, "method": method, "params": params or {{}}}}
@@ -424,27 +432,29 @@ def rpc(request_id, method, params=None):
     child.stdin.flush()
     return json.loads(child.stdout.readline())
 
+
 rpc(0, "initialize")
 for index, (name, arguments) in enumerate(json.loads(os.environ["FAKE_HOST_SCRIPT"])):
     rpc(index + 2, "tools/call", {{"name": name, "arguments": arguments}})
 child.stdin.close()
 child.wait()
+with open(answer_file, "w", encoding="utf-8") as handle:
+    handle.write("done")
 with open(os.environ["FAKE_HOST_LOG"], "a", encoding="utf-8") as log:
     record = {{"argv": argv, "executor": os.environ.get("MNEMOBUN_EXECUTOR")}}
     log.write(json.dumps(record) + "\\n")
-print("done")
 """
 
 
 def _fake_host(install, tmp_path):
-    return install(tmp_path / "bin" / "claude", FAKE_HOST.format(python=sys.executable))
+    return install(tmp_path / "bin" / "codex", FAKE_HOST.format(python=sys.executable))
 
 
 def test_mem_distill_job_runs_one_job_end_to_end_with_the_deterministic_host(
     store, tmp_path, monkeypatch, python_executable, capsys
 ):
     _capture(store)
-    job = WriteJobs(store).enqueue("boundary", "claude-code")
+    job = WriteJobs(store).enqueue("boundary", "codex")
     binary = _fake_host(python_executable, tmp_path)
     monkeypatch.setenv("PATH", f"{binary.parent}{os.pathsep}{os.environ.get('PATH', '')}")
     monkeypatch.setenv(
@@ -479,9 +489,9 @@ def test_mem_distill_drain_claims_and_runs_every_due_job(
 ):
     _capture(store, "first")
     _capture(store, "second")
-    WriteJobs(store).enqueue("first", "claude-code")
+    WriteJobs(store).enqueue("first", "codex")
     store.clock.advance(seconds=1)
-    WriteJobs(store).enqueue("second", "claude-code")
+    WriteJobs(store).enqueue("second", "codex")
     binary = _fake_host(python_executable, tmp_path)
     monkeypatch.setenv("PATH", f"{binary.parent}{os.pathsep}{os.environ.get('PATH', '')}")
     monkeypatch.setenv(
@@ -556,7 +566,7 @@ def test_doctor_reports_an_unhealthy_job_queue(cli, clock):
         current = queue.claim("worker").job
         assert current is not None
 
-    payload = cli("doctor", "--host", "claude-code", "--no-live", expect=EXIT_ERROR)
+    payload = cli("doctor", "--harness", "codex", "--no-live", expect=EXIT_ERROR)
 
     checks = {check["code"]: check for check in payload["checks"]}
     assert checks["WRITE_JOBS_DEGRADED"]["ok"] is False

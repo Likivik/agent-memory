@@ -14,9 +14,20 @@ CONFIG_FILENAME = "config.toml"
 STORE_ENV_VAR = "MNEMOBUN_STORE"
 EXECUTOR_ENV_VAR = "MNEMOBUN_EXECUTOR"
 MUSE_SETTINGS_ENV_VAR = "MNEMOBUN_MUSE_SETTINGS"
-REASONER_ENDPOINT = "endpoint"
-TOOL_MODE_AUTO = "auto"
-TOOL_MODE_TEXT = "text"
+PINNED_FIELD = "pinned"
+PIN_ORDER_FIELD = "pin_order"
+PIN_ORDER_DEFAULT = 1000
+PINNED_TYPES = frozenset({"claim"})
+PINNED_REFUSED_STANDING = frozenset({"contested", "retracted", "superseded"})
+PINNED_DATE_CHARS = 10
+PINNED_ROSTER_FILENAME = "pins.json"
+PINNED_ROSTER_INDENT = 2
+DEFAULT_SLUG_MAX_LENGTH = 80
+SLUG_WIDEN_FACTOR = 4
+SLUG_DIGEST_LENGTH = 8
+SLUG_MIN_KEEP = 1
+REASONER_PLUGIN = "plugin"  # the Hermes plugin injects ctx.llm
+REASONER_DRIVERS = ("codex",)  # an external CLI agent answers
 COORDINATION_LOCK_POLL_SECONDS = 0.02
 DREAM_CLAIM_ID_LENGTH = 20
 DREAM_ERROR_MAX_CHARS = 1000
@@ -62,13 +73,6 @@ class IndexConfig:
 
 
 @dataclasses.dataclass
-class MemoryMdConfig:
-    budget_bytes: int = 8192
-    max_lines: int = 120
-    header: str = "# MEMORY.md"
-
-
-@dataclasses.dataclass
 class BudgetConfig:
     """Hard bounds are calls + input tokens."""
 
@@ -110,17 +114,19 @@ class RecallConfig:
     recency_half_life_days: float = 180.0
     recency_decay_base: float = 0.5
     recency_floor: float = 0.25
-    memory_md_weight_floor: float = 0.75
     synthesis_hint: bool = True
     context_full_text_entries: int = 4
-    injection_enabled: bool = True
-    injection_budget_bytes: int = 8192
+    pinned_max_bytes: int = 2048  # the pinned-rules block: ~500 tokens, ~10 rules
     anchor_context_chars: int = 160
     snippet_max_chars: int = 400
 
 
 @dataclasses.dataclass
 class ManageConfig:
+    pin_min_citations: int = 3
+    pin_min_queries: int = 2  # distinct queries that cited the claim
+    max_pins_per_sleep: int = 2
+    max_unpins_per_sleep: int = 2  # a claim cited this often is worth a pin ruling
     auto_dream: bool = True
     claim_lease_seconds: float = 1800.0
     trigger_min_hours: float = 24.0
@@ -189,25 +195,18 @@ class WriteConfig:
 @dataclasses.dataclass
 class OperationExecutorConfig:
     reasoner: str = ""
-    model: str = ""
-    endpoint: str = ""
-    project: str = ""
-    location: str = ""
+    model: str = ""  # no silent default, per operation
     timeout_seconds: float = 0.0
-    tool_mode: str = ""
 
 
 @dataclasses.dataclass
 class ExecutorConfig:
-    reasoner: str = REASONER_ENDPOINT  # memory jobs run one endpoint completion
+    reasoner: str = ""  # never a host default: empty means deterministic-only
+    provider: str = ""
+    provider_source: str = "unset"  # a driver name, or "plugin" for ctx.llm
     model: str = ""  # no silent default
-    key_env: str = ""  # env var name holding the endpoint API key
     model_source: str = "unset"  # chat | cli | gui | unset
-    endpoint: str = ""
-    project: str = ""
-    location: str = "global"
     timeout_seconds: float = 120.0
-    tool_mode: str = TOOL_MODE_AUTO
     command: str = "mnemobun distill"
     attempts: int = 3
     write: OperationExecutorConfig = dataclasses.field(default_factory=OperationExecutorConfig)
@@ -240,7 +239,6 @@ class StandingConfig:
 class Config:
     storage: StorageConfig = dataclasses.field(default_factory=StorageConfig)
     index: IndexConfig = dataclasses.field(default_factory=IndexConfig)
-    memory_md: MemoryMdConfig = dataclasses.field(default_factory=MemoryMdConfig)
     usage: UsageConfig = dataclasses.field(default_factory=UsageConfig)
     budget: BudgetConfig = dataclasses.field(default_factory=BudgetConfig)
     recall: RecallConfig = dataclasses.field(default_factory=RecallConfig)

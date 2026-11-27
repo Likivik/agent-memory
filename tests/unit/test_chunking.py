@@ -46,7 +46,7 @@ def record(body: str) -> MemoryRecord:
         name="deploy",
         abstract="部署与回滚",
         type="note",
-        author="dream",
+        writer="dream",
         created="2026-10-31T00:00:00Z",
         updated="2026-10-31T00:00:00Z",
         body=body,

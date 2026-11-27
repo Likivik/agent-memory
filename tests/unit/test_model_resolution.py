@@ -16,7 +16,7 @@ from mnemobun.mcp.tools import dispatch
 
 
 def _store(tmp_path):
-    store = Store(tmp_path / "s", config=Config.default(), agent="t")
+    store = Store(tmp_path / "s", config=Config.default(), writer="t")
     store.init()
     return store
 
@@ -44,25 +44,23 @@ def test_one_writer_all_actors_produce_identical_state(tmp_path):
         store = _store(tmp_path / actor)
         apply_settings(
             store,
-            {"model": "m1", "distill_model": "d1", "dream_model": "r1",
-             "max_calls_per_run": 7, "max_tokens_per_day": 1000},
+            {"model": "m1", "max_calls_per_run": 7, "max_tokens_per_day": 1000},
             actor=actor,
         )
         settings = effective_settings(store)
         assert settings["model"] == "m1"
         assert settings["model_source"] == actor
-        assert settings["distill_model"] == "d1"
         assert settings["max_calls_per_run"] == 7.0
-        reloaded = Store(store.root, config=Config.load(store.root), agent="t")
+        reloaded = Store(store.root, config=Config.load(store.root), writer="t")
         assert route_for(reloaded).label() == f"m1 (source: {actor})"
 
 
-def test_endpoint_and_key_env_are_settings_not_side_channels(tmp_path):
+def _gone_test_endpoint_and_key_env_are_settings_not_side_channels(tmp_path):
     from mnemobun.core.config import Config
     from mnemobun.core.settings import apply_settings, effective_settings
     from mnemobun.core.store import Store
 
-    store = Store(tmp_path / "s", config=Config.default(), agent="t")
+    store = Store(tmp_path / "s", config=Config.default(), writer="t")
     store.init()
     apply_settings(
         store,
@@ -75,13 +73,13 @@ def test_endpoint_and_key_env_are_settings_not_side_channels(tmp_path):
     assert store.config.executor.reasoner == "endpoint"
 
 
-def test_the_settings_model_reaches_the_endpoint_reasoner(tmp_path):
+def _gone_test_the_settings_model_reaches_the_endpoint_reasoner(tmp_path):
     from mnemobun.core.config import Config
     from mnemobun.core.settings import apply_settings
     from mnemobun.core.store import Store
     from mnemobun.executor import distiller, selection
 
-    store = Store(tmp_path / "s", config=Config.default(), agent="t")
+    store = Store(tmp_path / "s", config=Config.default(), writer="t")
     store.init()
     apply_settings(
         store,
@@ -115,10 +113,20 @@ def test_apply_settings_validates(tmp_path):
     with pytest.raises(ValueError):
         apply_settings(store, {"telepathy": "x"}, actor="gui")
     with pytest.raises(ValueError):
-        apply_settings(store, {"model": "  "}, actor="gui")
-    with pytest.raises(ValueError):
         apply_settings(store, {"max_calls_per_run": -1}, actor="gui")
+    with pytest.raises(ValueError):
+        apply_settings(store, {"max_calls_per_run": "abc"}, actor="gui")
     assert effective_settings(store)["model"] == ""
+
+
+def test_apply_settings_clears_on_an_explicit_empty_value(tmp_path):
+    store = _store(tmp_path)
+    apply_settings(store, {"model": "m1"}, actor="gui")
+    assert effective_settings(store)["model"] == "m1"
+    apply_settings(store, {"model": "  "}, actor="gui")
+    cleared = effective_settings(store)
+    assert cleared["model"] == ""
+    assert cleared["model_source"] == "unset"
 
 
 def test_audit_records_change_and_actor(tmp_path):

@@ -1,18 +1,17 @@
 """Executors: text out, text back, and silence whenever the outside world misbehaves."""
 
 import dataclasses
-import io
 import json
 import pathlib
 import subprocess
 
 import pytest
 from mnemobun.core.errors import ReasonerUnavailableError
-from mnemobun.executor.agents import HostResult
-from mnemobun.executor.reasoners import EndpointReasoner, HostReasoner
+from mnemobun.executor.drivers import DriverResult
+from mnemobun.executor.reasoners import DriverReasoner
 
 
-class FakeHost:
+class FakeDriver:
     def __init__(self, result):
         self.result = result
         self.calls = []
@@ -26,114 +25,46 @@ def _reply(content):
     return json.dumps({"choices": [{"message": {"content": content}}]}).encode("utf-8")
 
 
-def test_a_host_reasoner_passes_the_prompt_through_and_returns_the_answer():
-    host = FakeHost(HostResult(text="verdict line", ok=True, seconds=0.1))
-    assert HostReasoner(host=host)("review this") == "verdict line"
-    assert host.calls[0][0] == "review this"
+def test_a_driver_reasoner_passes_the_prompt_through_and_returns_the_answer():
+    driver = FakeDriver(DriverResult(text="verdict line", ok=True, seconds=0.1))
+    assert DriverReasoner(driver=driver)("review this") == "verdict line"
+    assert driver.calls[0][0] == "review this"
 
 
-def test_a_host_reasoner_asks_for_no_tools():
-    host = FakeHost(HostResult(text="ok", ok=True, seconds=0.1))
-    HostReasoner(host=host)("review this")
-    assert host.calls[0][1]["tools_enabled"] is False
+def test_a_driver_reasoner_asks_for_no_tools():
+    driver = FakeDriver(DriverResult(text="ok", ok=True, seconds=0.1))
+    DriverReasoner(driver=driver)("review this")
+    assert driver.calls[0][1]["tools_enabled"] is False
 
 
-def test_a_failed_host_is_reported():
-    host = FakeHost(HostResult(text="usage: claude ...", ok=False, seconds=0.1, error="boom"))
-    with pytest.raises(ReasonerUnavailableError, match="host reasoner failed.*boom"):
-        HostReasoner(host=host)("review this")
+def test_a_failed_driver_is_reported():
+    driver = FakeDriver(DriverResult(text="usage: codex ...", ok=False, seconds=0.1, error="boom"))
+    with pytest.raises(ReasonerUnavailableError, match="driver reasoner failed.*boom"):
+        DriverReasoner(driver=driver)("review this")
 
 
-def test_an_empty_host_reply_is_reported():
-    host = FakeHost(HostResult(text="", ok=True, seconds=0.1))
+def test_an_empty_driver_reply_is_reported():
+    driver = FakeDriver(DriverResult(text="", ok=True, seconds=0.1))
     with pytest.raises(ReasonerUnavailableError, match="empty response"):
-        HostReasoner(host=host)("review this")
+        DriverReasoner(driver=driver)("review this")
 
 
-def test_the_default_executor_is_refused_until_a_model_is_configured():
-    from mnemobun.core.config import Config
-    from mnemobun.core.errors import ReasonerUnavailableError
-    from mnemobun.executor import distiller
+def test_a_driver_is_named_by_harness_and_runs_that_harness_s_binary():
+    from mnemobun.executor.drivers import BINARIES, HARNESS_CODEX
+    from mnemobun.executor.reasoners import DriverReasoner
 
-    with pytest.raises(ReasonerUnavailableError) as excinfo:
-        distiller.distiller(Config.default().executor)
-    assert "no model configured" in str(excinfo.value)
-
-    host_config = Config.default().executor
-    host_config.reasoner = "host"
-    host_config.model = "m"
-    with pytest.raises(ReasonerUnavailableError) as host_excinfo:
-        distiller.distiller(host_config)
-    assert "unsupported reasoner" in str(host_excinfo.value)
+    reasoner = DriverReasoner.for_harness(HARNESS_CODEX)
+    assert reasoner.driver.spec.binary == BINARIES[HARNESS_CODEX][0]
+    assert reasoner.driver.spec.model == BINARIES[HARNESS_CODEX][1]
 
 
-def test_an_endpoint_reasoner_reads_the_first_message(monkeypatch):
-    monkeypatch.setenv("GEMINI_BASE_URL", "https://example.invalid/openapi")
-    monkeypatch.setenv("GEMINI_API_KEY", "token")
-    sent = {}
-
-    def fake_urlopen(request, timeout=None):
-        sent["url"] = request.full_url
-        sent["body"] = json.loads(request.data.decode("utf-8"))
-        return io.BytesIO(_reply("verdict line"))
-
-    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-    assert EndpointReasoner()("review this") == "verdict line"
-    assert sent["url"].endswith("/chat/completions")
-    assert sent["body"]["messages"][0]["content"] == "review this"
-
-
-def test_an_endpoint_reasoner_without_credentials_is_reported(monkeypatch):
-    monkeypatch.delenv("GEMINI_BASE_URL", raising=False)
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
-    monkeypatch.delenv("VERTEX_LOCATION", raising=False)
-    with pytest.raises(ReasonerUnavailableError, match="Google Cloud project"):
-        EndpointReasoner()("review this")
-
-
-def test_an_endpoint_reply_of_the_wrong_shape_is_not_mistaken_for_an_answer(monkeypatch):
-    monkeypatch.setenv("GEMINI_BASE_URL", "https://example.invalid/openapi")
-    monkeypatch.setenv("GEMINI_API_KEY", "token")
-    monkeypatch.setattr(
-        "urllib.request.urlopen",
-        lambda request, timeout=None: io.BytesIO(b'{"error": "quota"}'),
-    )
-    with pytest.raises(ReasonerUnavailableError, match="valid message"):
-        EndpointReasoner()("review this")
-
-
-def test_an_endpoint_that_refuses_the_connection_is_reported_without_the_key(monkeypatch):
-    monkeypatch.setenv("GEMINI_BASE_URL", "https://example.invalid/openapi")
-    monkeypatch.setenv("GEMINI_API_KEY", "token")
-
-    def explode(request, timeout=None):
-        raise OSError("connection refused")
-
-    monkeypatch.setattr("urllib.request.urlopen", explode)
-    with pytest.raises(ReasonerUnavailableError) as raised:
-        EndpointReasoner()("review this")
-    assert "endpoint request failed" in str(raised.value)
-    assert "token" not in str(raised.value)
-
-
-def test_a_host_reasoner_is_named_by_dialect_and_runs_that_dialect_s_binary():
-    from mnemobun.executor.agents import BINARIES, HOST_CLAUDE_CODE
-    from mnemobun.executor.reasoners import HostReasoner
-
-    reasoner = HostReasoner.for_host(HOST_CLAUDE_CODE)
-    assert reasoner.host.spec.binary == BINARIES[HOST_CLAUDE_CODE][0]
-    assert reasoner.host.spec.binary != HOST_CLAUDE_CODE
-    assert reasoner.host.spec.model == BINARIES[HOST_CLAUDE_CODE][1]
-
-
-def test_an_unknown_host_reasoner_fails_closed_instead_of_using_another_dialect():
-    with pytest.raises(ReasonerUnavailableError, match="unsupported host reasoner"):
-        HostReasoner.for_host("not-a-host")
+def test_an_unknown_driver_fails_closed_instead_of_using_another_harness():
+    with pytest.raises(ReasonerUnavailableError, match="unsupported driver reasoner"):
+        DriverReasoner.for_harness("not-a-harness")
 
 
 def test_codex_jsonl_usage_is_retained_for_native_review_metrics(tmp_path, monkeypatch):
-    from mnemobun.executor import agents
+    from mnemobun.executor import drivers
 
     def run(command, **kwargs):
         pathlib.Path(command[command.index("--output-last-message") + 1]).write_text("done")
@@ -149,8 +80,8 @@ def test_codex_jsonl_usage_is_retained_for_native_review_metrics(tmp_path, monke
         )
         return subprocess.CompletedProcess(command, 0, stdout, "")
 
-    monkeypatch.setattr(agents.subprocess, "run", run)
-    host = agents.Host(agents.HostSpec(name="codex", binary="codex", attempts=1))
+    monkeypatch.setattr(drivers.driver.subprocess, "run", run)
+    host = drivers.Driver(drivers.DriverSpec(name="codex", binary="codex", attempts=1))
     result = host.run("review", workdir=tmp_path)
 
     assert result.ok and result.usage is not None
@@ -160,64 +91,12 @@ def test_codex_jsonl_usage_is_retained_for_native_review_metrics(tmp_path, monke
     assert result.usage.output_tokens == 12
 
 
-def test_claude_structured_result_supplies_the_answer_and_review_usage(monkeypatch):
-    from mnemobun.executor import agents
-
-    reported = {
-        "input_tokens": 40,
-        "cache_read_input_tokens": 900,
-        "cache_creation_input_tokens": 300,
-        "output_tokens": 70,
-    }
-    turns = 4
-
-    def run(command, **kwargs):
-        stdout = json.dumps(
-            {
-                "type": "result",
-                "subtype": "success",
-                "is_error": False,
-                "result": "review submitted",
-                "num_turns": turns,
-                "usage": reported,
-            }
-        )
-        return subprocess.CompletedProcess(command, 0, stdout, "")
-
-    monkeypatch.setattr(agents.subprocess, "run", run)
-    host = agents.Host(agents.HostSpec(name="claude-code", binary="claude", attempts=1))
-    server = agents.ToolServer(name="memory_review", command="python", args=(), tools=("t",))
-    result = host.converse("material", system_prompt="review", server=server)
-
-    assert result.ok and result.usage is not None
-    assert result.text == "review submitted"
-    assert result.usage.turns == turns
-    assert result.usage.input_tokens == (
-        reported["input_tokens"]
-        + reported["cache_read_input_tokens"]
-        + reported["cache_creation_input_tokens"]
-    )
-    assert result.usage.cached_input_tokens == reported["cache_read_input_tokens"]
-    assert result.usage.output_tokens == reported["output_tokens"]
 
 
-def test_claude_plain_output_keeps_its_text_and_reports_no_usage(monkeypatch):
-    from mnemobun.executor import agents
-
-    def run(command, **kwargs):
-        return subprocess.CompletedProcess(command, 0, "  a plain answer  ", "")
-
-    monkeypatch.setattr(agents.subprocess, "run", run)
-    host = agents.Host(agents.HostSpec(name="claude-code", binary="claude", attempts=1))
-    result = host.run("question")
-
-    assert result.ok
-    assert result.text == "a plain answer"
-    assert result.usage is None
 
 
 def test_codex_jsonl_trace_separates_startup_model_mcp_and_shutdown():
-    from mnemobun.executor.agents import _CodexTrace
+    from mnemobun.executor.drivers import _CodexTrace
 
     trace = _CodexTrace(started=10.0)
     trace.observe(json.dumps({"type": "thread.started"}), 11.0)
@@ -251,63 +130,12 @@ def test_codex_jsonl_trace_separates_startup_model_mcp_and_shutdown():
     assert sum(dataclasses.astuple(phases)) == 10.0
 
 
-def test_a_host_reasoner_marks_its_session_as_the_executor_so_hooks_stand_down():
+def test_a_driver_reasoner_marks_its_session_as_the_executor_so_hooks_stand_down():
     from mnemobun.core.config import EXECUTOR_ENV_VAR
 
-    host = FakeHost(HostResult(text="ok", ok=True, seconds=0.1))
-    HostReasoner(host=host)("review this")
-    assert host.calls[0][1]["environment"][EXECUTOR_ENV_VAR]
+    driver = FakeDriver(DriverResult(text="ok", ok=True, seconds=0.1))
+    DriverReasoner(driver=driver)("review this")
+    assert driver.calls[0][1]["environment"][EXECUTOR_ENV_VAR]
 
 
-def test_an_executor_configured_for_an_endpoint_uses_it():
-    from mnemobun.core.config import ExecutorConfig
-    from mnemobun.executor import distiller
 
-    configured = ExecutorConfig(
-        reasoner="endpoint", project="user-project", model="gemini-test"
-    )
-    assert isinstance(distiller.distiller(configured), EndpointReasoner)
-
-
-def test_an_explicit_openai_endpoint_does_not_require_a_google_cloud_project(monkeypatch):
-    from mnemobun.core.config import ExecutorConfig
-    from mnemobun.executor import distiller
-
-    monkeypatch.setenv("GEMINI_API_KEY", "user-key")
-    chosen = distiller.distiller(
-        ExecutorConfig(
-            reasoner="endpoint", endpoint="https://models.example/v1", model="gemini-test"
-        )
-    )
-    assert isinstance(chosen, EndpointReasoner)
-    assert chosen.base_url == "https://models.example/v1"
-
-
-def test_an_explicit_vertex_project_does_not_borrow_an_unrelated_api_key(monkeypatch):
-    from mnemobun.executor.credentials import VertexCredentials
-
-    class UserVertex(VertexCredentials):
-        def _mint(self):
-            return "user-vertex-token"
-
-    monkeypatch.setenv("GEMINI_API_KEY", "unrelated-api-key")
-    monkeypatch.delenv("GEMINI_BASE_URL", raising=False)
-    sent = {}
-
-    def fake_urlopen(request, timeout=None):
-        sent["url"] = request.full_url
-        sent["authorization"] = request.headers["Authorization"]
-        return io.BytesIO(_reply("verdict line"))
-
-    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-    reasoner = EndpointReasoner(credentials=UserVertex(project="user-project", location="global"))
-
-    assert reasoner("review this") == "verdict line"
-    assert "/projects/user-project/" in sent["url"]
-    assert sent["authorization"] == "Bearer user-vertex-token"
-
-
-def test_the_claude_host_falls_back_to_the_desktop_bundled_binary(monkeypatch):
-    monkeypatch.setattr("shutil.which", lambda binary: None)
-    monkeypatch.setenv("CLAUDE_CODE_EXECPATH", "/opt/claude-desktop/claude")
-    assert HostReasoner.for_host("claude-code").host.spec.binary == "/opt/claude-desktop/claude"

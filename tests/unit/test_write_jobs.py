@@ -36,8 +36,8 @@ def _capture(store, session: str, total: int = 2) -> None:
     )
 
 
-def _enqueue(store, session: str, host: str = "codex"):
-    return WriteJobs(store).enqueue(session, host, trigger_source="hook")
+def _enqueue(store, session: str, harness: str = "codex"):
+    return WriteJobs(store).enqueue(session, harness, trigger_source="hook")
 
 
 def _job_file(store, job_id: str) -> pathlib.Path:
@@ -52,7 +52,7 @@ def test_enqueue_records_the_boundary_target_and_spawn_context(store):
     assert job.state == STATE_QUEUED
     assert job.session == "boundary"
     assert job.target == 2
-    assert job.host == "codex"
+    assert job.harness == "codex"
     assert job.trigger_source == "hook"
     assert job.attempt == 0
     assert job.max_attempts == store.config.write.jobs.max_attempts
@@ -68,11 +68,11 @@ def test_duplicate_boundaries_coalesce_into_one_job_and_extend_its_target(store,
     clock.advance(seconds=1)
     _capture(store, "boundary", total=4)
 
-    second = queue.enqueue("boundary", "claude-code")
+    second = queue.enqueue("boundary", "codex")
 
     assert second.id == first.id
     assert second.target == 4
-    assert second.host == "codex"
+    assert second.harness == "codex"
     assert list(store.layout.write_jobs.glob("*" + JOB_SUFFIX)) == [_job_file(store, first.id)]
 
 
@@ -159,21 +159,21 @@ def test_failure_backs_off_exponentially_then_dies_at_the_attempt_cap(store, clo
     _capture(store, "boundary")
     queue.enqueue("boundary", "codex")
 
-    first = queue.fail(queue.claim("worker").job, "host unavailable")
+    first = queue.fail(queue.claim("worker").job, "harness unavailable")
     assert first.state == STATE_FAILED
     assert first.attempt == 1
     first_delay = (timestamp.parse(first.not_before) - store.clock.now()).total_seconds()
 
     assert queue.claim("worker").job is None
     clock.advance(seconds=max(60.0, first_delay + 1))
-    second = queue.fail(queue.claim("worker").job, "host unavailable again")
+    second = queue.fail(queue.claim("worker").job, "harness unavailable again")
     second_delay = (timestamp.parse(second.not_before) - store.clock.now()).total_seconds()
 
     assert second_delay > first_delay
     assert second_delay >= store.config.write.jobs.backoff_base_seconds
 
     clock.advance(seconds=max(120.0, second_delay + 1))
-    third = queue.fail(queue.claim("worker").job, "host unavailable a third time")
+    third = queue.fail(queue.claim("worker").job, "harness unavailable a third time")
 
     assert third.state == STATE_DEAD
     assert "unavailable" in third.last_error
@@ -286,7 +286,7 @@ def test_enqueue_during_a_run_records_a_follow_up_job_instead_of_extending_it(st
     clock.advance(seconds=1)
     _capture(store, "boundary", total=4)
 
-    follow_up = queue.enqueue("boundary", "claude-code")
+    follow_up = queue.enqueue("boundary", "codex")
 
     assert follow_up.id != running.id
     assert follow_up.state == STATE_QUEUED

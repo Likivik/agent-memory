@@ -23,16 +23,6 @@ def test_a_server_beside_the_settings_is_found(tmp_path):
     assert "mnemobun" in servers
 
 
-def test_the_home_file_is_still_found(tmp_path):
-    settings = tmp_path / "home" / "settings.json"
-    _write(settings, {"hooks": {}})
-    _write(
-        tmp_path / ".claude.json",
-        {"mcpServers": {"mnemobun": {"command": "/opt/mem-mcp"}}},
-    )
-    servers = doctor._mcp_servers(settings, "mcpServers")
-    assert servers is not None
-    assert "mnemobun" in servers
 
 
 def test_no_configuration_anywhere_is_not_a_crash(tmp_path):
@@ -59,11 +49,13 @@ def test_the_probe_token_is_read_through_stray_characters():
     assert not doctor._probe_matched("SORRY")
 
 
-def test_a_host_binary_is_only_required_when_a_channel_would_run_it(store):
-    store.config.executor.reasoner = "endpoint"
-    assert not doctor._host_binary_needed(store)
-    store.config.executor.reasoner = "host"
-    assert doctor._host_binary_needed(store)
+def test_a_cli_driver_is_what_runs_the_binary(store):
+    store.config.executor.write.reasoner = ""
+    store.config.executor.manage.reasoner = ""
+    store.config.executor.reasoner = "plugin"
+    assert not doctor._driver_binary_needed(store)
+    store.config.executor.reasoner = "codex"
+    assert doctor._driver_binary_needed(store)
 
 
 def test_an_empty_queue_is_healthy(store):

@@ -29,7 +29,7 @@ Date: 2026-11-23.
 4. **Index group:** `index sync` (incremental catch-up, was half of `inspect`) and
    `index rebuild` (full rebuild from scratch, was `rebuild`).
 5. **`doctor` is the one health entry** (meta lane, read-only, never writes):
-   `doctor` = all checks, `doctor store`, `doctor host --host X`.
+   `doctor` = all checks, `doctor store`, `doctor host --harness X`.
    Absorbs `inspect`'s health report and the old `doctor`.
 6. **`gc` is safe by default:** bare `gc` prints what it would delete;
    `gc --yes` applies (destructive-verb convention).
