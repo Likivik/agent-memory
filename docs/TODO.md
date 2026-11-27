@@ -76,3 +76,33 @@ reopen the raw path at recall time.
 - Keep the authenticated Hermes/OpenRouter native Write matrix in the release checks; ordinary CI
   exercises the same process, stdio MCP, Store, provenance, Watermark, and fail-closed path with a
   deterministic Host.
+
+## Research round 4 follow-ups (2026-11-27)
+
+Source: 16 papers, arXiv Nov 19-25 2026 (round note `E70BSYFiYQHW`, per-paper notes g8-g23 in
+scratch `research-round2/`).
+
+- Claim state: make "what currently holds" vs "what once held" first-class with a current-value
+  pointer; TASK Memory (2611.34762) shows 53% of revised-fact answers go stale when both versions
+  are stored without one.
+- Standing gate as publication gate: multi-source + multi-review + predictive check before
+  `accepted`; conserve support counts and claim-to-episode pointers as tested invariants through
+  dream (IBM 2611.26361 lost provenance silently twice).
+- Recall ranker candidate: per-claim utility posterior (Beta e,n, BRAG 2611.31656) x lexical hit
+  weight over the FTS5 surface; robust to 30% wrong labels; no dense leg without a gibberish/
+  sanity check (EON 2611.31344).
+- Serving policy: prefer no-claim over partial-coverage claim (MetaDecomp: -3.02 pp); verify the
+  claim subject key against the query before applying (TASK: locality 64.9 -> 96.9); treat scope
+  qualifiers ("only for this exact case") as payload-shape signals (MIMPA 2611.31307).
+- Withdrawal: three-level semantics (logical invalidation / physical erasure /
+  non-reconstructability), enumerate descendants and test post-restoration behavior
+  (survey 2611.26983; FORGETMENOT: all 5 commercial agents leak after deletion).
+- Health checks: assert store entity count grows (silent read-only store); verify dream output
+  recovers source facts before it replaces sources (MemFolder 2611.26427 verification loop).
+- Claim typing: polarity (success / failure, DualPM 2611.33612) and descriptive vs normative
+  (Map-vs-Territory 2611.29916: 18% of dependency rules broken on day one); each type gets its own
+  standing policy.
+- Eval: answer-vs-served-claim consistency (use-time), grounded-rate not accuracy
+  (AstronautBench 2611.26910 scoring: +1 grounded / -1 correct-but-ungrounded), paired
+  useful/harmful vs no-memory (Leto 2611.33005), and a noise floor (~3 tasks) before believing a
+  delta (IBM).
