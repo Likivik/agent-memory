@@ -22,6 +22,29 @@ reopen the raw path at recall time.
   retraction (HEAMS: nobody solves Edit; Erase 0-47%).
 - Consider a procedural claim kind (runbook/reuse note): QCR beats full
   trajectory replay by +10.7 pts at 48.9% fewer tokens.
+- Pair the standing gate with retrieval-time composition control: write-time
+  filters stop direct corruption but composed multi-record attacks pass
+  (MemPoison L2 residual causal effect 83.6%).
+- Dream consolidation needs deterministic, declared ordering: consolidation
+  order alone flips behavior (MemForm), and recency-weighted merging is the
+  worst updater tested (ASR 99.3% vs 0.0% batch).
+- Retracted/superseded claims must leave the FTS5 search surface: repairability
+  depends on cheap semantic delete (MemSecBench: semantic backends repair
+  87.6-93.3% vs ID-exact 31.8-35.1%).
+- Erasure: as-if-deleted views must span claims AND the raw archive; keep
+  write-job contexts small (LinEra fan-in law: 1% forget erases 74.8% of
+  session-scope derivatives vs 3.9% with 4-turn windows).
+- Time-aware retrieval is mandatory at long tenure (Tenure crossover: evicting
+  stores decay 96.3%->72.2%, append-only/graph rise to 100%; unbounded vector
+  pools without time-awareness also decay).
+- Invest in write quality over retrieval machinery: weak writes cause 24.2% QA
+  misses vs 1.6% clean; two-stage curated writer halves errors.
+- Evaluate memory intrinsically (claim correctness, standing transitions), not
+  only via downstream QA: the two disagree (kappa 0.118).
+- Rich benign history is a security asset: ~48 benign sessions collapse attack
+  persistence (MemoryDojo RSR 55.66% -> 7.94%).
+- Counting/aggregation is the universal weakness (4DMemory best 47.58%):
+  reconfirms the event-ledger item above.
 
 ## Read policy follow-up
 
