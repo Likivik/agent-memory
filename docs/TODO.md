@@ -106,3 +106,29 @@ scratch `research-round2/`).
   (AstronautBench 2611.26910 scoring: +1 grounded / -1 correct-but-ungrounded), paired
   useful/harmful vs no-memory (Leto 2611.33005), and a noise floor (~3 tasks) before believing a
   delta (IBM).
+
+## Research round 5 follow-ups (2026-11-28)
+
+Source: 8 papers, arXiv Nov 25 2026 (round note in Trilium Research parent, per-paper notes
+g24-g31 in scratch `research-round2/`).
+
+- Dream evaluation = joint utility (new-claim gain + retention of existing claim behavior), not
+  the consolidation objective alone (Tune for Retention 2611.34579: "catastrophic forgetting" was
+  a selection artifact; 3-of-9 sampled validation tasks select within 1.4 pp of full sweeps).
+- Claim debug procedure (HoMe 2611.34624): per-session commits + diff attribution triad - written?
+  / corrupted-or-deleted by which session? / retrieved? Prompt-only tuning regresses; structural
+  changes win (0.888 -> 0.916 at -59% tokens).
+- Catalog scan index over claim titles/descriptions for enumeration questions (HoMe), beyond
+  FTS5 top-k; matches the event-ledger counting idea from round 2.
+- Pair-level admission tests for interacting claims (same subject key, order of application
+  matters; Skills Fail to Compose 2611.34398: >=90% skills compose at <=7.6% in one call);
+  anchored revision = rehearse the original claim when revising.
+- Keep oldest sparse per-subject facts with unit age weight (INSPIRE 2611.34708: 14-snapshot
+  windows evict defining early links; single-vector summaries degrade one endpoint role).
+- Label-free post-hoc utility scoring for claim/episode updates (EATS 2611.33897: ~= GT judge
+  65.2 vs 65.1; memory also cut tokens 10.5% by suppressing low-value calls).
+- Health additions: 19-turn tenure probe (EvoLink-Bench median disclosure->recall = 19 turns);
+  retained != usable (SSA: 97.1% of needed chunks kept, 0% used) - serve-time checks over
+  store-presence.
+- Judgment rule: when a paper attributes a gain to a mechanism, check the tuning/selection regime
+  first (Tune for Retention; HoMe MemPro regression; IBM noise floor).
